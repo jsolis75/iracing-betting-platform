@@ -1,7 +1,7 @@
 // "use client" ensures this component runs on the client side
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import RaceCard from "@/components/Race/RaceCard";
 import BetSlip from "@/components/Betting/BetSlip";
@@ -10,7 +10,7 @@ import Login from "@/components/Auth/Login";
 import { useUser } from "@/context/UserContext";
 import { useBetting } from "@/context/BettingContext";
 
-export default function Home() {
+function HomeContent() {
   const { user } = useUser();
   const searchParams = useSearchParams();
   const selectedRaceId = searchParams.get('raceId');
@@ -210,5 +210,13 @@ export default function Home() {
         </>
       )}
     </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

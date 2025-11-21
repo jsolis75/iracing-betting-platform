@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import styles from './Sidebar.module.css';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 
-const Sidebar = () => {
+function SidebarContent() {
     const [raceInfo, setRaceInfo] = useState(null);
     const [user, setUser] = useState(null);
     const [races, setRaces] = useState([]);
@@ -178,6 +178,14 @@ const Sidebar = () => {
                 </div>
             )}
         </aside>
+    );
+}
+
+const Sidebar = () => {
+    return (
+        <Suspense fallback={<div style={{ padding: '1rem' }}>Loading...</div>}>
+            <SidebarContent />
+        </Suspense>
     );
 };
 

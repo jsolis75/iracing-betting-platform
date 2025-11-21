@@ -6,59 +6,87 @@ const UserContext = createContext();
 
 export const UserProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [users, setUsers] = useState([]); // In-memory user store for demo
+    const [loading, setLoading] = useState(true);
 
-    // Load users from local storage or mock data on mount
+    // Load user session on mount
     useEffect(() => {
-        const storedUsers = localStorage.getItem('iracing_betting_users');
-        if (storedUsers) {
-            setUsers(JSON.parse(storedUsers));
-        } else {
-            // Default demo user
-            const demoUser = {
-                username: 'DemoUser',
-                password: 'password',
-                balance: 1000.00,
-                betHistory: []
-            };
-            setUsers([demoUser]);
-            localStorage.setItem('iracing_betting_users', JSON.stringify([demoUser]));
-        }
-
-        // Restore logged-in user session if it exists
         const storedSession = localStorage.getItem('iracing_betting_session');
         if (storedSession) {
-            const sessionUser = JSON.parse(storedSession);
-            setUser(sessionUser);
+            try {
+                const sessionUser = JSON.parse(storedSession);
+                // Fetch fresh user data from database
+                fetchUserData(sessionUser.username);
+            } catch (error) {
+                console.error('Error loading session:', error);
+                setLoading(false);
+            }
+        } else {
+            setLoading(false);
         }
     }, []);
 
-    const login = (username, password) => {
-        const foundUser = users.find(u => u.username === username && u.password === password);
-        if (foundUser) {
-            setUser(foundUser);
-            localStorage.setItem('iracing_betting_session', JSON.stringify(foundUser));
-            return { success: true };
+    const fetchUserData = async (username) => {
+        try {
+            const response = await fetch(`/api/users?username=${encodeURIComponent(username)}`);
+            if (response.ok) {
+                const userData = await response.json();
+                setUser(userData);
+                localStorage.setItem('iracing_betting_session', JSON.stringify(userData));
+            } else {
+                // User not found in database, clear session
+                localStorage.removeItem('iracing_betting_session');
+            }
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+        } finally {
+            setLoading(false);
         }
-        return { success: false, error: 'Invalid credentials' };
     };
 
-    const register = (username, password) => {
-        if (users.some(u => u.username === username)) {
-            return { success: false, error: 'Username already exists' };
+    const login = async (username, password) => {
+        try {
+            const response = await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, action: 'login' })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                setUser(data.user);
+                localStorage.setItem('iracing_betting_session', JSON.stringify(data.user));
+                return { success: true };
+            } else {
+                return { success: false, error: data.error || 'Login failed' };
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            return { success: false, error: 'Network error' };
         }
-        const newUser = {
-            username,
-            password,
-            balance: 1000.00, // Starting balance
-            betHistory: []
-        };
-        const updatedUsers = [...users, newUser];
-        setUsers(updatedUsers);
-        localStorage.setItem('iracing_betting_users', JSON.stringify(updatedUsers));
-        setUser(newUser);
-        localStorage.setItem('iracing_betting_session', JSON.stringify(newUser));
-        return { success: true };
+    };
+
+    const register = async (username, email, password) => {
+        try {
+            const response = await fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, email, password, action: 'signup' })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                setUser(data.user);
+                localStorage.setItem('iracing_betting_session', JSON.stringify(data.user));
+                return { success: true };
+            } else {
+                return { success: false, error: data.error || 'Registration failed' };
+            }
+        } catch (error) {
+            console.error('Registration error:', error);
+            return { success: false, error: 'Network error' };
+        }
     };
 
     const logout = () => {
@@ -68,39 +96,41 @@ export const UserProvider = ({ children }) => {
 
     const updateUserBalance = (amount) => {
         if (!user) return;
-        const updatedUser = { ...user, balance: user.balance + amount };
+        // Optimistic update
+        const updatedUser = { ...user, balance: parseFloat(user.balance) + amount };
         setUser(updatedUser);
         localStorage.setItem('iracing_betting_session', JSON.stringify(updatedUser));
 
-        const updatedUsers = users.map(u => u.username === user.username ? updatedUser : u);
-        setUsers(updatedUsers);
-        localStorage.setItem('iracing_betting_users', JSON.stringify(updatedUsers));
+        // Refresh from database to ensure consistency
+        setTimeout(() => fetchUserData(user.username), 1000);
     };
 
-    const addBetToHistory = (bet) => {
-        if (!user) return;
-        const updatedUser = { ...user, betHistory: [...user.betHistory, bet] };
-        setUser(updatedUser);
-        localStorage.setItem('iracing_betting_session', JSON.stringify(updatedUser));
-
-        const updatedUsers = users.map(u => u.username === user.username ? updatedUser : u);
-        setUsers(updatedUsers);
-        localStorage.setItem('iracing_betting_users', JSON.stringify(updatedUsers));
+    const refreshUser = () => {
+        if (user) {
+            fetchUserData(user.username);
+        }
     };
 
     const resetBalance = () => {
-        if (!user) return;
-        const updatedUser = { ...user, balance: 1000.00 };
-        setUser(updatedUser);
-        localStorage.setItem('iracing_betting_session', JSON.stringify(updatedUser));
-
-        const updatedUsers = users.map(u => u.username === user.username ? updatedUser : u);
-        setUsers(updatedUsers);
-        localStorage.setItem('iracing_betting_users', JSON.stringify(updatedUsers));
+        // This would need a backend endpoint to reset balance
+        // For now, just refresh user data
+        if (user) {
+            fetchUserData(user.username);
+        }
     };
 
     return (
-        <UserContext.Provider value={{ user, login, register, logout, updateUserBalance, addBetToHistory, resetBalance, users, setUser, setUsers }}>
+        <UserContext.Provider value={{
+            user,
+            loading,
+            login,
+            register,
+            logout,
+            updateUserBalance,
+            refreshUser,
+            resetBalance,
+            setUser
+        }}>
             {children}
         </UserContext.Provider>
     );

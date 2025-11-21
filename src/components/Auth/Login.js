@@ -11,7 +11,7 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
@@ -22,9 +22,9 @@ const Login = () => {
 
         let result;
         if (isLogin) {
-            result = login(username, password);
+            result = await login(username, password);
         } else {
-            result = register(username, password);
+            result = await register(username, '', password); // Email optional for now
         }
 
         if (!result.success) {

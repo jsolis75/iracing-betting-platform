@@ -1,0 +1,500 @@
+.card {
+    background-color: var(--background-card);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid var(--border-color);
+    margin-bottom: 2rem;
+}
+
+.header {
+    padding: 1.5rem;
+    background: linear-gradient(180deg, var(--background-card) 0%, var(--background-input) 100%);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.raceInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.raceName {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.trackInfo {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.badges {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.flagBadge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.liveBadge {
+    background-color: var(--status-live);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.sortControls {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: var(--background-input);
+}
+
+.sortLabel {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.sortBtn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sortBtn:hover {
+    background-color: var(--background-card);
+    border-color: var(--text-muted);
+}
+
+.activeSort {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: white;
+}
+
+.activeSort:hover {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+.tableHeader {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--background-input);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.colDriver {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.colOdds {
+    text-align: center;
+}
+
+.driverList {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.driverRow {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.driverRow:hover {
+    background-color: var(--background-input);
+}
+
+.number {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 1.25rem;
+    color: #fbbf24;
+    width: 40px;
+    text-align: center;
+}
+
+.driverDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.driverName {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.driverStats {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.currentPosition {
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.betButton {
+    background-color: var(--background-input);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0.25rem;
+    height: 100%;
+}
+
+.betButton:hover:not(:disabled) {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    transform: translateY(-1px);
+}
+
+.betButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--background-input);
+}
+
+.betButton:hover:not(:disabled) .oddsValue {
+    color: white;
+}
+
+.crashButton:hover:not(:disabled) {
+    background-color: #ef4444;
+    border-color: #ef4444;
+}
+
+.oddsValue {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.crashed {
+    opacity: 0.6;
+}
+
+.flagBadge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.liveBadge {
+    background-color: var(--status-live);
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0.6;
+    }
+
+    100% {
+        opacity: 1;
+    }
+}
+
+.sortControls {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background-color: var(--background-input);
+}
+
+.sortLabel {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.sortBtn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.sortBtn:hover {
+    background-color: var(--background-card);
+    border-color: var(--text-muted);
+}
+
+.activeSort {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: white;
+}
+
+.activeSort:hover {
+    background-color: #2563eb;
+    border-color: #2563eb;
+}
+
+.tableHeader {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    padding: 0.75rem 1.5rem;
+    background-color: var(--background-input);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+}
+
+.colDriver {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.colOdds {
+    text-align: center;
+}
+
+.driverList {
+    max-height: 600px;
+    overflow-y: auto;
+}
+
+.driverRow {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.driverRow:hover {
+    background-color: var(--background-input);
+}
+
+.number {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 800;
+    font-size: 1.25rem;
+    color: #fbbf24;
+    width: 40px;
+    text-align: center;
+}
+
+.driverDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.driverName {
+    font-weight: 600;
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.driverStats {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.currentPosition {
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-block;
+    margin-top: 2px;
+}
+
+.betButton {
+    background-color: var(--background-input);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.5rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: 0 0.25rem;
+    height: 100%;
+}
+
+.betButton:hover:not(:disabled) {
+    background-color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    transform: translateY(-1px);
+}
+
+.betButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background-color: var(--background-input);
+}
+
+.betButton:hover:not(:disabled) .oddsValue {
+    color: white;
+}
+
+.crashButton:hover:not(:disabled) {
+    background-color: #ef4444;
+    border-color: #ef4444;
+}
+
+.oddsValue {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+.crashed {
+    opacity: 0.6;
+    background-color: rgba(239, 68, 68, 0.1);
+    pointer-events: none;
+    /* Prevent clicks on the whole row if desired, or just rely on disabled buttons */
+}
+
+.retiredBadge {
+    display: inline-block;
+    background-color: #ef4444;
+    color: white;
+    font-size: 0.7rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+/* Post-Race Banner */
+.postRaceBanner {
+    background: linear-gradient(135deg, rgba(0, 87, 184, 0.1), rgba(74, 222, 128, 0.1));
+    border-top: 2px solid var(--border-color);
+    padding: 2rem;
+    text-align: center;
+}
+
+.bannerContent {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.bannerText h3 {
+    margin: 0;
+    font-size: 1.75rem;
+    color: var(--text-primary);
+    font-weight: 700;
+}
+
+.bannerText p {
+    margin: 0.5rem 0 0 0;
+    color: var(--text-secondary);
+    font-size: 1rem;
+}
+
+.resultsButton {
+    background: linear-gradient(135deg, var(--primary-blue), #003d82);
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 87, 184, 0.3);
+}
+
+.resultsButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0, 87, 184, 0.4);
+}
+
+.resultsButton:active {
+    transform: translateY(0);
+}

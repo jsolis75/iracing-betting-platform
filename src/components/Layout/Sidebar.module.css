@@ -1,0 +1,232 @@
+.sidebar {
+    width: 240px;
+    background-color: var(--background-card);
+    border-right: 1px solid var(--border-color);
+    height: calc(100vh - 73px);
+    position: sticky;
+    top: 73px;
+    padding: 1.5rem 1rem;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.logo {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.logoIcon {
+    font-size: 2rem;
+}
+
+.logo h1 {
+    font-size: 1.25rem;
+    margin: 0.5rem 0 0 0;
+    color: var(--text-primary);
+}
+
+.section {
+    margin-bottom: 2rem;
+}
+
+.sectionTitle {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.navItem {
+    display: block;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    text-decoration: none;
+}
+
+.navItem:hover {
+    background-color: var(--background-input);
+    color: var(--primary-blue);
+}
+
+.active {
+    background-color: rgba(0, 87, 184, 0.08);
+    color: var(--primary-blue);
+    border-left: 3px solid var(--primary-blue);
+}
+
+.divider {
+    height: 1px;
+    background-color: rgba(255, 255, 255, 0.1);
+    margin: 1rem 0;
+}
+
+.broadcastBtn {
+    margin-top: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.broadcastBtnActive {
+    color: #4ade80 !important;
+    border-color: #4ade80 !important;
+    background: rgba(74, 222, 128, 0.1);
+}
+
+.broadcastBtn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+}
+
+.raceInfo {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.infoRow {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+}
+
+.infoLabel {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.infoValue {
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.userInfo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.userAvatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary-blue), #003d82);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    color: white;
+    font-size: 1rem;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+.userDetails {
+    display: flex;
+    flex-direction: column;
+}
+
+.userName {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.userBalance {
+    font-size: 0.8rem;
+    color: #4ade80;
+    font-weight: 500;
+}
+
+/* Race List Styles */
+.racesSection {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.racesTitle {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin: 0 0 0.75rem 0;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+}
+
+.racesList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.raceItem {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--background-input);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.raceItem:hover {
+    background: rgba(0, 87, 184, 0.05);
+    border-color: var(--primary-blue);
+}
+
+.activeRace {
+    background: rgba(0, 87, 184, 0.1);
+    border-color: var(--primary-blue);
+}
+
+.raceSource {
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.raceDetails {
+    flex: 1;
+    min-width: 0;
+}
+
+.raceName {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.raceTrack {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

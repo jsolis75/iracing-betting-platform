@@ -1,0 +1,175 @@
+.header {
+    background-color: var(--background-card);
+    border-bottom: 1px solid var(--border-color);
+    padding: 1rem 0;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.logo {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    letter-spacing: -0.5px;
+    text-decoration: none;
+}
+
+.logoHighlight {
+    color: var(--primary-blue);
+}
+
+.nav {
+    display: flex;
+    gap: 2rem;
+    margin-left: 3rem;
+}
+
+.navLink {
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+}
+
+.navLink:hover {
+    color: var(--primary-blue);
+}
+
+.userSection {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.balance {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.25rem;
+}
+
+.balanceLabel {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+}
+
+.balanceValue {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--status-success);
+}
+
+.resetButton {
+    margin-top: 0.25rem;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.resetButton:hover {
+    color: var(--primary-blue);
+    border-color: var(--primary-blue);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.profile {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    text-decoration: none;
+}
+
+.avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background-color: var(--primary-blue);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+/* Confirmation Modal */
+.confirmModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+.confirmDialog {
+    background: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 2rem;
+    max-width: 400px;
+    width: 90%;
+}
+
+.confirmDialog h3 {
+    margin: 0 0 1rem 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+}
+
+.confirmDialog p {
+    margin: 0 0 1.5rem 0;
+    color: var(--text-secondary);
+}
+
+.confirmButtons {
+    display: flex;
+    gap: 1rem;
+}
+
+.confirmYes,
+.confirmNo {
+    flex: 1;
+    padding: 0.75rem;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: none;
+}
+
+.confirmYes {
+    background: var(--primary-blue);
+    color: white;
+}
+
+.confirmYes:hover {
+    background: #2563eb;
+}
+
+.confirmNo {
+    background: var(--background-dark);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.confirmNo:hover {
+    background: var(--hover-bg);
+    color: var(--text-primary);
+}

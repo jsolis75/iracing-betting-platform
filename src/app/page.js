@@ -209,7 +209,7 @@ function HomeContent() {
     // Poll every 5 seconds for live updates
     const interval = setInterval(() => {
       fetchRaceData(controller.signal);
-    }, 5000);
+    }, 2000);
 
     // Cleanup interval on unmount
     return () => {

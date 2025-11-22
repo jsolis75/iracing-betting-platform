@@ -29,15 +29,41 @@ export async function GET(request) {
 
         const { data, error } = await query;
 
-        if (error || !data) {
-            // Fallback for demo/testing if no live race
-            // We can return a "Waiting for broadcast" state
-            return NextResponse.json({
-                message: "No active race found",
-                WeekendInfo: { TrackDisplayName: "Waiting for Broadcast..." },
-                DriverInfo: { Drivers: [] }
-            });
+        // If we got data from DB, return it
+        if (data && !error) {
+            return NextResponse.json(data.data);
         }
+
+        // If DB failed or empty, TRY LOCAL FALLBACK
+        // console.log("DB failed or empty, checking local file...");
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const filePath = path.join(process.cwd(), 'src', 'data', 'live_race_data.json');
+
+            if (fs.existsSync(filePath)) {
+                const fileContent = fs.readFileSync(filePath, 'utf-8');
+                const localData = JSON.parse(fileContent);
+
+                // Check if data is recent (within 5 minutes)
+                const lastUpdated = new Date(localData.last_updated || 0);
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+                if (lastUpdated > fiveMinutesAgo) {
+                    // console.log('Serving race data from local file fallback');
+                    return NextResponse.json(localData);
+                }
+            }
+        } catch (localError) {
+            console.error('Local fallback failed:', localError);
+        }
+
+        // If both DB and Local failed, return "No active race"
+        return NextResponse.json({
+            message: "No active race found",
+            WeekendInfo: { TrackDisplayName: "Waiting for Broadcast..." },
+            DriverInfo: { Drivers: [] }
+        });
 
         // Return the stored JSON data
         return NextResponse.json(data.data);

@@ -71,8 +71,8 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
             const historicalWeight = 0.05 * Math.pow(1 - raceProgress, 2.0);
             const positionWeight = 1 - (iRatingWeight + historicalWeight);
 
-            // Even flatter position curve - very competitive top 10
-            const dynamicExponent = 3.5 + (raceProgress * 22); // Was 4 + (progress * 30)
+            // MUCH flatter position curve - highly competitive top 10
+            const dynamicExponent = 3 + (raceProgress * 15); // Was 3.5 + (progress * 22)
             const dynamicPositionFactor = Math.pow((fieldSize - currentPos + 1) / fieldSize, dynamicExponent);
 
             // Gap penalty: Only for positions 13+ (deeper in field)

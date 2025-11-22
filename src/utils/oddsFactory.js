@@ -102,10 +102,21 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
                 gapPenalty = Math.pow(0.85, gap);
             }
 
+            // POSITION DIFFERENTIAL BONUS: Drivers who've passed many cars are clearly fast
+            let positionDifferentialBonus = 1.0;
+            const positionsGained = startPos - currentPos; // Positive = gained positions
+            if (positionsGained > 3) {
+                // Give bonus for making up positions (shows current race speed)
+                positionDifferentialBonus = 1.0 + (positionsGained * 0.08); // 8% per position gained
+            }
+
             winProbability =
                 (liveIRatingFactor * iRatingWeight) +
                 (historicalFactor * historicalWeight) +
                 (dynamicPositionFactor * positionWeight * gapPenalty);
+
+            // Apply position differential bonus
+            winProbability = winProbability * positionDifferentialBonus;
         } else {
             // PRE-RACE ODDS
             // Base calculation with INCREASED iRating weight (helps good drivers starting deep)
@@ -136,7 +147,7 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
     // Normalize probabilities to sum to 1.0
     const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
 
-    const HOUSE_EDGE = 1.20;
+    const HOUSE_EDGE = 1.30; // Increased from 1.20 to lower payouts (harder for customers to win)
 
     const driversWithNormalizedProb = driversWithProb.map(d => ({
         ...d,

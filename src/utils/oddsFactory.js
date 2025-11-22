@@ -147,40 +147,40 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     const licString = driver.LicString || driver.licenseClass || '';
     const licClass = licString.charAt(0).toUpperCase(); // First letter: A, B, C, D, R, P
 
-    // 1. INCIDENT FACTOR (Primary - 70% weight)
+    // 1. INCIDENT FACTOR (Primary - 50% weight) - WIDENED FOR MORE VARIATION
     // Below 2.5: Extremely clean -> Low crash prob
     // 2.5-3.0: Clean -> Low crash prob
     // 3.0-3.99: Average -> Medium crash prob
     // 4.0-4.99: Dirty -> High crash prob
     // 5.0+: Extremely dirty -> Very high crash prob
     let incidentMultiplier;
-    if (avgIncidents <= 2.5) incidentMultiplier = 0.4; // Extremely clean
-    else if (avgIncidents <= 3.0) incidentMultiplier = 0.6; // Clean
-    else if (avgIncidents <= 3.99) incidentMultiplier = 1.0; // Average
-    else if (avgIncidents <= 4.99) incidentMultiplier = 1.6; // Dirty
-    else incidentMultiplier = 2.5; // Extremely dirty (5.0+)
+    if (avgIncidents <= 2.5) incidentMultiplier = 0.3; // Extremely clean (was 0.4)
+    else if (avgIncidents <= 3.0) incidentMultiplier = 0.7; // Clean (was 0.6)
+    else if (avgIncidents <= 3.99) incidentMultiplier = 1.2; // Average (was 1.0)
+    else if (avgIncidents <= 4.99) incidentMultiplier = 2.0; // Dirty (was 1.6)
+    else incidentMultiplier = 3.5; // Extremely dirty (was 2.5)
 
-    // 2. LICENSE CLASS FACTOR (Secondary - 30% weight)
+    // 2. LICENSE CLASS FACTOR (Secondary - 50% weight, INCREASED from 30%)
     // NOTE: ~90% of drivers are A-class, so A is the baseline
     // A/Pro: Baseline (cleanest drivers) -> 1.0x multiplier
-    // B: Slightly worse -> 1.15x multiplier
-    // C: Noticeably dirtier -> 1.4x multiplier
-    // D and below: Really dirty -> 1.8x multiplier
+    // B: Noticeably worse -> 1.4x multiplier (was 1.15)
+    // C: Much dirtier -> 2.0x multiplier (was 1.4)
+    // D and below: Extremely dirty -> 3.0x multiplier (was 1.8)
     let licenseMultiplier;
     if (licClass === 'A' || licClass === 'P') licenseMultiplier = 1.0; // A or Pro = baseline
-    else if (licClass === 'B') licenseMultiplier = 1.15; // B is slightly worse
-    else if (licClass === 'C') licenseMultiplier = 1.4; // C is dirty
-    else licenseMultiplier = 1.8; // D, R, or unknown = really dirty
+    else if (licClass === 'B') licenseMultiplier = 1.4; // B is noticeably worse
+    else if (licClass === 'C') licenseMultiplier = 2.0; // C is much dirtier
+    else licenseMultiplier = 3.0; // D, R, or unknown = extremely dirty
 
-    // Combined crash probability (Base 8%, scaled by factors)
-    const baseCrashRate = 0.08;
+    // Combined crash probability (Base 10%, scaled by factors)
+    const baseCrashRate = 0.10; // Increased from 0.08 for wider odds range
     const crashProbability = Math.min(
-        baseCrashRate * (incidentMultiplier * 0.7 + licenseMultiplier * 0.3),
-        0.60 // Cap at 60% max crash probability
+        baseCrashRate * (incidentMultiplier * 0.5 + licenseMultiplier * 0.5), // 50/50 split
+        0.70 // Cap at 70% max crash probability (was 60%)
     );
 
     let crashOdds = probToOdds(crashProbability);
-    crashOdds = Math.max(75, Math.min(2000, crashOdds)); // Wider range: +75 to +2000
+    crashOdds = Math.max(50, Math.min(2500, crashOdds)); // Wider range: +50 to +2500
     crashOdds = Math.round(crashOdds / 10) * 10;
     const crashOddsStr = `+${crashOdds}`;
 

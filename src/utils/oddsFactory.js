@@ -102,25 +102,8 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
                 gapPenalty = Math.pow(0.85, gap);
             }
 
-            winProbability =
-                (liveIRatingFactor * iRatingWeight) +
-                (historicalFactor * historicalWeight) +
-                (dynamicPositionFactor * positionWeight * gapPenalty);
-        } else {
-            // PRE-RACE ODDS
-            winProbability =
-                (iRatingFactor * 0.30) +
-                (historicalFactor * 0.40) +
-                (startingPositionFactor * 0.30);
-
-            winProbability = winProbability * qualifyingBonus;
-            winProbability = winProbability + qualifyingAdditiveBoost;
-        }
-
-        winProbability = winProbability * proBoost;
-
-        return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress, qualifyingBonus };
-    });
+            return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress, qualifyingBonus };
+        });
 
     // Normalize probabilities to sum to 1.0
     const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);

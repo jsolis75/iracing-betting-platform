@@ -11,18 +11,57 @@ export async function POST(request) {
 
         const supabase = getSupabaseClient();
 
-        // 1. Fetch ALL pending bets for this race (or parlays involving this race)
-        // Note: For 'multi' race parlays, this is trickier. For now, we'll assume 
-        // if a parlay is pending and we have results, we check if it can be settled.
-        // But to be safe, let's just fetch all pending bets.
-        const { data: pendingBets, error: fetchError } = await supabase
-            .from('bets')
-            .select('*')
-            .eq('status', 'pending');
+        let raceDrivers = drivers;
 
-        if (fetchError) {
-            throw fetchError;
+        // If drivers data is not provided, try to fetch it from the 'races' table
+        if (!raceDrivers && raceId) {
+            const { data: raceData, error: raceError } = await supabase
+                .from('races')
+                .select('data')
+                .eq('id', raceId)
+                .single();
+
+            if (raceData && raceData.data && raceData.data.DriverInfo) {
+                // We need to reconstruct the 'drivers' array structure expected by the logic below
+                // The stored JSON is the raw iRacing data.
+                // We need to map it similar to how page.js does.
+                // This is a bit complex to duplicate the mapping logic here.
+                // Alternatively, we can just require the user to pass the data.
+                // BUT, for a robust backend, we should probably store the *processed* results or handle raw data here.
+
+                // Let's try to map the raw data.
+                const rawDrivers = raceData.data.DriverInfo.Drivers;
+                const session = raceData.data.SessionInfo.Sessions.find(s => s.SessionType === 'Race') || raceData.data.SessionInfo.Sessions[raceData.data.SessionInfo.Sessions.length - 1];
+                const resultsPositions = session.ResultsPositions || [];
+
+                const posMap = {};
+                const reasonOutMap = {};
+                resultsPositions.forEach(p => {
+                    posMap[p.CarIdx] = p.Position;
+                    reasonOutMap[p.CarIdx] = p.ReasonOutStr;
+                });
+
+                raceDrivers = rawDrivers.map(d => {
+                    const reasonOut = reasonOutMap[d.CarIdx]?.toLowerCase().trim() || "running";
+                    let isDNF = false;
+                    const dnfReasons = ["accident", "engine", "suspension", "handling", "brakes"];
+                    if (dnfReasons.some(r => reasonOut.includes(r))) isDNF = true;
+                    else if ((reasonOut.includes("disconnected") || reasonOut.includes("disco"))) isDNF = true; // Simplified DNF logic for backend
+
+                    return {
+                        name: d.UserName,
+                        currentPosition: posMap[d.CarIdx] || 999,
+                        isDNF: isDNF
+                    };
+                });
+            }
         }
+
+        if (!raceDrivers) {
+            return NextResponse.json({ error: 'Missing race results data' }, { status: 400 });
+        }
+
+        // 1. Fetch ALL pending bets for this race (or parlays involving this race)
 
         if (!pendingBets || pendingBets.length === 0) {
             return NextResponse.json({ message: 'No pending bets to settle' });
@@ -69,96 +108,59 @@ export async function POST(request) {
                 }
 
                 let allWon = true;
-                let anyLost = false;
-                let anyUnknown = false;
-
-                for (const leg of bet.details) {
-                    // leg has { driver, type } (mapped from frontend 'driver' and 'type')
-                    // Wait, frontend saves it as { driver: 'Name', type: 'Win' }
-                    const legResult = checkLeg(leg.driver, leg.type, drivers);
-
-                    if (legResult === 'lost') {
-                        anyLost = true;
-                        break; // Parlay is dead
-                    }
-                    if (legResult === 'unknown') {
-                        // If we can't find the driver, maybe they are in a different race?
-                        // If this is a multi-race parlay, we can't settle it yet unless we have data for all races.
-                        // For now, if we can't find the driver, we assume the leg is NOT for this race, 
-                        // so we can't settle the parlay yet.
-                        anyUnknown = true;
-                    }
-                    if (legResult !== 'won') {
-                        allWon = false;
-                    }
-                }
-
-                if (anyLost) result = 'lost';
-                else if (allWon && !anyUnknown) result = 'won';
-                else result = 'pending'; // Still waiting on other legs
-
-            } else {
-                // Single Bet
-                const singleResult = checkLeg(bet.driver_name, bet.bet_type, drivers);
-                if (singleResult !== 'unknown') {
-                    result = singleResult;
+                if (result !== 'pending') {
+                    updates.push({
+                        bet,
+                        result
+                    });
                 }
             }
 
-            // If we determined a result, queue the update
-            if (result !== 'pending') {
-                updates.push({
-                    bet,
-                    result
-                });
-            }
-        }
+            // Process updates
+            for (const update of updates) {
+                const { bet, result } = update;
 
-        // Process updates
-        for (const update of updates) {
-            const { bet, result } = update;
+                // 1. Update bet status
+                await supabase
+                    .from('bets')
+                    .update({
+                        status: 'settled',
+                        result: result,
+                        settled_at: new Date().toISOString()
+                    })
+                    .eq('id', bet.id);
 
-            // 1. Update bet status
-            await supabase
-                .from('bets')
-                .update({
-                    status: 'settled',
-                    result: result,
-                    settled_at: new Date().toISOString()
-                })
-                .eq('id', bet.id);
-
-            // 2. If won, pay the user
-            if (result === 'won') {
-                // We need to fetch the user's CURRENT balance first to avoid race conditions 
-                // (though strictly we should use a stored procedure or atomic increment, 
-                // but for this MVP fetching is okay-ish if traffic is low).
-                // Better: RPC call if we had one. 
-                // We'll just fetch-and-update.
-                const { data: user } = await supabase
-                    .from('users')
-                    .select('balance')
-                    .eq('id', bet.user_id)
-                    .single();
-
-                if (user) {
-                    await supabase
+                // 2. If won, pay the user
+                if (result === 'won') {
+                    // We need to fetch the user's CURRENT balance first to avoid race conditions 
+                    // (though strictly we should use a stored procedure or atomic increment, 
+                    // but for this MVP fetching is okay-ish if traffic is low).
+                    // Better: RPC call if we had one. 
+                    // We'll just fetch-and-update.
+                    const { data: user } = await supabase
                         .from('users')
-                        .update({ balance: user.balance + bet.potential_payout })
-                        .eq('id', bet.user_id);
+                        .select('balance')
+                        .eq('id', bet.user_id)
+                        .single();
+
+                    if (user) {
+                        await supabase
+                            .from('users')
+                            .update({ balance: user.balance + bet.potential_payout })
+                            .eq('id', bet.user_id);
+                    }
                 }
+                settledCount++;
             }
-            settledCount++;
+
+            return NextResponse.json({
+                success: true,
+                settledCount,
+                message: `Settled ${settledCount} bets`
+            });
+
+        } catch (error) {
+            console.error('Error settling race:', error);
+            return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
         }
-
-        return NextResponse.json({
-            success: true,
-            settledCount,
-            message: `Settled ${settledCount} bets`
-        });
-
-    } catch (error) {
-        console.error('Error settling race:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
-}

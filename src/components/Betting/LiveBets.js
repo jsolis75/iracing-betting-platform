@@ -69,39 +69,85 @@ const LiveBets = ({ raceData }) => {
 
     return (
         <div className={styles.container}>
-            key={index}
-            className={`${styles.betItem} ${isWinning ? styles.winning : styles.losing}`}
-                        >
-            <div className={styles.betInfo}>
-                <span className={styles.driverName}>
-                    {bet.driver_name}
-                    {bet.details && (
-                        <div style={{ fontSize: '0.8em', color: '#ccc', marginTop: '4px' }}>
-                            {bet.details.map((leg, i) => (
-                                <span key={i} style={{ display: 'block' }}>
-                                    • {leg.driver} ({leg.type})
-                                </span>
-                            ))}
-                        </div>
-                    )}
-                </span>
-                <span className={styles.betType}>
-                    {bet.bet_type} @ {bet.odds}
-                </span>
+            <div className={styles.header}>
+                <h3 className={styles.title}>
+                    <span className={styles.liveIndicator}></span>
+                    Live Bets
+                </h3>
+                {/* Manual Settle Button - Only show if there are pending bets */}
+                <div style={{ marginLeft: 'auto', display: 'flex', gap: '8px' }}>
+                    <button
+                        onClick={() => {
+                            if (confirm("Force settle all pending bets based on current results?")) {
+                                settleBets(raceData);
+                            }
+                        }}
+                        style={{
+                            padding: '4px 8px',
+                            fontSize: '0.8em',
+                            background: '#e53e3e',
+                            border: 'none',
+                            borderRadius: '4px',
+                            color: 'white',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Force Settle
+                    </button>
+                    <button
+                        onClick={() => window.location.reload()}
+                        style={{
+                            padding: '4px 8px',
+                            fontSize: '0.8em',
+                            background: '#4a5568',
+                            border: 'none',
+                            borderRadius: '4px',
+                            color: 'white',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Refresh
+                    </button>
+                </div>
             </div>
-            <div className={styles.betStatus}>
-                <span className={styles.potentialPayout}>
-                    To Win: ${bet.potential_payout}
-                </span>
-                <span className={styles.currentStatus}>
-                    {status}
-                </span>
+            <div className={styles.betList}>
+                {liveBets.map((bet, index) => {
+                    const { status, isWinning } = getBetStatus(bet);
+                    return (
+                        <div
+                            key={index}
+                            className={`${styles.betItem} ${isWinning ? styles.winning : styles.losing}`}
+                        >
+                            <div className={styles.betInfo}>
+                                <span className={styles.driverName}>
+                                    {bet.driver_name}
+                                    {bet.details && (
+                                        <div style={{ fontSize: '0.8em', color: '#ccc', marginTop: '4px' }}>
+                                            {bet.details.map((leg, i) => (
+                                                <span key={i} style={{ display: 'block' }}>
+                                                    • {leg.driver} ({leg.type})
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </span>
+                                <span className={styles.betType}>
+                                    {bet.bet_type} @ {bet.odds}
+                                </span>
+                            </div>
+                            <div className={styles.betStatus}>
+                                <span className={styles.potentialPayout}>
+                                    To Win: ${bet.potential_payout}
+                                </span>
+                                <span className={styles.currentStatus}>
+                                    {status}
+                                </span>
+                            </div>
+                        </div>
+                    );
+                })}
             </div>
         </div>
-    );
-})}
-            </div >
-        </div >
     );
 };
 

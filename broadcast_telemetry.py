@@ -16,11 +16,15 @@ def broadcast_data():
     print("🏎️  iRacing Telemetry Broadcaster")
     print(f"📡 Target: {API_URL}")
     print("--------------------------------")
-    print("Waiting for iRacing to connect...")
+    print("Waiting for iRacing to connect... (Make sure you are in the SIM, not just the UI)")
     
+    attempt = 0
     while True:
         # Check connection
         if not ir.startup():
+            attempt += 1
+            if attempt % 5 == 0:
+                print(f"\r⏳ Still waiting for iRacing... ({attempt}s)", end="")
             time.sleep(1)
             continue
 

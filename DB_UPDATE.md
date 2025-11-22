@@ -1,11 +1,15 @@
-# Database Schema Update
+# Database Schema Update (Fix)
 
-To make the free broadcasting work, we need to update the `races` table to support the new fields.
+I missed one column in the previous update! The error you are seeing is because the `status` column is missing.
 
 ## Run this SQL in Supabase SQL Editor:
 
 ```sql
--- Add columns for iRacing integration if they don't exist
+-- Add the missing status column
+ALTER TABLE races 
+ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+
+-- Just in case, make sure these are there too (it won't hurt to run again)
 ALTER TABLE races 
 ADD COLUMN IF NOT EXISTS iracing_session_id TEXT,
 ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ,
@@ -22,4 +26,4 @@ CREATE INDEX IF NOT EXISTS idx_races_status_updated ON races(status, last_update
 3. Paste the code above
 4. Click **Run**
 
-Let me know when you've done this!
+After you run this, the "API Error 500" should disappear and the broadcast will work!

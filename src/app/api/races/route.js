@@ -1,64 +1,38 @@
-// In-memory race registry
-let races = new Map();
-let raceIdCounter = 1;
+import { NextResponse } from 'next/server';
+import { getSupabaseClient } from '@/lib/supabase';
 
-// Register a new race
-export function registerRace(raceData) {
-    const raceId = `race_${raceIdCounter++}`;
-    races.set(raceId, {
-        id: raceId,
-        name: raceData.name || 'Unknown Race',
-        track: raceData.track || 'Unknown Track',
-        source: raceData.source || 'live', // 'live' or 'broadcast'
-        lastUpdate: new Date().toISOString(),
-        data: raceData
-    });
-    return raceId;
-}
-
-// Update existing race
-export function updateRace(raceId, raceData) {
-    if (races.has(raceId)) {
-        const existing = races.get(raceId);
-        races.set(raceId, {
-            ...existing,
-            lastUpdate: new Date().toISOString(),
-            data: raceData
-        });
-        return true;
-    }
-    return false;
-}
-
-// Get all races
-export function getAllRaces() {
-    return Array.from(races.values()).map(race => ({
-        id: race.id,
-        name: race.name,
-        track: race.track,
-        source: race.source,
-        lastUpdate: race.lastUpdate
-    }));
-}
-
-// Get specific race data
-export function getRaceData(raceId) {
-    return races.get(raceId)?.data || null;
-}
-
-// Remove old races (older than 1 hour)
-export function cleanupOldRaces() {
-    const oneHourAgo = Date.now() - (60 * 60 * 1000);
-    for (const [id, race] of races.entries()) {
-        if (new Date(race.lastUpdate).getTime() < oneHourAgo) {
-            races.delete(id);
-        }
-    }
-}
-
-// API Route Handlers
 export async function GET() {
-    cleanupOldRaces();
-    const raceList = getAllRaces();
-    return Response.json({ races: raceList });
+    try {
+        const supabase = getSupabaseClient();
+
+        // Calculate timestamp for 1 hour ago
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+        // Fetch active races updated within the last hour
+        const { data: races, error } = await supabase
+            .from('races')
+            .select('id, name, track, last_updated, data')
+            .gt('last_updated', oneHourAgo)
+            .order('last_updated', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching races:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        // Format for the frontend
+        const formattedRaces = races.map(race => ({
+            id: race.id,
+            name: race.data?.WeekendInfo?.TrackDisplayName || 'Unknown Track',
+            track: race.data?.WeekendInfo?.TrackDisplayShortName || 'Unknown',
+            source: 'broadcast', // All DB races are broadcasts
+            lastUpdate: race.last_updated
+        }));
+
+        return NextResponse.json({ races: formattedRaces });
+
+    } catch (error) {
+        console.error('Error in races API:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
 }

@@ -180,8 +180,18 @@ function HomeContent() {
         // Reset any previous race data before inserting the new one – this forces the UI to re‑render.
         setRaces([raceData]);
         // If race is finished, settle bets
+        // If race is finished, trigger server-side settlement
         if (raceData.flagStatus === "Checkered" || raceData.lapsRemaining <= 0) {
-          settleBets(raceData);
+          // Call the settlement API
+          // We use sendBeacon if possible for reliability on unload, but fetch is fine here since we are polling
+          fetch('/api/settle-race', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              raceId: raceData.id,
+              drivers: raceData.drivers
+            })
+          }).catch(err => console.error("Error triggering settlement:", err));
         }
       } catch (err) {
         if (err.name !== 'AbortError') {

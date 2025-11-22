@@ -79,7 +79,20 @@ const LiveBets = ({ raceData }) => {
                     <button
                         onClick={() => {
                             if (confirm("Force settle all pending bets based on current results?")) {
-                                settleBets(raceData);
+                                fetch('/api/settle-race', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        raceId: raceData.id,
+                                        drivers: raceData.drivers
+                                    })
+                                })
+                                    .then(res => res.json())
+                                    .then(data => {
+                                        alert(data.message || "Settlement triggered");
+                                        window.location.reload();
+                                    })
+                                    .catch(err => alert("Error: " + err.message));
                             }
                         }}
                         style={{

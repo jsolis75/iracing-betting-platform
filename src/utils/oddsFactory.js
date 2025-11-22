@@ -31,21 +31,29 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
         const fieldSize = drivers.length;
         const stats = driver.Stats || { starts: 0, wins: 0, avgPoints: 0, avgIncidents: 0, avgFinish: 0, top25Percent: 0, winPercentage: 0 };
 
-        // --- 1. iRating Component (Skill) ---
+        // --- 1. iRating Component (Skill) --- REDUCED EXPONENTS FOR TIGHTER ODDS
         let iRatingFactor;
-        if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 4.0);
-        else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 3.2);
-        else iRatingFactor = Math.pow(iRating / 1000, 2.2);
+        if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 3.0); // Was 4.0
+        else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 2.5); // Was 3.2
+        else iRatingFactor = Math.pow(iRating / 1000, 1.8); // Was 2.2
 
         // --- 2. Historical Performance Component ---
         // Win Percentage (0-100) -> Factor
-        const winPctFactor = Math.pow((stats.winPercentage || 0) / 10, 1.5); // Boost high win %
+        const winPctFactor = Math.pow((stats.winPercentage || 0) / 10, 1.3); // Was 1.5, reduced for tighter odds
 
         // Avg Points (Higher is better) - Normalize against a "good" score like 100
-        const avgPointsFactor = Math.pow((stats.avgPoints || 50) / 50, 2.0);
+        const avgPointsFactor = Math.pow((stats.avgPoints || 50) / 50, 1.6); // Was 2.0, reduced
 
-        // Combined Historical Factor
+        // Combined Historical Factor (Increased overall weight)
         const historicalFactor = (winPctFactor * 0.6) + (avgPointsFactor * 0.4);
+
+        // --- PRO/BLACK LICENSE BOOST ---
+        // Check if driver has Pro (P) or Black (level 6+) license
+        const licString = driver.licenseClass || driver.LicString || '';
+        const isPro = licString.includes('P') || licString.includes('Pro');
+        const licLevel = driver.LicSubLevel ? Math.floor(driver.LicSubLevel / 100) : 0;
+        const isBlack = licLevel >= 6;
+        const proBoost = (isPro || isBlack) ? 1.35 : 1.0; // 35% boost for pros
 
         // --- 3. Position Component ---
         const startingPositionFactor = Math.pow((fieldSize - startPos + 1) / fieldSize, 2.0);
@@ -54,12 +62,12 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
         // --- 4. Final Probability Calculation ---
         let winProbability;
         if (useLiveOdds && raceProgress > 0) {
-            // LIVE ODDS: Position dominates as race progresses
-            const iRatingWeight = 0.30 * (1 - Math.pow(raceProgress, 0.5));
-            const historicalWeight = 0.10 * (1 - raceProgress); // History matters less late in race
+            // LIVE ODDS: Position dominates FASTER as race progresses
+            const iRatingWeight = 0.25 * (1 - Math.pow(raceProgress, 0.3)); // Was 0.30 and 0.5 exponent, now faster
+            const historicalWeight = 0.15 * (1 - Math.pow(raceProgress, 0.6)); // Was 0.10, increased influence
             const positionWeight = 1 - (iRatingWeight + historicalWeight);
 
-            const dynamicExponent = 2 + (raceProgress * 25);
+            const dynamicExponent = 2 + (raceProgress * 18); // Was 25, reduced for tighter odds
             const dynamicPositionFactor = Math.pow((fieldSize - currentPos + 1) / fieldSize, dynamicExponent);
 
             winProbability =
@@ -67,12 +75,15 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
                 (historicalFactor * historicalWeight) +
                 (dynamicPositionFactor * positionWeight);
         } else {
-            // PRE-RACE ODDS: Blend Skill (40%), History (30%), Start Pos (30%)
+            // PRE-RACE ODDS: Reduced iRating (30%), Increased History (40%), Start Pos (30%)
             winProbability =
-                (iRatingFactor * 0.40) +
-                (historicalFactor * 0.30) +
+                (iRatingFactor * 0.30) + // Was 0.40
+                (historicalFactor * 0.40) + // Was 0.30
                 (startingPositionFactor * 0.30);
         }
+
+        // Apply Pro/Black license boost
+        winProbability = winProbability * proBoost;
 
         return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress };
     });
@@ -112,20 +123,20 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     else winOdds = Math.round(winOdds / 10) * 10;
     const winOddsStr = winOdds > 0 ? `+${winOdds}` : `${winOdds}`;
 
-    // --- Top 3 Odds ---
+    // --- Top 3 Odds --- TIGHTER MULTIPLIERS
     // Use Top25Percent as a proxy for "Top Finish Ability"
     const topFinishAbility = (stats.top25Percent || 0) / (stats.starts || 1); // 0.0 to 1.0
-    const top3Prob = Math.min(winProbability * 3 + (topFinishAbility * 0.2), 0.95);
+    const top3Prob = Math.min(winProbability * 2.5 + (topFinishAbility * 0.15), 0.92); // Was 3x, now 2.5x for tighter odds
 
     let top3Odds = probToOdds(top3Prob);
-    top3Odds = Math.max(-2000, Math.min(2000, top3Odds));
+    top3Odds = Math.max(-1500, Math.min(1500, top3Odds)); // Tighter caps
     top3Odds = Math.round(top3Odds / 10) * 10;
     const top3OddsStr = top3Odds > 0 ? `+${top3Odds}` : `${top3Odds}`;
 
-    // --- Top 10 Odds ---
-    const top10Prob = Math.min(winProbability * 8 + (topFinishAbility * 0.5), 0.98);
+    // --- Top 10 Odds --- TIGHTER MULTIPLIERS
+    const top10Prob = Math.min(winProbability * 6 + (topFinishAbility * 0.3), 0.95); // Was 8x, now 6x
     let top10Odds = probToOdds(top10Prob);
-    top10Odds = Math.max(-3000, Math.min(800, top10Odds));
+    top10Odds = Math.max(-2000, Math.min(600, top10Odds)); // Tighter caps
     top10Odds = Math.round(top10Odds / 10) * 10;
     const top10OddsStr = top10Odds > 0 ? `+${top10Odds}` : `${top10Odds}`;
 

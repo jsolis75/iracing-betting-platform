@@ -10,62 +10,63 @@ export async function POST(request) {
         }
 
         const data = await request.json();
-        const supabase = getSupabaseClient();
-
         // 2. Identify the race
-        // We use SubSessionID (more specific) or SessionID from iRacing as the unique identifier
         const subSessionID = data.WeekendInfo?.SubSessionID;
         const sessionID = data.WeekendInfo?.SessionID;
         const uniqueID = subSessionID && subSessionID !== '0' ? subSessionID : sessionID;
-
         const trackName = data.WeekendInfo?.TrackDisplayName || 'Unknown Track';
 
         if (!uniqueID) {
             return NextResponse.json({ error: 'Invalid data: No SessionID' }, { status: 400 });
         }
 
-        // 3. Update or Insert into Supabase
-        // We'll store the latest JSON blob in the 'races' table
+        // 3. Update or Insert into Supabase (if configured)
+        try {
+            const supabase = getSupabaseClient();
 
-        // First, check if race exists
-        const { data: existingRace } = await supabase
-            .from('races')
-            .select('id')
-            .eq('iracing_session_id', uniqueID)
-            .single();
-
-        let result;
-
-        if (existingRace) {
-            // Update existing
-            result = await supabase
+            // First, check if race exists
+            const { data: existingRace } = await supabase
                 .from('races')
-                .update({
-                    data: data,
-                    last_updated: new Date().toISOString(),
-                    status: 'active'
-                })
-                .eq('id', existingRace.id);
-        } else {
-            // Insert new
-            result = await supabase
-                .from('races')
-                .insert([
-                    {
-                        iracing_session_id: uniqueID,
-                        name: trackName,
-                        track: trackName,
-                        status: 'active',
+                .select('id')
+                .eq('iracing_session_id', uniqueID)
+                .single();
+
+            let result;
+
+            if (existingRace) {
+                // Update existing
+                result = await supabase
+                    .from('races')
+                    .update({
                         data: data,
-                        created_at: new Date().toISOString(),
-                        last_updated: new Date().toISOString()
-                    }
-                ]);
-        }
+                        last_updated: new Date().toISOString(),
+                        status: 'active'
+                    })
+                    .eq('id', existingRace.id);
+            } else {
+                // Insert new
+                result = await supabase
+                    .from('races')
+                    .insert([
+                        {
+                            iracing_session_id: uniqueID,
+                            name: trackName,
+                            track: trackName,
+                            status: 'active',
+                            data: data,
+                            created_at: new Date().toISOString(),
+                            last_updated: new Date().toISOString()
+                        }
+                    ]);
+            }
 
-        if (result.error) {
-            console.error('Database error:', result.error);
-            return NextResponse.json({ error: result.error.message }, { status: 500 });
+            if (result.error) {
+                console.error('Database error:', result.error);
+                // Continue to fallback even if DB fails
+            }
+        } catch (dbError) {
+            // Supabase not configured or failed, ignore and use fallback
+            // console.warn('Supabase skipped:', dbError.message);
         }
 
         // 4. FALLBACK: Write to local JSON file for development/backup

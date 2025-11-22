@@ -177,12 +177,12 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     else winOdds = Math.round(winOdds / 10) * 10;
     const winOddsStr = winOdds > 0 ? `+${winOdds}` : `${winOdds}`;
 
-    // Top 3 Odds
+    // Top 3 Odds - LESS GENEROUS
     const topFinishAbility = (stats.top25Percent || 0) / (stats.starts || 1);
-    let top3Prob = Math.min(winProbability * 1.8 + (topFinishAbility * 0.15), 0.95);
+    let top3Prob = Math.min(winProbability * 1.5 + (topFinishAbility * 0.12), 0.92); // Was 1.8x, now 1.5x
 
     if (driver.qualifyingBonus && driver.qualifyingBonus > 1.0) {
-        top3Prob = top3Prob * Math.min(driver.qualifyingBonus, 2.0);
+        top3Prob = top3Prob * Math.min(driver.qualifyingBonus, 1.8); // Cap at 1.8x (was 2.0x)
     }
 
     let top3Odds = probToOdds(top3Prob);
@@ -190,8 +190,27 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     top3Odds = Math.round(top3Odds / 10) * 10;
     const top3OddsStr = top3Odds > 0 ? `+${top3Odds}` : `${top3Odds}`;
 
-    // Top 10 Odds
-    const top10Prob = Math.min(winProbability * 4.0 + (topFinishAbility * 0.3), 0.98);
+    // Top 10 Odds - AGGRESSIVE HOUSE EDGE + POSITION DEPENDENT
+    // Base multiplier reduced from 4.0x to 3.0x (less generous)
+    let top10Prob = Math.min(winProbability * 3.0 + (topFinishAbility * 0.25), 0.95); // Was 4.0x, now 3.0x
+
+    // POSITION-BASED BONUS: Running position significantly impacts Top 10 odds
+    // P1-P3: Big boost (likely to finish Top 10)
+    // P4-P7: Medium boost
+    // P8-P10: Small boost
+    // P11+: No bonus or penalty
+    const currentPos = driver.currentPosition || driver.startingPosition || 99;
+    if (currentPos <= 3) {
+        top10Prob = top10Prob * 1.25; // P1-P3 get 25% boost
+    } else if (currentPos <= 7) {
+        top10Prob = top10Prob * 1.15; // P4-P7 get 15% boost
+    } else if (currentPos <= 10) {
+        top10Prob = top10Prob * 1.08; // P8-P10 get 8% boost
+    }
+    // P11+ get no bonus - their Top 10 odds will be much worse
+
+    top10Prob = Math.min(top10Prob, 0.97); // Cap after position bonus
+
     let top10Odds = probToOdds(top10Prob);
     top10Odds = Math.max(-2500, Math.min(600, top10Odds));
     top10Odds = Math.round(top10Odds / 10) * 10;

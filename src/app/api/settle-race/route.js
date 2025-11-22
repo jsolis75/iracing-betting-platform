@@ -101,17 +101,22 @@ export async function POST(request) {
             }
         };
 
+        const debugLogs = [];
+        debugLogs.push(`Settling race ${raceId}`);
+        debugLogs.push(`Found ${pendingBets.length} total pending bets in DB`);
+
         for (const bet of pendingBets) {
             let result = 'pending';
 
             // Skip bets that are definitely for a different race (if we can tell)
             if (bet.race_id !== raceId && bet.race_id !== 'multi') {
+                debugLogs.push(`Skipping bet ${bet.id}: Race ID mismatch (${bet.race_id} !== ${raceId})`);
                 continue;
             }
 
             if (bet.bet_type === 'Parlay') {
                 if (!bet.details || !Array.isArray(bet.details)) {
-                    console.warn(`Parlay bet ${bet.id} missing details`);
+                    debugLogs.push(`Skipping parlay ${bet.id}: Missing details (Legacy bet?)`);
                     continue;
                 }
 
@@ -128,6 +133,7 @@ export async function POST(request) {
                     }
                     if (legResult === 'unknown') {
                         anyUnknown = true;
+                        debugLogs.push(`Parlay ${bet.id} leg unknown: ${leg.driver}`);
                     }
                     if (legResult !== 'won') {
                         allWon = false;
@@ -143,6 +149,8 @@ export async function POST(request) {
                 const singleResult = checkLeg(bet.driver_name, bet.bet_type, raceDrivers);
                 if (singleResult !== 'unknown') {
                     result = singleResult;
+                } else {
+                    debugLogs.push(`Bet ${bet.id} driver unknown: ${bet.driver_name}`);
                 }
             }
 
@@ -152,6 +160,7 @@ export async function POST(request) {
                     bet,
                     result
                 });
+                debugLogs.push(`Queueing update for bet ${bet.id}: ${result}`);
             }
         }
 
@@ -190,7 +199,8 @@ export async function POST(request) {
         return NextResponse.json({
             success: true,
             settledCount,
-            message: `Settled ${settledCount} bets`
+            message: `Settled ${settledCount} bets`,
+            debug: debugLogs
         });
 
     } catch (error) {

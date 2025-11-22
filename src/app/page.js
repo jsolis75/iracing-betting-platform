@@ -177,9 +177,22 @@ function HomeContent() {
                 }
               }
 
+              // DEBUG: Log first driver to inspect fields
+              if (index === 0) {
+                console.log("DEBUG: Driver Data", {
+                  name: d.UserName,
+                  userID: d.UserID,
+                  custID: d.CustID,
+                  type: typeof d.UserID,
+                  statsFound: !!(driverStats[d.UserID] || driverStats[String(d.UserID)])
+                });
+              }
+
+              const userID = d.UserID || d.CustID; // Handle potential field name variation
+
               return {
                 id: d.CarIdx,
-                userID: d.UserID, // Add UserID for stats lookup
+                userID: userID,
                 name: d.UserName,
                 number: d.CarNumber,
                 iRating: d.IRating,
@@ -191,7 +204,7 @@ function HomeContent() {
                 lapsComplete: lapsComplete,
                 status: reasonOutMap[d.CarIdx] || "Running",
                 isDNF: isDNF, // New flag for UI and Settlement
-                Stats: driverStats[d.UserID] || driverStats[d.UserName] || { // Try UserID first, then Name
+                Stats: driverStats[userID] || driverStats[String(userID)] || driverStats[d.UserName] || {
                   avgIncidents: 3.0,
                   starts: 0,
                   wins: 0,

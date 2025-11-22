@@ -16,8 +16,26 @@ function HomeContent() {
   const selectedRaceId = searchParams.get('raceId');
   const [races, setRaces] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [driverStats, setDriverStats] = useState({}); // New: CSV stats storage
 
   const { settleBets } = useBetting();
+
+  // Load driver stats from CSV on mount
+  useEffect(() => {
+    const loadDriverStats = async () => {
+      try {
+        const response = await fetch('/api/driver-stats');
+        if (response.ok) {
+          const data = await response.json();
+          setDriverStats(data.stats || {});
+        }
+      } catch (error) {
+        console.error('Error loading driver stats:', error);
+      }
+    };
+    loadDriverStats();
+  }, []);
+
   useEffect(() => {
     // If there is no authenticated user we don't attempt to load anything.
     if (!user) {
@@ -172,7 +190,16 @@ function HomeContent() {
                 lapsComplete: lapsComplete,
                 status: reasonOutMap[d.CarIdx] || "Running",
                 isDNF: isDNF, // New flag for UI and Settlement
-                stats: d.Stats, // Historical stats from API
+                Stats: driverStats[d.UserName] || { // Merge CSV stats!
+                  avgIncidents: 3.0,
+                  starts: 0,
+                  wins: 0,
+                  avgPoints: 50,
+                  top25Percent: 0,
+                  winPercentage: 0,
+                  avgFinish: 0
+                },
+                LicString: d.LicString // Pass through for odds calculation
               };
             }),
         };

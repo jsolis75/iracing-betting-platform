@@ -225,11 +225,42 @@ function HomeContent() {
   return (
     <main className="container">
       {loading ? (
-        <p>Loading live races…</p>
+        <div style={{ textAlign: 'center', padding: '2rem' }}>
+          <p>Connecting to live race data...</p>
+        </div>
       ) : (
         <>
-          {races.length > 0 && <LiveBets raceData={races[0]} />}
-          {races.map((race) => <RaceCard key={race.id} race={race} />)}
+          {races.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '3rem', background: '#1e1e1e', borderRadius: '8px', margin: '2rem 0' }}>
+              <h2>📡 Waiting for Broadcast</h2>
+              <p style={{ color: '#aaa', marginTop: '1rem' }}>
+                No live race data detected.
+              </p>
+              <div style={{ marginTop: '2rem', fontSize: '0.9em', color: '#666' }}>
+                <p>To start broadcasting:</p>
+                <ol style={{ textAlign: 'left', maxWidth: '300px', margin: '1rem auto' }}>
+                  <li>Open iRacing on your PC</li>
+                  <li>Run the broadcast script: <code>python broadcast_telemetry.py</code></li>
+                </ol>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{
+                background: '#2d3748',
+                color: '#a0aec0',
+                padding: '0.5rem 1rem',
+                fontSize: '0.8rem',
+                textAlign: 'right',
+                marginBottom: '1rem',
+                borderRadius: '4px'
+              }}>
+                Last Updated: {new Date().toLocaleTimeString()}
+              </div>
+              <LiveBets raceData={races[0]} />
+              {races.map((race) => <RaceCard key={race.id} race={race} />)}
+            </>
+          )}
         </>
       )}
     </main>

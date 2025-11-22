@@ -188,7 +188,12 @@ function HomeContent() {
                 });
               }
 
-              const userID = d.UserID || d.CustID; // Handle potential field name variation
+              // Synthetic Stats for Unknown Drivers
+              // If driver is not in CSV, estimate their Avg Incidents based on Safety Rating (LicSubLevel)
+              // LicSubLevel is 0-499 (e.g., 499 = 4.99 SR). Higher SR = Lower Incidents.
+              // Formula: Base 5.5 - (SR * 0.8) -> 4.99 SR = ~1.5 Incidents, 1.00 SR = ~4.7 Incidents
+              const safetyRatingVal = d.LicSubLevel ? d.LicSubLevel / 100 : 2.5;
+              const syntheticAvgIncidents = Math.max(1.0, 5.5 - (safetyRatingVal * 0.8));
 
               return {
                 id: d.CarIdx,
@@ -197,7 +202,7 @@ function HomeContent() {
                 number: d.CarNumber,
                 iRating: d.IRating,
                 licenseClass: d.LicString,
-                safetyRating: d.LicSubLevel / 100,
+                safetyRating: safetyRatingVal,
                 startingPosition: startPosMap[d.CarIdx] || index + 1,
                 currentPosition: currentPosMap[d.CarIdx] || index + 1,
                 currentIncidents: d.CurDriverIncidentCount, // Use actual incidents
@@ -205,7 +210,7 @@ function HomeContent() {
                 status: reasonOutMap[d.CarIdx] || "Running",
                 isDNF: isDNF, // New flag for UI and Settlement
                 Stats: driverStats[userID] || driverStats[String(userID)] || driverStats[d.UserName] || {
-                  avgIncidents: 3.0,
+                  avgIncidents: syntheticAvgIncidents, // DYNAMIC FALLBACK
                   starts: 0,
                   wins: 0,
                   avgPoints: 50,

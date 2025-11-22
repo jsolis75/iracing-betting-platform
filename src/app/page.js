@@ -195,6 +195,9 @@ function HomeContent() {
               const safetyRatingVal = d.LicSubLevel ? d.LicSubLevel / 100 : 2.5;
               const syntheticAvgIncidents = Math.max(1.0, 5.5 - (safetyRatingVal * 0.8));
 
+              // Define userID for lookup
+              const userID = d.UserID || d.CustID;
+
               return {
                 id: d.CarIdx,
                 userID: userID,

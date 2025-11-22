@@ -141,6 +141,20 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
         // Apply Pro/Black license boost
         winProbability = winProbability * proBoost;
 
+        // WIN ODDS PENALTY FOR P4+: Anything can happen in racing, reduce win odds for non-podium runners
+        if (currentPos > 3) {
+            // Progressive penalty: P4 gets small penalty, P15+ gets massive penalty
+            const positionPenalty = Math.pow(0.92, currentPos - 3); // 8% reduction per position after P3
+            winProbability = winProbability * positionPenalty;
+        }
+
+        // LEADER FAVORITISM: Ensure P1 is always a heavy favorite regardless of iRating
+        if (currentPos === 1 && useLiveOdds && raceProgress > 0.1) {
+            // Give leader a massive boost (they're controlling the race)
+            const leaderBoost = 1.5 + (raceProgress * 0.8); // 1.5x early, up to 2.3x late
+            winProbability = Math.min(winProbability * leaderBoost, 0.85); // Cap at 85% to avoid -10000 odds
+        }
+
         return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress, qualifyingBonus };
     });
 
@@ -198,24 +212,49 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     top3Odds = Math.round(top3Odds / 10) * 10;
     const top3OddsStr = top3Odds > 0 ? `+${top3Odds}` : `${top3Odds}`;
 
-    // Top 10 Odds - EXTREMELY AGGRESSIVE FOR DRIVERS IN POSITION
-    // Base multiplier reduced from 4.0x to 3.0x (less generous)
+    // Top 10 Odds - EXTREMELY AGGRESSIVE considering small field sizes
+    const fieldSize = allDrivers.length;
     let top10Prob = Math.min(winProbability * 3.0 + (topFinishAbility * 0.25), 0.95);
 
-    // MASSIVE POSITION-BASED BOOST: If you're running P3-P10, you're VERY likely to finish Top 10
-    // These drivers should have terrible odds since the bet is almost guaranteed to hit
-    if (currentPos <= 3) {
-        top10Prob = Math.min(top10Prob * 1.6, 0.98); // P1-P3: Massive boost (near-lock)
-    } else if (currentPos <= 5) {
-        top10Prob = Math.min(top10Prob * 1.55, 0.98); // P4-P5: Huge boost
-    } else if (currentPos <= 7) {
-        top10Prob = Math.min(top10Prob * 1.45, 0.97); // P6-P7: Large boost
-    } else if (currentPos <= 10) {
-        top10Prob = Math.min(top10Prob * 1.35, 0.96); // P8-P10: Significant boost
-    } else if (currentPos <= 15) {
-        top10Prob = Math.min(top10Prob * 1.15, 0.94); // P11-P15: Small boost
+    // HIGH IRATING THREAT FACTOR: Account for fast drivers in back who will likely finish Top 10
+    // In 24-30 car fields, Top 10 = top 33-42% of field (VERY achievable)
+    // Count how many high-iRating drivers are behind this driver
+    const thisDriverIRating = driver.iRating || 1500;
+    const highIRThreshold = 5000; // Consider 5000+ iR drivers as threats
+    const raceProgress = driver.raceProgress || 0;
+
+    let threatsFromBehind = 0;
+    if (currentPos <= 15) { // Only relevant if you're in contention
+        threatsFromBehind = allDrivers.filter(d => {
+            const theirPos = d.currentPosition || d.startingPosition || 99;
+            const theirIR = d.iRating || 1500;
+            // Count drivers behind this one with much higher iRating
+            return theirPos > currentPos && theirIR > highIRThreshold;
+        }).length;
     }
-    // P16+ get base probability (generous odds since they need to pass many cars)
+
+    // Threat impact decreases as race progresses (less time to make up ground)
+    const threatImpact = threatsFromBehind * (0.15 * (1 - raceProgress)); // 15% per threat early, 0% late
+
+    // MASSIVE POSITION-BASED BOOST + THREAT REDUCTION
+    if (currentPos <= 3) {
+        top10Prob = Math.min(top10Prob * (1.7 - threatImpact), 0.99); // Was 1.6x, now 1.7x
+    } else if (currentPos <= 5) {
+        top10Prob = Math.min(top10Prob * (1.65 - threatImpact), 0.98); // Was 1.55x, now 1.65x  
+    } else if (currentPos <= 7) {
+        top10Prob = Math.min(top10Prob * (1.55 - threatImpact), 0.97); // Was 1.45x, now 1.55x
+    } else if (currentPos <= 10) {
+        top10Prob = Math.min(top10Prob * (1.45 - threatImpact), 0.96); // Was 1.35x, now 1.45x (YOU'RE IN TOP 10!)
+    } else if (currentPos <= 15) {
+        // P11-P15: In smaller fields, still very likely to finish Top 10
+        const fieldSizeMultiplier = fieldSize <= 25 ? 1.3 : 1.2; // Smaller fields = easier to finish Top 10
+        top10Prob = Math.min(top10Prob * (fieldSizeMultiplier - threatImpact * 0.5), 0.93);
+    } else {
+        // P16+: Harder but still possible, especially for high iRating drivers
+        if (thisDriverIRating > highIRThreshold) {
+            top10Prob = Math.min(top10Prob * 1.1, 0.88); // Small boost for fast drivers in back
+        }
+    }
 
     let top10Odds = probToOdds(top10Prob);
     top10Odds = Math.max(-2500, Math.min(600, top10Odds));

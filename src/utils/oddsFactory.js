@@ -102,8 +102,36 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
                 gapPenalty = Math.pow(0.85, gap);
             }
 
-            return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress, qualifyingBonus };
-        });
+            winProbability =
+                (liveIRatingFactor * iRatingWeight) +
+                (historicalFactor * historicalWeight) +
+                (dynamicPositionFactor * positionWeight * gapPenalty);
+        } else {
+            // PRE-RACE ODDS
+            // Base calculation with INCREASED iRating weight (helps good drivers starting deep)
+            winProbability =
+                (iRatingFactor * 0.40) +  // Was 0.30 - higher weight helps talented drivers in back
+                (historicalFactor * 0.40) +
+                (startingPositionFactor * 0.20); // Was 0.30 - reduced generic position impact
+
+            // FRONT RUNNER BONUS: Top 1/3 of field gets massive boost (makes them favorites)
+            const frontRunnerThreshold = Math.ceil(fieldSize / 3); // Top third
+            if (startPos <= frontRunnerThreshold) {
+                // Graduated bonus: P1 gets biggest boost, decreases as you go back
+                const frontRunnerBonus = 1.0 + ((frontRunnerThreshold - startPos + 1) / frontRunnerThreshold) * 0.8;
+                winProbability = winProbability * frontRunnerBonus;
+            }
+
+            // Apply qualifying bonus (for lower-rated drivers who qualified well)
+            winProbability = winProbability * qualifyingBonus;
+            winProbability = winProbability + qualifyingAdditiveBoost;
+        }
+
+        // Apply Pro/Black license boost
+        winProbability = winProbability * proBoost;
+
+        return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress, qualifyingBonus };
+    });
 
     // Normalize probabilities to sum to 1.0
     const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);

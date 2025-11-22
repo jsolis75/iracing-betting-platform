@@ -13,11 +13,14 @@ export async function POST(request) {
         const supabase = getSupabaseClient();
 
         // 2. Identify the race
-        // We use SessionID from iRacing as the unique identifier
+        // We use SubSessionID (more specific) or SessionID from iRacing as the unique identifier
+        const subSessionID = data.WeekendInfo?.SubSessionID;
         const sessionID = data.WeekendInfo?.SessionID;
+        const uniqueID = subSessionID && subSessionID !== '0' ? subSessionID : sessionID;
+
         const trackName = data.WeekendInfo?.TrackDisplayName || 'Unknown Track';
 
-        if (!sessionID) {
+        if (!uniqueID) {
             return NextResponse.json({ error: 'Invalid data: No SessionID' }, { status: 400 });
         }
 
@@ -28,7 +31,7 @@ export async function POST(request) {
         const { data: existingRace } = await supabase
             .from('races')
             .select('id')
-            .eq('iracing_session_id', sessionID)
+            .eq('iracing_session_id', uniqueID)
             .single();
 
         let result;
@@ -49,7 +52,7 @@ export async function POST(request) {
                 .from('races')
                 .insert([
                     {
-                        iracing_session_id: sessionID,
+                        iracing_session_id: uniqueID,
                         name: trackName,
                         track: trackName,
                         status: 'active',

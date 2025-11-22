@@ -80,9 +80,7 @@ export async function POST(request) {
                     odds,
                     potential_payout: potentialPayout,
                     status: 'pending',
-                    details: details,
-                    details: request.json().details || null // This line is tricky because request.json() is already consumed.
-                    // Wait, I need to destructure details from the top.
+                    details: details
                 }
             ])
             .select()

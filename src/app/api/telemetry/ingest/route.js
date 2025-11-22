@@ -68,6 +68,32 @@ export async function POST(request) {
             return NextResponse.json({ error: result.error.message }, { status: 500 });
         }
 
+        // 4. FALLBACK: Write to local JSON file for development/backup
+        // This ensures data is available even if Supabase is not configured or fails
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const dataDir = path.join(process.cwd(), 'src', 'data');
+
+            if (!fs.existsSync(dataDir)) {
+                fs.mkdirSync(dataDir, { recursive: true });
+            }
+
+            const filePath = path.join(dataDir, 'live_race_data.json');
+
+            // Add a timestamp to the data
+            const localData = {
+                ...data,
+                last_updated: new Date().toISOString()
+            };
+
+            fs.writeFileSync(filePath, JSON.stringify(localData, null, 2));
+            // console.log('Saved live race data to local file:', filePath);
+        } catch (fileError) {
+            console.error('Failed to write local race data:', fileError);
+            // Don't fail the request if local write fails, but log it
+        }
+
         return NextResponse.json({ success: true });
 
     } catch (error) {

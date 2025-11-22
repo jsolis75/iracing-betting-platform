@@ -5,8 +5,8 @@ import requests
 from datetime import datetime
 
 # Configuration
-API_URL = "https://www.iracingbets.com/api/telemetry/ingest"
-# API_URL = "http://localhost:3000/api/telemetry/ingest" # For local testing
+API_URL = "http://localhost:3000/api/telemetry/ingest"
+# API_URL = "https://www.iracingbets.com/api/telemetry/ingest" # Production URL
 API_KEY = "iracing-broadcast-key-123" # Simple protection
 
 # Initialize iRacing SDK

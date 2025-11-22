@@ -35,7 +35,6 @@ export async function GET(request) {
             return NextResponse.json({
                 message: "No active race found",
                 WeekendInfo: { TrackDisplayName: "Waiting for Broadcast..." },
-                SessionInfo: { Sessions: [] },
                 DriverInfo: { Drivers: [] }
             });
         }
@@ -45,6 +44,30 @@ export async function GET(request) {
 
     } catch (error) {
         console.error('Error fetching race data:', error);
+
+        // FALLBACK: Try reading from local JSON file
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const filePath = path.join(process.cwd(), 'src', 'data', 'live_race_data.json');
+
+            if (fs.existsSync(filePath)) {
+                const fileContent = fs.readFileSync(filePath, 'utf-8');
+                const localData = JSON.parse(fileContent);
+
+                // Check if data is recent (within 5 minutes)
+                const lastUpdated = new Date(localData.last_updated || 0);
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+                if (lastUpdated > fiveMinutesAgo) {
+                    console.log('Serving race data from local file fallback');
+                    return NextResponse.json(localData);
+                }
+            }
+        } catch (localError) {
+            console.error('Local fallback failed:', localError);
+        }
+
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

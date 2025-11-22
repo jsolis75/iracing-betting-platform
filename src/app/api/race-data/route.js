@@ -17,9 +17,8 @@ export async function GET(request) {
             // Fetch specific race
             query = query.eq('id', raceId).single();
         } else {
-            // Fetch most recently updated active race
+            // Fetch most recently updated race (regardless of status)
             query = query
-                .eq('status', 'active')
                 .order('last_updated', { ascending: false })
                 .limit(1)
                 .single();

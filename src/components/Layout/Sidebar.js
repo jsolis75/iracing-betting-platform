@@ -5,9 +5,11 @@ import styles from './Sidebar.module.css';
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
 
+import { useUser } from '@/context/UserContext';
+
 function SidebarContent() {
     const [raceInfo, setRaceInfo] = useState(null);
-    const [user, setUser] = useState(null);
+    const { user } = useUser();
     const [races, setRaces] = useState([]);
     const pathname = usePathname();
     const searchParams = useSearchParams();
@@ -41,18 +43,6 @@ function SidebarContent() {
             }
         };
 
-        const fetchUserInfo = async () => {
-            try {
-                const response = await fetch('/api/user');
-                if (response.ok) {
-                    const userData = await response.json();
-                    setUser(userData);
-                }
-            } catch (error) {
-                console.error('Error fetching user info:', error);
-            }
-        };
-
         const fetchRaces = async () => {
             try {
                 const response = await fetch('/api/races');
@@ -66,7 +56,6 @@ function SidebarContent() {
         };
 
         fetchRaceInfo();
-        fetchUserInfo();
         fetchRaces();
         const interval = setInterval(fetchRaceInfo, 5000);
         const racesInterval = setInterval(fetchRaces, 3000);

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useUser } from './UserContext';
 
 // Create context
@@ -8,14 +8,35 @@ const BettingContext = createContext();
 export const useBetting = () => useContext(BettingContext);
 
 export const BettingProvider = ({ children }) => {
-    // User context
-    const { user, updateUserBalance, addBetToHistory, users, setUser, setUsers } = useUser();
+    const { user, updateUserBalance, refreshUser } = useUser();
 
     // Betting state
-    const [bets, setBets] = useState([]);
+    const [bets, setBets] = useState([]); // Active bets in the slip (not placed yet)
+    const [placedBets, setPlacedBets] = useState([]); // Bets stored in database
     const [isBetSlipOpen, setIsBetSlipOpen] = useState(false);
     const [parlayMode, setParlayMode] = useState(false);
     const [parlayStake, setParlayStake] = useState(10);
+
+    // Load placed bets from database when user changes
+    useEffect(() => {
+        if (user?.id) {
+            fetchPlacedBets(user.id);
+        } else {
+            setPlacedBets([]);
+        }
+    }, [user?.id]);
+
+    const fetchPlacedBets = async (userId) => {
+        try {
+            const response = await fetch(`/api/bets?userId=${userId}`);
+            if (response.ok) {
+                const data = await response.json();
+                setPlacedBets(data.bets || []);
+            }
+        } catch (error) {
+            console.error('Error fetching bets:', error);
+        }
+    };
 
     // Helper: Convert American odds to decimal
     const getDecimalOdds = (americanOdds) => {
@@ -72,9 +93,10 @@ export const BettingProvider = ({ children }) => {
         setBets(newBets);
     };
 
-    // Place bets – deduct balance and store pending bets in user history
-    const placeBets = () => {
+    // Place bets – call API
+    const placeBets = async () => {
         if (!user) { alert('Please login to place bets.'); return; }
+
         let totalStake = 0;
         if (parlayMode) {
             const validation = validateParlay();
@@ -83,62 +105,85 @@ export const BettingProvider = ({ children }) => {
         } else {
             totalStake = bets.reduce((s, b) => s + (parseFloat(b.stake) || 0), 0);
         }
+
         if (totalStake <= 0) { alert('Please enter a stake.'); return; }
         if (totalStake > user.balance) { alert('Insufficient funds!'); return; }
 
-        // Create new bets array
-        const newBets = [];
-        if (parlayMode) {
-            const { americanOdds, payout } = calculateParlayInfo();
-            newBets.push({
-                type: 'Parlay',
-                driver: `${bets.length} Legs`,
-                odds: americanOdds,
-                stake: parlayStake,
-                payout,
-                raceName: 'Multi-Race / Multi-Bet',
-                timestamp: Date.now(),
-                legs: bets,
-                result: 'Pending',
-            });
-        } else {
-            bets.forEach(bet => {
-                newBets.push({
-                    ...bet,
-                    payout: calculatePotentialPayout(bet.stake, bet.odds),
-                    timestamp: Date.now(),
-                    result: 'Pending',
+        try {
+            const betsToPlace = [];
+
+            if (parlayMode) {
+                const { americanOdds, payout } = calculateParlayInfo();
+                betsToPlace.push({
+                    userId: user.id,
+                    raceId: bets[0].raceId || 'multi', // Use first race ID or generic
+                    driverName: `${bets.length} Legs`,
+                    betType: 'Parlay',
+                    stake: parlayStake,
+                    odds: parseFloat(americanOdds), // Store as number if possible, or string
+                    potentialPayout: payout
                 });
-            });
+            } else {
+                bets.forEach(bet => {
+                    betsToPlace.push({
+                        userId: user.id,
+                        raceId: bet.raceId,
+                        driverName: bet.driver,
+                        betType: bet.type,
+                        stake: parseFloat(bet.stake),
+                        odds: parseFloat(bet.odds),
+                        potentialPayout: calculatePotentialPayout(bet.stake, bet.odds)
+                    });
+                });
+            }
+
+            // Send requests sequentially
+            for (const bet of betsToPlace) {
+                const response = await fetch('/api/bets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bet)
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to place bet');
+                }
+            }
+
+            // Success!
+            setBets([]);
+            alert(`Bets placed! Total stake: $${totalStake.toFixed(2)}`);
+
+            // Refresh user balance and bets
+            refreshUser();
+            fetchPlacedBets(user.id);
+
+        } catch (error) {
+            console.error('Error placing bets:', error);
+            alert(`Error: ${error.message}`);
         }
-
-        // Atomically update user state: deduct balance AND add bets
-        const updatedUser = {
-            ...user,
-            balance: user.balance - totalStake,
-            betHistory: [...user.betHistory, ...newBets]
-        };
-
-        setUser(updatedUser);
-        const updatedUsers = users.map(u => u.username === user.username ? updatedUser : u);
-        setUsers(updatedUsers);
-        localStorage.setItem('iracing_betting_users', JSON.stringify(updatedUsers));
-        localStorage.setItem('iracing_betting_session', JSON.stringify(updatedUser));
-
-        setBets([]);
-        alert(`Bets placed! Total stake: $${totalStake.toFixed(2)}`);
     };
 
     // Settle bets when a race finishes
-    const settleBets = (raceData) => {
-        if (!user) return;
-        let totalNewWinnings = 0;
-        const updatedBetHistory = user.betHistory.map((bet) => {
-            if (bet.result !== 'Pending') return bet;
-            const driver = raceData.drivers.find((d) => d.name === bet.driver);
-            if (!driver) return { ...bet, result: 'Lost', payout: 0 };
+    const settleBets = async (raceData) => {
+        if (!user || !placedBets.length) return;
+
+        const pendingBets = placedBets.filter(b => b.status === 'pending' && b.race_id === raceData.id);
+
+        if (pendingBets.length === 0) return;
+
+        let settledCount = 0;
+
+        for (const bet of pendingBets) {
+            const driver = raceData.drivers.find((d) => d.name === bet.driver_name);
+
+            // If driver not found (and not a special bet type), skip or mark void? 
+            // For now, assume lost if not found, or skip.
+            if (!driver) continue;
+
             let won = false;
-            switch (bet.type) {
+            switch (bet.bet_type) {
                 case 'Win':
                     won = driver.currentPosition === 1; break;
                 case 'Top 3':
@@ -150,26 +195,35 @@ export const BettingProvider = ({ children }) => {
                 default:
                     won = false;
             }
-            const payout = won ? calculatePotentialPayout(bet.stake, bet.odds) : 0;
-            if (won) totalNewWinnings += parseFloat(payout);
-            return { ...bet, result: won ? 'Won' : 'Lost', payout: parseFloat(payout.toFixed(2)) };
-        });
-        if (totalNewWinnings > 0) updateUserBalance(totalNewWinnings);
-        const updatedUser = { ...user, betHistory: updatedBetHistory };
-        setUser(updatedUser);
-        const updatedUsers = users.map((u) => (u.username === user.username ? updatedUser : u));
-        setUsers(updatedUsers);
-        localStorage.setItem('iracing_betting_users', JSON.stringify(updatedUsers));
-        localStorage.setItem('iracing_betting_session', JSON.stringify(updatedUser));
-        setBets([]);
+
+            try {
+                await fetch('/api/bets', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        betId: bet.id,
+                        status: 'settled',
+                        result: won ? 'won' : 'lost'
+                    })
+                });
+                settledCount++;
+            } catch (error) {
+                console.error('Error settling bet:', bet.id, error);
+            }
+        }
+
+        if (settledCount > 0) {
+            refreshUser();
+            fetchPlacedBets(user.id);
+        }
     };
 
-    // Return the provider with all context values
     return (
         <BettingContext.Provider
             value={{
                 balance: user ? user.balance : 0,
-                bets,
+                bets, // Active slip bets
+                placedBets, // Database history
                 addToBetSlip,
                 removeFromBetSlip,
                 updateStake,

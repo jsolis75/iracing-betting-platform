@@ -62,24 +62,25 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
         // --- 4. Final Probability Calculation ---
         let winProbability;
         if (useLiveOdds && raceProgress > 0) {
-            // LIVE ODDS: Position becomes dominant, but not too extreme for top 10
+            // LIVE ODDS: NASCAR-STYLE - High rated drivers maintain odds even deep in pack
 
             const cappedIRating = Math.min(iRating, 7000);
-            const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.5);
+            const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.7); // Increased from 0.5
 
-            const iRatingWeight = 0.05 * Math.pow(1 - raceProgress, 3.0);
-            const historicalWeight = 0.05 * Math.pow(1 - raceProgress, 2.0);
+            // INCREASED iRating weight for NASCAR-style favoritism
+            const iRatingWeight = 0.15 * Math.pow(1 - raceProgress, 2.5); // Was 0.05
+            const historicalWeight = 0.10 * Math.pow(1 - raceProgress, 2.0); // Was 0.05
             const positionWeight = 1 - (iRatingWeight + historicalWeight);
 
-            // Balanced position curve - competitive but differentiated
-            const dynamicExponent = 3.2 + (raceProgress * 18); // Sweet spot between flat and steep
+            // Flatter position curve - keeps top drivers competitive from deeper positions
+            const dynamicExponent = 2.8 + (raceProgress * 15); // Was 3.2 + (raceProgress * 18)
             const dynamicPositionFactor = Math.pow((fieldSize - currentPos + 1) / fieldSize, dynamicExponent);
 
-            // Gap penalty: Only for positions 13+ (deeper in field)
+            // Softer gap penalty: Only for positions 16+ (NASCAR-style)
             let gapPenalty = 1.0;
-            if (raceProgress > 0.4 && currentPos > 12) { // After 40% AND outside top 12
-                const gap = currentPos - 12; // How far from P12
-                gapPenalty = Math.pow(0.80, gap); // 20% per position (was 18%)
+            if (raceProgress > 0.5 && currentPos > 15) { // After 50% AND outside top 15
+                const gap = currentPos - 15; // How far from P15
+                gapPenalty = Math.pow(0.85, gap); // 15% per position (was 20%)
             }
 
             winProbability =
@@ -203,8 +204,8 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
 
     let crashOdds = probToOdds(crashProbability);
 
-    // Clamp odds to requested range: -200 to +1000
-    crashOdds = Math.max(-200, Math.min(1000, crashOdds));
+    // Clamp odds to requested range: -200 to +800
+    crashOdds = Math.max(-200, Math.min(800, crashOdds));
 
     // Rounding
     if (Math.abs(crashOdds) < 200) crashOdds = Math.round(crashOdds / 5) * 5;

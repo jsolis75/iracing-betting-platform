@@ -2,15 +2,17 @@
 
 import React from 'react';
 import { useUser } from '@/context/UserContext';
+import { useBetting } from '@/context/BettingContext';
 import styles from './LiveBets.module.css';
 
 const LiveBets = ({ raceData }) => {
     const { user } = useUser();
+    const { placedBets } = useBetting();
 
     if (!user) return null;
 
     // Filter for pending bets
-    const liveBets = user.betHistory.filter(bet => bet.result === 'Pending');
+    const liveBets = placedBets.filter(bet => bet.status === 'pending');
 
     if (liveBets.length === 0) return null;
 
@@ -74,14 +76,14 @@ const LiveBets = ({ raceData }) => {
                             className={`${styles.betItem} ${isWinning ? styles.winning : styles.losing}`}
                         >
                             <div className={styles.betInfo}>
-                                <span className={styles.driverName}>{bet.driver}</span>
+                                <span className={styles.driverName}>{bet.driver_name}</span>
                                 <span className={styles.betType}>
-                                    {bet.type} @ {bet.odds}
+                                    {bet.bet_type} @ {bet.odds}
                                 </span>
                             </div>
                             <div className={styles.betStatus}>
                                 <span className={styles.potentialPayout}>
-                                    To Win: ${bet.payout}
+                                    To Win: ${bet.potential_payout}
                                 </span>
                                 <span className={styles.currentStatus}>
                                     {status}

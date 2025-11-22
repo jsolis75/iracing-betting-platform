@@ -3,13 +3,15 @@
 import React from 'react';
 import styles from './BettingHistory.module.css';
 import { useUser } from '@/context/UserContext';
+import { useBetting } from '@/context/BettingContext';
 
 const BettingHistory = () => {
     const { user } = useUser();
+    const { placedBets } = useBetting();
 
     if (!user) return null;
 
-    const history = user.betHistory || [];
+    const history = placedBets || [];
 
     return (
         <div className={styles.container}>
@@ -33,20 +35,20 @@ const BettingHistory = () => {
                     <tbody>
                         {history.map((bet, index) => (
                             <tr key={index}>
-                                <td>{new Date(bet.timestamp || Date.now()).toLocaleDateString()}</td>
-                                <td>{bet.raceName || 'Unknown Race'}</td>
-                                <td>{bet.driver}</td>
-                                <td>{bet.type}</td>
+                                <td>{new Date(bet.created_at).toLocaleDateString()}</td>
+                                <td>{bet.race_id === 'multi' ? 'Parlay' : 'Race ' + bet.race_id}</td>
+                                <td>{bet.driver_name}</td>
+                                <td>{bet.bet_type}</td>
                                 <td>{bet.odds}</td>
                                 <td>${parseFloat(bet.stake).toFixed(2)}</td>
                                 <td className={
-                                    bet.result === 'Won' ? styles.won :
-                                        bet.result === 'Lost' ? styles.lost : styles.pending
+                                    bet.result === 'won' ? styles.won :
+                                        bet.result === 'lost' ? styles.lost : styles.pending
                                 }>
-                                    {bet.result || 'Pending'}
+                                    {bet.status === 'pending' ? 'Pending' : bet.result}
                                 </td>
                                 <td>
-                                    {bet.result === 'Won' ? `$${bet.payout.toFixed(2)}` : '-'}
+                                    {bet.result === 'won' ? `$${bet.potential_payout}` : '-'}
                                 </td>
                             </tr>
                         ))}

@@ -56,7 +56,7 @@ def broadcast_data():
                         API_URL, 
                         json=data,
                         headers={"x-api-key": API_KEY},
-                        timeout=2
+                        timeout=5
                     )
                     
                     if response.status_code == 200:

@@ -40,3 +40,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local data
+iracerdata/*.json
+src/data/*.json
+src/data/live_race_data.json

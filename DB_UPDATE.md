@@ -1,29 +1,30 @@
-# Database Schema Update (Fix)
+# Database Schema Update (Complete)
 
-I missed one column in the previous update! The error you are seeing is because the `status` column is missing.
+You can **clear** your SQL editor and just run this **one block of code**. It contains everything needed and is safe to run even if you ran parts of it before.
 
-## Run this SQL in Supabase SQL Editor:
+## Copy and Paste this into Supabase SQL Editor:
 
 ```sql
--- Add the missing status column
-ALTER TABLE races 
-ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+-- 1. Enable UUID extension (needed for random IDs)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
--- Just in case, make sure these are there too (it won't hurt to run again)
-ALTER TABLE races 
-ADD COLUMN IF NOT EXISTS iracing_session_id TEXT,
-ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ,
-ADD COLUMN IF NOT EXISTS data JSONB;
+-- 2. Add all necessary columns (safe to run multiple times)
+ALTER TABLE races ADD COLUMN IF NOT EXISTS iracing_session_id TEXT;
+ALTER TABLE races ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
+ALTER TABLE races ADD COLUMN IF NOT EXISTS data JSONB;
+ALTER TABLE races ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 
--- Create index for faster lookups
+-- 3. Fix the ID column to auto-generate a UUID if one isn't provided
+ALTER TABLE races ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
+
+-- 4. Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_races_session_id ON races(iracing_session_id);
 CREATE INDEX IF NOT EXISTS idx_races_status_updated ON races(status, last_updated);
 ```
 
 ## How to run:
-1. Go to Supabase Dashboard
-2. Click **SQL Editor** (on the left)
-3. Paste the code above
-4. Click **Run**
+1. Delete whatever is currently in the SQL Editor.
+2. Paste the code above.
+3. Click **Run**.
 
-After you run this, the "API Error 500" should disappear and the broadcast will work!
+This will ensure your database is 100% ready for the broadcast!

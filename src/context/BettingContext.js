@@ -66,7 +66,16 @@ export const BettingProvider = ({ children }) => {
     const calculateParlayInfo = () => {
         const validation = validateParlay();
         if (!validation.isValid) return { decimalOdds: 0, americanOdds: '+0', payout: 0, error: validation.error };
-        const totalDecimal = bets.reduce((acc, b) => acc * getDecimalOdds(b.odds), 1);
+
+        let totalDecimal = bets.reduce((acc, b) => acc * getDecimalOdds(b.odds), 1);
+
+        // PARLAY REDUCTION (20% House Edge on Parlays)
+        // We reduce the total payout multiplier by 20%
+        totalDecimal = totalDecimal * 0.8;
+
+        // Ensure odds don't go below 1.01 (loss)
+        totalDecimal = Math.max(totalDecimal, 1.01);
+
         const american = totalDecimal >= 2 ? Math.round((totalDecimal - 1) * 100) : Math.round(-100 / (totalDecimal - 1));
         const payout = parlayStake ? parlayStake * totalDecimal - parlayStake : 0;
         return { decimalOdds: totalDecimal, americanOdds: american > 0 ? `+${american}` : `${american}`, payout, error: null };

@@ -31,18 +31,18 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
         const fieldSize = drivers.length;
         const stats = driver.Stats || { starts: 0, wins: 0, avgPoints: 0, avgIncidents: 0, avgFinish: 0, top25Percent: 0, winPercentage: 0 };
 
-        // --- 1. iRating Component (Skill) --- REDUCED EXPONENTS FOR TIGHTER ODDS
+        // --- 1. iRating Component (Skill) --- STEEPENED FOR AGGRESSIVE FAVORITES
         let iRatingFactor;
-        if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 3.0); // Was 4.0
-        else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 2.5); // Was 3.2
-        else iRatingFactor = Math.pow(iRating / 1000, 1.8); // Was 2.2
+        if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 4.0); // Was 3.0 -> 4.0 (Super Favorites)
+        else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 3.0); // Was 2.5 -> 3.0
+        else iRatingFactor = Math.pow(iRating / 1000, 2.0); // Was 1.8 -> 2.0
 
         // --- 2. Historical Performance Component ---
         // Win Percentage (0-100) -> Factor
-        const winPctFactor = Math.pow((stats.winPercentage || 0) / 10, 1.3); // Was 1.5, reduced for tighter odds
+        const winPctFactor = Math.pow((stats.winPercentage || 0) / 10, 1.3);
 
         // Avg Points (Higher is better) - Normalize against a "good" score like 100
-        const avgPointsFactor = Math.pow((stats.avgPoints || 50) / 50, 1.6); // Was 2.0, reduced
+        const avgPointsFactor = Math.pow((stats.avgPoints || 50) / 50, 1.6);
 
         // Combined Historical Factor (Increased overall weight)
         const historicalFactor = (winPctFactor * 0.6) + (avgPointsFactor * 0.4);
@@ -102,9 +102,15 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
 
     // Normalize probabilities to sum to 1.0
     const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
+
+    // HOUSE EDGE (VIGORISH) - 20%
+    // We multiply the normalized probability by 1.20.
+    // This makes the sum of probabilities > 1.0 (e.g., 1.20), which lowers the odds.
+    const HOUSE_EDGE = 1.20;
+
     const driversWithNormalizedProb = driversWithProb.map(d => ({
         ...d,
-        winProbability: d.winProbability / totalProb
+        winProbability: (d.winProbability / totalProb) * HOUSE_EDGE
     }));
 
     // Calculate odds for each driver
@@ -124,13 +130,15 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
 
     // Helper to convert probability to American Odds
     const probToOdds = (p) => {
-        if (p >= 0.5) return Math.round(-100 / (1 - p));
-        return Math.round(100 * ((1 / p) - 1));
+        // Cap probability at 0.99 to avoid infinity
+        const prob = Math.min(p, 0.99);
+        if (prob >= 0.5) return Math.round(-100 / (1 - prob));
+        return Math.round(100 * ((1 / prob) - 1));
     };
 
     // --- Win Odds ---
     let winOdds = probToOdds(winProbability);
-    winOdds = Math.max(-5000, Math.min(5000, winOdds)); // Cap
+    winOdds = Math.max(-10000, Math.min(10000, winOdds)); // Cap
     if (Math.abs(winOdds) < 200) winOdds = Math.round(winOdds / 5) * 5;
     else winOdds = Math.round(winOdds / 10) * 10;
     const winOddsStr = winOdds > 0 ? `+${winOdds}` : `${winOdds}`;
@@ -138,63 +146,71 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     // --- Top 3 Odds --- TIGHTER MULTIPLIERS
     // Use Top25Percent as a proxy for "Top Finish Ability"
     const topFinishAbility = (stats.top25Percent || 0) / (stats.starts || 1); // 0.0 to 1.0
-    const top3Prob = Math.min(winProbability * 2.5 + (topFinishAbility * 0.15), 0.92); // Was 3x, now 2.5x for tighter odds
+
+    // REDUCED MULTIPLIER: Was 2.5x, now 1.8x
+    const top3Prob = Math.min(winProbability * 1.8 + (topFinishAbility * 0.15), 0.95);
 
     let top3Odds = probToOdds(top3Prob);
-    top3Odds = Math.max(-1500, Math.min(1500, top3Odds)); // Tighter caps
+    top3Odds = Math.max(-2000, Math.min(1500, top3Odds)); // Tighter caps
     top3Odds = Math.round(top3Odds / 10) * 10;
     const top3OddsStr = top3Odds > 0 ? `+${top3Odds}` : `${top3Odds}`;
 
     // --- Top 10 Odds --- TIGHTER MULTIPLIERS
-    const top10Prob = Math.min(winProbability * 6 + (topFinishAbility * 0.3), 0.95); // Was 8x, now 6x
+    // REDUCED MULTIPLIER: Was 6x, now 4.0x
+    const top10Prob = Math.min(winProbability * 4.0 + (topFinishAbility * 0.3), 0.98);
     let top10Odds = probToOdds(top10Prob);
-    top10Odds = Math.max(-2000, Math.min(600, top10Odds)); // Tighter caps
+    top10Odds = Math.max(-2500, Math.min(600, top10Odds)); // Tighter caps
     top10Odds = Math.round(top10Odds / 10) * 10;
     const top10OddsStr = top10Odds > 0 ? `+${top10Odds}` : `${top10Odds}`;
 
-    // --- Crash Odds --- REDESIGNED: Incidents + License Class Focus (NO iRating)
+    // --- Crash Odds --- REDESIGNED: Aggressive House Edge & Variance
     const avgIncidents = stats.avgIncidents || 3.0;
 
     // Extract license class from LicString (e.g., "A 4.99" -> "A", "Pro/WC 4.5" -> "Pro")
     const licString = driver.LicString || driver.licenseClass || '';
     const licClass = licString.charAt(0).toUpperCase(); // First letter: A, B, C, D, R, P
 
-    // 1. INCIDENT FACTOR (Primary - 50% weight) - WIDENED FOR MORE VARIATION
-    // Below 2.5: Extremely clean -> Low crash prob
-    // 2.5-3.0: Clean -> Low crash prob
-    // 3.0-3.99: Average -> Medium crash prob
-    // 4.0-4.99: Dirty -> High crash prob
-    // 5.0+: Extremely dirty -> Very high crash prob
-    let incidentMultiplier;
-    if (avgIncidents <= 2.5) incidentMultiplier = 0.3; // Extremely clean (was 0.4)
-    else if (avgIncidents <= 3.0) incidentMultiplier = 0.7; // Clean (was 0.6)
-    else if (avgIncidents <= 3.99) incidentMultiplier = 1.2; // Average (was 1.0)
-    else if (avgIncidents <= 4.99) incidentMultiplier = 2.0; // Dirty (was 1.6)
-    else incidentMultiplier = 3.5; // Extremely dirty (was 2.5)
+    // 1. INCIDENT FACTOR (Primary)
+    // Range: 0.0 (Clean) to 1.0 (Dirty)
+    let incidentScore = 0;
+    if (avgIncidents <= 2.0) incidentScore = 0.1; // Super Clean
+    else if (avgIncidents <= 3.5) incidentScore = 0.3; // Average
+    else if (avgIncidents <= 5.0) incidentScore = 0.6; // Dirty
+    else incidentScore = 0.9; // Wrecking Ball
 
-    // 2. LICENSE CLASS FACTOR (Secondary - 50% weight, INCREASED from 30%)
-    // NOTE: ~90% of drivers are A-class, so A is the baseline
-    // A/Pro: Baseline (cleanest drivers) -> 1.0x multiplier
-    // B: Noticeably worse -> 1.4x multiplier (was 1.15)
-    // C: Much dirtier -> 2.0x multiplier (was 1.4)
-    // D and below: Extremely dirty -> 3.0x multiplier (was 1.8)
-    let licenseMultiplier;
-    if (licClass === 'A' || licClass === 'P') licenseMultiplier = 1.0; // A or Pro = baseline
-    else if (licClass === 'B') licenseMultiplier = 1.4; // B is noticeably worse
-    else if (licClass === 'C') licenseMultiplier = 2.0; // C is much dirtier
-    else licenseMultiplier = 3.0; // D, R, or unknown = extremely dirty
+    // 2. LICENSE CLASS FACTOR (Secondary)
+    // Range: 0.0 (Pro/A) to 1.0 (Rookie)
+    let licenseScore = 0;
+    if (licClass === 'P') licenseScore = 0.0;
+    else if (licClass === 'A') licenseScore = 0.2;
+    else if (licClass === 'B') licenseScore = 0.4;
+    else if (licClass === 'C') licenseScore = 0.7;
+    else licenseScore = 1.0; // D, R
 
-    // Combined crash probability (Base 10%, scaled by factors)
-    const baseCrashRate = 0.10; // Increased from 0.08 for wider odds range
-    const crashProbability = Math.min(
-        baseCrashRate * (incidentMultiplier * 0.5 + licenseMultiplier * 0.5), // 50/50 split
-        0.70 // Cap at 70% max crash probability (was 60%)
-    );
+    // Combined Risk Score (0.0 to 1.0)
+    // Weighted: 70% Incidents, 30% License
+    const riskScore = (incidentScore * 0.7) + (licenseScore * 0.3);
+
+    // Calculate Crash Probability
+    // Low Risk (~0.1) -> +900 odds
+    // High Risk (~0.65) -> -185 odds
+    const baseCrashProb = 0.08; // Baseline chance for anyone
+    const variableCrashProb = riskScore * 0.60; // Up to 60% added risk
+    let crashProbability = baseCrashProb + variableCrashProb;
+
+    // Apply HOUSE EDGE to Crash Odds (Inflate probability)
+    crashProbability = Math.min(crashProbability * 1.25, 0.85);
 
     let crashOdds = probToOdds(crashProbability);
-    crashOdds = Math.max(50, Math.min(2500, crashOdds)); // Wider range: +50 to +2500
-    crashOdds = Math.round(crashOdds / 10) * 10;
-    const crashOddsStr = `+${crashOdds}`;
+
+    // Clamp odds to requested range: -200 to +1000
+    crashOdds = Math.max(-200, Math.min(1000, crashOdds));
+
+    // Rounding
+    if (Math.abs(crashOdds) < 200) crashOdds = Math.round(crashOdds / 5) * 5;
+    else crashOdds = Math.round(crashOdds / 10) * 10;
+
+    const crashOddsStr = crashOdds > 0 ? `+${crashOdds}` : `${crashOdds}`;
 
     return {
         win: winOddsStr,

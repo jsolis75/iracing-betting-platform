@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { spawn } from 'child_process';
 import path from 'path';
-import { registerRace } from '../races/route.js';
 
 let pythonProcess = null;
 let broadcastRaceId = null;
@@ -18,12 +17,10 @@ export async function POST() {
     try {
         const scriptPath = path.join(process.cwd(), 'fetch_iracing_data.py');
 
-        // Register this broadcast as a new race
-        broadcastRaceId = registerRace({
-            name: 'My Broadcast',
-            track: 'Broadcasting...',
-            source: 'broadcast'
-        });
+        // We no longer manually register the race here.
+        // The python script will push data to the /api/telemetry/ingest endpoint,
+        // which will create the race record in the database.
+        broadcastRaceId = 'waiting-for-data';
 
         // Spawn the python script
         // Using 'python' command - might need 'python3' depending on environment, but user is on Windows so 'python' is likely.

@@ -62,29 +62,24 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
         // --- 4. Final Probability Calculation ---
         let winProbability;
         if (useLiveOdds && raceProgress > 0) {
-            // LIVE ODDS: Position is KING - iRating becomes nearly irrelevant
+            // LIVE ODDS: Position becomes dominant, but not too extreme for top 10
 
-            // Heavily reduce iRating influence during race (and cap the differential)
-            const cappedIRating = Math.min(iRating, 7000); // Cap at 7k
-            const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.5); // Very flat (was 0.8)
+            const cappedIRating = Math.min(iRating, 7000);
+            const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.5);
 
-            // Dynamic weights: Position weight reaches 95%+ quickly
-            const iRatingWeight = 0.05 * Math.pow(1 - raceProgress, 3.0); // Drops to ~0% very fast
-            const historicalWeight = 0.05 * Math.pow(1 - raceProgress, 2.0); // Also minimal
-            const positionWeight = 1 - (iRatingWeight + historicalWeight); // 90%+ immediately
+            const iRatingWeight = 0.05 * Math.pow(1 - raceProgress, 3.0);
+            const historicalWeight = 0.05 * Math.pow(1 - raceProgress, 2.0);
+            const positionWeight = 1 - (iRatingWeight + historicalWeight);
 
-            // EXTREMELY aggressive position exponent - position differences are massive
-            const dynamicExponent = 5 + (raceProgress * 50); // Was 3 + (progress * 35)
+            // More moderate position exponent - competitive top 10
+            const dynamicExponent = 4 + (raceProgress * 30);
             const dynamicPositionFactor = Math.pow((fieldSize - currentPos + 1) / fieldSize, dynamicExponent);
 
-            // Gap penalty: Applies from 25% race progress, gets severe quickly
+            // Gap penalty: Only for positions 11+ (back markers)
             let gapPenalty = 1.0;
-            if (raceProgress > 0.25) { // After 25% of race
-                const gap = currentPos - 1; // How far from P1
-                if (gap > 3) {
-                    // Much harsher: Each position back = 20% penalty (was 15%)
-                    gapPenalty = Math.pow(0.80, gap - 3);
-                }
+            if (raceProgress > 0.3 && currentPos > 10) {
+                const gap = currentPos - 10;
+                gapPenalty = Math.pow(0.82, gap);
             }
 
             winProbability =
@@ -92,10 +87,10 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
                 (historicalFactor * historicalWeight) +
                 (dynamicPositionFactor * positionWeight * gapPenalty);
         } else {
-            // PRE-RACE ODDS: Reduced iRating (30%), Increased History (40%), Start Pos (30%)
+            // PRE-RACE ODDS
             winProbability =
-                (iRatingFactor * 0.30) + // Was 0.40
-                (historicalFactor * 0.40) + // Was 0.30
+                (iRatingFactor * 0.30) +
+                (historicalFactor * 0.40) +
                 (startingPositionFactor * 0.30);
         }
 

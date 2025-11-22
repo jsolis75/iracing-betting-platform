@@ -25,6 +25,7 @@ export async function GET(request) {
 
         // Find column indices
         const driverIndex = 0; // DRIVER
+        const custIdIndex = 1; // CUSTID
         const avgIncIndex = 12; // AVG_INC
         const startsIndex = 4; // STARTS
         const winsIndex = 5; // WINS
@@ -32,7 +33,7 @@ export async function GET(request) {
         const top25Index = 9; // TOP25PCNT
         const classIndex = 13; // CLASS
 
-        // Build stats map (key = driver name, value = stats object)
+        // Build stats map (key = CUSTID, value = stats object)
         const statsMap = {};
 
         for (let i = 1; i < lines.length; i++) {
@@ -42,6 +43,7 @@ export async function GET(request) {
             if (cols.length < 14) continue;
 
             const driverName = cols[driverIndex];
+            const custId = cols[custIdIndex]; // Get Customer ID
             const avgIncidents = parseFloat(cols[avgIncIndex]) || 3.0;
             const starts = parseInt(cols[startsIndex]) || 0;
             const wins = parseInt(cols[winsIndex]) || 0;
@@ -49,7 +51,11 @@ export async function GET(request) {
             const top25Percent = parseInt(cols[top25Index]) || 0;
             const licenseClass = cols[classIndex];
 
-            statsMap[driverName] = {
+            // Use CUSTID as key if available, otherwise fallback to name (unlikely)
+            const key = custId || driverName;
+
+            statsMap[key] = {
+                name: driverName, // Store name for reference
                 avgIncidents,
                 starts,
                 wins,

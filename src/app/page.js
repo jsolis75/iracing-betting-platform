@@ -179,6 +179,7 @@ function HomeContent() {
 
               return {
                 id: d.CarIdx,
+                userID: d.UserID, // Add UserID for stats lookup
                 name: d.UserName,
                 number: d.CarNumber,
                 iRating: d.IRating,
@@ -190,7 +191,7 @@ function HomeContent() {
                 lapsComplete: lapsComplete,
                 status: reasonOutMap[d.CarIdx] || "Running",
                 isDNF: isDNF, // New flag for UI and Settlement
-                Stats: driverStats[d.UserName] || { // Merge CSV stats!
+                Stats: driverStats[d.UserID] || driverStats[d.UserName] || { // Try UserID first, then Name
                   avgIncidents: 3.0,
                   starts: 0,
                   wins: 0,

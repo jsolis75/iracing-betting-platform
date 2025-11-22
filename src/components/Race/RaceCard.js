@@ -53,6 +53,7 @@ const RaceCard = ({ race }) => {
             type,
             odds,
             raceName: name,
+            raceId: race.id,
         });
     };
 

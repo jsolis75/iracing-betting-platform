@@ -1,30 +1,25 @@
-# Database Schema Update (Complete)
+# Database Schema Update (The "Source" Fix)
 
-You can **clear** your SQL editor and just run this **one block of code**. It contains everything needed and is safe to run even if you ran parts of it before.
+We are almost there! The error now is about the `source` column. It was defined as "Required" in the original setup, but we aren't sending it.
 
-## Copy and Paste this into Supabase SQL Editor:
+## Run this SQL in Supabase SQL Editor:
 
 ```sql
--- 1. Enable UUID extension (needed for random IDs)
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- 1. Set a default value for 'source' so it's not null
+ALTER TABLE races 
+ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'broadcast';
 
--- 2. Add all necessary columns (safe to run multiple times)
-ALTER TABLE races ADD COLUMN IF NOT EXISTS iracing_session_id TEXT;
-ALTER TABLE races ADD COLUMN IF NOT EXISTS last_updated TIMESTAMPTZ;
-ALTER TABLE races ADD COLUMN IF NOT EXISTS data JSONB;
-ALTER TABLE races ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+ALTER TABLE races 
+ALTER COLUMN source SET DEFAULT 'broadcast';
 
--- 3. Fix the ID column to auto-generate a UUID if one isn't provided
+-- 2. Re-run these just to be absolutely sure everything else is set
 ALTER TABLE races ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
-
--- 4. Create indexes for performance
-CREATE INDEX IF NOT EXISTS idx_races_session_id ON races(iracing_session_id);
-CREATE INDEX IF NOT EXISTS idx_races_status_updated ON races(status, last_updated);
+ALTER TABLE races ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 ```
 
 ## How to run:
-1. Delete whatever is currently in the SQL Editor.
+1. Clear the SQL Editor.
 2. Paste the code above.
 3. Click **Run**.
 
-This will ensure your database is 100% ready for the broadcast!
+This sets a default value of "broadcast" for the source column, which satisfies the requirement!

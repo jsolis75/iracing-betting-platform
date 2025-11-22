@@ -18,6 +18,7 @@ function SidebarContent() {
 
     const seriesMapping = {
         58: 'NASCAR A Open',
+        103: 'B Fixed Series',
         164: 'NASCAR C Fixed',
         191: 'NASCAR A Fixed',
     };

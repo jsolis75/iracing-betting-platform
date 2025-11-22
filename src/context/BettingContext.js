@@ -121,7 +121,8 @@ export const BettingProvider = ({ children }) => {
                     betType: 'Parlay',
                     stake: parlayStake,
                     odds: parseFloat(americanOdds), // Store as number if possible, or string
-                    potentialPayout: payout
+                    potentialPayout: payout,
+                    details: bets // Save the individual legs
                 });
             } else {
                 bets.forEach(bet => {

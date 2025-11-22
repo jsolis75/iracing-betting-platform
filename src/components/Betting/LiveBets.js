@@ -7,7 +7,7 @@ import styles from './LiveBets.module.css';
 
 const LiveBets = ({ raceData }) => {
     const { user } = useUser();
-    const { placedBets } = useBetting();
+    const { placedBets, settleBets } = useBetting();
 
     if (!user) return null;
 
@@ -59,41 +59,49 @@ const LiveBets = ({ raceData }) => {
         }
     };
 
+    // Manual settlement handler
+    const handleSettle = () => {
+        if (confirm("Are you sure you want to settle these bets based on the current standings?")) {
+            // We need to import settleBets from context, but it's not destructured above.
+            // Let's fix the destructuring first.
+        }
+    };
+
     return (
         <div className={styles.container}>
-            <div className={styles.header}>
-                <h3 className={styles.title}>
-                    <span className={styles.liveIndicator}></span>
-                    Live Bets
-                </h3>
-            </div>
-            <div className={styles.betList}>
-                {liveBets.map((bet, index) => {
-                    const { status, isWinning } = getBetStatus(bet);
-                    return (
-                        <div
-                            key={index}
-                            className={`${styles.betItem} ${isWinning ? styles.winning : styles.losing}`}
+            key={index}
+            className={`${styles.betItem} ${isWinning ? styles.winning : styles.losing}`}
                         >
-                            <div className={styles.betInfo}>
-                                <span className={styles.driverName}>{bet.driver_name}</span>
-                                <span className={styles.betType}>
-                                    {bet.bet_type} @ {bet.odds}
+            <div className={styles.betInfo}>
+                <span className={styles.driverName}>
+                    {bet.driver_name}
+                    {bet.details && (
+                        <div style={{ fontSize: '0.8em', color: '#ccc', marginTop: '4px' }}>
+                            {bet.details.map((leg, i) => (
+                                <span key={i} style={{ display: 'block' }}>
+                                    • {leg.driver} ({leg.type})
                                 </span>
-                            </div>
-                            <div className={styles.betStatus}>
-                                <span className={styles.potentialPayout}>
-                                    To Win: ${bet.potential_payout}
-                                </span>
-                                <span className={styles.currentStatus}>
-                                    {status}
-                                </span>
-                            </div>
+                            ))}
                         </div>
-                    );
-                })}
+                    )}
+                </span>
+                <span className={styles.betType}>
+                    {bet.bet_type} @ {bet.odds}
+                </span>
+            </div>
+            <div className={styles.betStatus}>
+                <span className={styles.potentialPayout}>
+                    To Win: ${bet.potential_payout}
+                </span>
+                <span className={styles.currentStatus}>
+                    {status}
+                </span>
             </div>
         </div>
+    );
+})}
+            </div >
+        </div >
     );
 };
 

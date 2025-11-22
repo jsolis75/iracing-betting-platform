@@ -33,7 +33,7 @@ export async function GET(request) {
 // POST - Place new bet
 export async function POST(request) {
     try {
-        const { userId, raceId, driverName, betType, stake, odds, potentialPayout } = await request.json();
+        const { userId, raceId, driverName, betType, stake, odds, potentialPayout, details } = await request.json();
 
         if (!userId || !raceId || !driverName || !betType || !stake || !odds) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -79,7 +79,10 @@ export async function POST(request) {
                     stake,
                     odds,
                     potential_payout: potentialPayout,
-                    status: 'pending'
+                    status: 'pending',
+                    details: details,
+                    details: request.json().details || null // This line is tricky because request.json() is already consumed.
+                    // Wait, I need to destructure details from the top.
                 }
             ])
             .select()

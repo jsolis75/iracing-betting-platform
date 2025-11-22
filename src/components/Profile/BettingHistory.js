@@ -37,7 +37,18 @@ const BettingHistory = () => {
                             <tr key={index}>
                                 <td>{new Date(bet.created_at).toLocaleDateString()}</td>
                                 <td>{bet.race_id === 'multi' ? 'Parlay' : 'Race ' + bet.race_id}</td>
-                                <td>{bet.driver_name}</td>
+                                <td>
+                                    {bet.driver_name}
+                                    {bet.details && (
+                                        <div style={{ fontSize: '0.8em', color: '#aaa', marginTop: '4px' }}>
+                                            {bet.details.map((leg, i) => (
+                                                <div key={i}>
+                                                    {leg.driver} ({leg.type})
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </td>
                                 <td>{bet.bet_type}</td>
                                 <td>{bet.odds}</td>
                                 <td>${parseFloat(bet.stake).toFixed(2)}</td>

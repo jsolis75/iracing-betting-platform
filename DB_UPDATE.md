@@ -1,20 +1,13 @@
-# Database Schema Update (The "Source" Fix)
+# Database Schema Update (Parlay Fix)
 
-We are almost there! The error now is about the `source` column. It was defined as "Required" in the original setup, but we aren't sending it.
+To show the details of a parlay (which drivers you picked), we need to add a `details` column to the `bets` table.
 
 ## Run this SQL in Supabase SQL Editor:
 
 ```sql
--- 1. Set a default value for 'source' so it's not null
-ALTER TABLE races 
-ADD COLUMN IF NOT EXISTS source TEXT DEFAULT 'broadcast';
-
-ALTER TABLE races 
-ALTER COLUMN source SET DEFAULT 'broadcast';
-
--- 2. Re-run these just to be absolutely sure everything else is set
-ALTER TABLE races ALTER COLUMN id SET DEFAULT gen_random_uuid()::text;
-ALTER TABLE races ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
+-- Add details column for storing parlay legs
+ALTER TABLE bets 
+ADD COLUMN IF NOT EXISTS details JSONB;
 ```
 
 ## How to run:
@@ -22,4 +15,4 @@ ALTER TABLE races ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'active';
 2. Paste the code above.
 3. Click **Run**.
 
-This sets a default value of "broadcast" for the source column, which satisfies the requirement!
+This will allow us to save exactly which drivers are in your parlay!

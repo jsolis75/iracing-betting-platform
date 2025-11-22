@@ -56,12 +56,28 @@ function HomeContent() {
         // ---------------------------------------------------------------
         // Get current running positions from the Race session
         // ---------------------------------------------------------------
-        const raceSession = data.SessionInfo?.Sessions?.find((s) => s.SessionType === "Race");
+        // ---------------------------------------------------------------
+        // Get current running positions from the Active session
+        // ---------------------------------------------------------------
+        // Try to find Race, then Practice, then Qualify, or default to the last session
+        let activeSession = data.SessionInfo?.Sessions?.find((s) => s.SessionType === "Race");
+        if (!activeSession) {
+          activeSession = data.SessionInfo?.Sessions?.find((s) => s.SessionType === "Practice");
+        }
+        if (!activeSession) {
+          activeSession = data.SessionInfo?.Sessions?.find((s) => s.SessionType === "Open Qualify" || s.SessionType === "Lone Qualify");
+        }
+        // Fallback to the last session if nothing specific found
+        if (!activeSession && data.SessionInfo?.Sessions?.length > 0) {
+          activeSession = data.SessionInfo.Sessions[data.SessionInfo.Sessions.length - 1];
+        }
+
         const currentPosMap = {};
         const lapsCompleteMap = {};
         const reasonOutMap = {};
-        if (raceSession && raceSession.ResultsPositions) {
-          raceSession.ResultsPositions.forEach((p) => {
+
+        if (activeSession && activeSession.ResultsPositions) {
+          activeSession.ResultsPositions.forEach((p) => {
             currentPosMap[p.CarIdx] = p.Position;
             lapsCompleteMap[p.CarIdx] = p.LapsComplete || 0;
             reasonOutMap[p.CarIdx] = p.ReasonOutStr;
@@ -96,8 +112,8 @@ function HomeContent() {
         // Calculate Winner's Laps for "Lap Down" Logic
         // ---------------------------------------------------------------
         let winnerLaps = 0;
-        if (raceSession && raceSession.ResultsPositions) {
-          raceSession.ResultsPositions.forEach((p) => {
+        if (activeSession && activeSession.ResultsPositions) {
+          activeSession.ResultsPositions.forEach((p) => {
             if (p.LapsComplete > winnerLaps) winnerLaps = p.LapsComplete;
           });
         }
@@ -105,14 +121,21 @@ function HomeContent() {
         // ---------------------------------------------------------------
         // Build the race object consumed by <RaceCard />
         // ---------------------------------------------------------------
+        // Handle unlimited laps (Practice often has SessionLaps: "unlimited" or 0)
+        let totalLaps = activeSession?.SessionLaps;
+        if (totalLaps === "unlimited" || totalLaps === 0) {
+          totalLaps = 999; // Arbitrary high number for display
+        }
+
+        const lapsRemaining = (totalLaps || 0) - (activeSession?.ResultsLapsComplete || winnerLaps || 0);
+
         const raceData = {
           id: data.WeekendInfo?.SessionID || Date.now(),
           name: data.WeekendInfo?.TrackDisplayName || "Unknown Track",
           track: data.WeekendInfo?.TrackDisplayShortName || "",
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          lapsRemaining:
-            (raceSession?.SessionLaps || 0) - (raceSession?.ResultsLapsComplete || 0),
-          totalLaps: raceSession?.SessionLaps || 0,
+          lapsRemaining: lapsRemaining,
+          totalLaps: totalLaps,
           status: flagStatus === "Green" ? "Green Flag" : "Caution",
           flagStatus: flagStatus,
           drivers: data.DriverInfo?.Drivers

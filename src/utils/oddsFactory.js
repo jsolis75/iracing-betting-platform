@@ -147,7 +147,7 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
     // Normalize probabilities to sum to 1.0
     const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
 
-    const HOUSE_EDGE = 1.30; // Increased from 1.20 to lower payouts (harder for customers to win)
+    const HOUSE_EDGE = 1.45; // Increased from 1.30 to drastically lower payouts
 
     const driversWithNormalizedProb = driversWithProb.map(d => ({
         ...d,
@@ -177,12 +177,20 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     else winOdds = Math.round(winOdds / 10) * 10;
     const winOddsStr = winOdds > 0 ? `+${winOdds}` : `${winOdds}`;
 
-    // Top 3 Odds - LESS GENEROUS
+    // Top 3 Odds - LESS GENEROUS + POSITION PENALTY
     const topFinishAbility = (stats.top25Percent || 0) / (stats.starts || 1);
-    let top3Prob = Math.min(winProbability * 1.5 + (topFinishAbility * 0.12), 0.92); // Was 1.8x, now 1.5x
+    let top3Prob = Math.min(winProbability * 1.5 + (topFinishAbility * 0.12), 0.92);
 
     if (driver.qualifyingBonus && driver.qualifyingBonus > 1.0) {
-        top3Prob = top3Prob * Math.min(driver.qualifyingBonus, 1.8); // Cap at 1.8x (was 2.0x)
+        top3Prob = top3Prob * Math.min(driver.qualifyingBonus, 1.8);
+    }
+
+    // POSITION PENALTY for Top 3: If already running P3-P10, reduce odds (they're in position!)
+    const currentPos = driver.currentPosition || driver.startingPosition || 99;
+    if (currentPos >= 3 && currentPos <= 10) {
+        // Running P3-P10 means very likely to finish Top 3 - give them HUGE probability boost (terrible odds)
+        const positionPenalty = 1.35 + ((10 - currentPos) * 0.08); // P3 gets 1.91x, P10 gets 1.35x
+        top3Prob = Math.min(top3Prob * positionPenalty, 0.97);
     }
 
     let top3Odds = probToOdds(top3Prob);
@@ -190,26 +198,24 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     top3Odds = Math.round(top3Odds / 10) * 10;
     const top3OddsStr = top3Odds > 0 ? `+${top3Odds}` : `${top3Odds}`;
 
-    // Top 10 Odds - AGGRESSIVE HOUSE EDGE + POSITION DEPENDENT
+    // Top 10 Odds - EXTREMELY AGGRESSIVE FOR DRIVERS IN POSITION
     // Base multiplier reduced from 4.0x to 3.0x (less generous)
-    let top10Prob = Math.min(winProbability * 3.0 + (topFinishAbility * 0.25), 0.95); // Was 4.0x, now 3.0x
+    let top10Prob = Math.min(winProbability * 3.0 + (topFinishAbility * 0.25), 0.95);
 
-    // POSITION-BASED BONUS: Running position significantly impacts Top 10 odds
-    // P1-P3: Big boost (likely to finish Top 10)
-    // P4-P7: Medium boost
-    // P8-P10: Small boost
-    // P11+: No bonus or penalty
-    const currentPos = driver.currentPosition || driver.startingPosition || 99;
+    // MASSIVE POSITION-BASED BOOST: If you're running P3-P10, you're VERY likely to finish Top 10
+    // These drivers should have terrible odds since the bet is almost guaranteed to hit
     if (currentPos <= 3) {
-        top10Prob = top10Prob * 1.25; // P1-P3 get 25% boost
+        top10Prob = Math.min(top10Prob * 1.6, 0.98); // P1-P3: Massive boost (near-lock)
+    } else if (currentPos <= 5) {
+        top10Prob = Math.min(top10Prob * 1.55, 0.98); // P4-P5: Huge boost
     } else if (currentPos <= 7) {
-        top10Prob = top10Prob * 1.15; // P4-P7 get 15% boost
+        top10Prob = Math.min(top10Prob * 1.45, 0.97); // P6-P7: Large boost
     } else if (currentPos <= 10) {
-        top10Prob = top10Prob * 1.08; // P8-P10 get 8% boost
+        top10Prob = Math.min(top10Prob * 1.35, 0.96); // P8-P10: Significant boost
+    } else if (currentPos <= 15) {
+        top10Prob = Math.min(top10Prob * 1.15, 0.94); // P11-P15: Small boost
     }
-    // P11+ get no bonus - their Top 10 odds will be much worse
-
-    top10Prob = Math.min(top10Prob, 0.97); // Cap after position bonus
+    // P16+ get base probability (generous odds since they need to pass many cars)
 
     let top10Odds = probToOdds(top10Prob);
     top10Odds = Math.max(-2500, Math.min(600, top10Odds));

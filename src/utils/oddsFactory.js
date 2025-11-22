@@ -71,15 +71,15 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
             const historicalWeight = 0.05 * Math.pow(1 - raceProgress, 2.0);
             const positionWeight = 1 - (iRatingWeight + historicalWeight);
 
-            // More moderate position exponent - competitive top 10
-            const dynamicExponent = 4 + (raceProgress * 30);
+            // Even flatter position curve - very competitive top 10
+            const dynamicExponent = 3.5 + (raceProgress * 22); // Was 4 + (progress * 30)
             const dynamicPositionFactor = Math.pow((fieldSize - currentPos + 1) / fieldSize, dynamicExponent);
 
-            // Gap penalty: Only for positions 11+ (back markers)
+            // Gap penalty: Only for positions 13+ (deeper in field)
             let gapPenalty = 1.0;
-            if (raceProgress > 0.3 && currentPos > 10) {
-                const gap = currentPos - 10;
-                gapPenalty = Math.pow(0.82, gap);
+            if (raceProgress > 0.4 && currentPos > 12) { // After 40% AND outside top 12
+                const gap = currentPos - 12; // How far from P12
+                gapPenalty = Math.pow(0.80, gap); // 20% per position (was 18%)
             }
 
             winProbability =

@@ -4,21 +4,15 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseKey) {
-    throw new Error('Missing Supabase environment variables');
-}
-
 // Create Supabase client
-export const supabase = createClient(supabaseUrl, supabaseKey);
+export const supabase = supabaseUrl && supabaseKey
+    ? createClient(supabaseUrl, supabaseKey)
+    : null;
 
-// Helper function to get database connection (for server-side)
-export async function getDbConnection() {
-    const { Pool } = require('pg');
-
-    const pool = new Pool({
-        connectionString: process.env.POSTGRES1_URL,
-        ssl: { rejectUnauthorized: false }
-    });
-
-    return pool;
+// Get Supabase client for server-side use
+export function getSupabaseClient() {
+    if (!supabase) {
+        throw new Error('Supabase client not initialized. Check environment variables.');
+    }
+    return supabase;
 }

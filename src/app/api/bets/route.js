@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getDbConnection } from '@/lib/supabase';
+import { getSupabaseClient } from '@/lib/supabase';
 
 // GET - Fetch user's bets
 export async function GET(request) {
@@ -11,15 +11,19 @@ export async function GET(request) {
             return NextResponse.json({ error: 'User ID required' }, { status: 400 });
         }
 
-        const pool = await getDbConnection();
-        const result = await pool.query(
-            'SELECT * FROM bets WHERE user_id = $1 ORDER BY created_at DESC',
-            [userId]
-        );
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase
+            .from('bets')
+            .select('*')
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
 
-        await pool.end();
+        if (error) {
+            console.error('Error fetching bets:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
 
-        return NextResponse.json({ bets: result.rows });
+        return NextResponse.json({ bets: data || [] });
     } catch (error) {
         console.error('Error fetching bets:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -35,34 +39,58 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
-        const pool = await getDbConnection();
+        const supabase = getSupabaseClient();
 
         // Check user balance
-        const userResult = await pool.query('SELECT balance FROM users WHERE id = $1', [userId]);
+        const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('balance')
+            .eq('id', userId)
+            .single();
 
-        if (userResult.rows.length === 0) {
-            await pool.end();
+        if (userError || !userData) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        if (userResult.rows[0].balance < stake) {
-            await pool.end();
+        if (userData.balance < stake) {
             return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
         }
 
         // Deduct stake from balance
-        await pool.query('UPDATE users SET balance = balance - $1 WHERE id = $2', [stake, userId]);
+        const { error: updateError } = await supabase
+            .from('users')
+            .update({ balance: userData.balance - stake })
+            .eq('id', userId);
+
+        if (updateError) {
+            console.error('Error updating balance:', updateError);
+            return NextResponse.json({ error: 'Failed to update balance' }, { status: 500 });
+        }
 
         // Create bet
-        const result = await pool.query(
-            `INSERT INTO bets (user_id, race_id, driver_name, bet_type, stake, odds, potential_payout, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending') RETURNING *`,
-            [userId, raceId, driverName, betType, stake, odds, potentialPayout]
-        );
+        const { data: betData, error: betError } = await supabase
+            .from('bets')
+            .insert([
+                {
+                    user_id: userId,
+                    race_id: raceId,
+                    driver_name: driverName,
+                    bet_type: betType,
+                    stake,
+                    odds,
+                    potential_payout: potentialPayout,
+                    status: 'pending'
+                }
+            ])
+            .select()
+            .single();
 
-        await pool.end();
+        if (betError) {
+            console.error('Error creating bet:', betError);
+            return NextResponse.json({ error: betError.message }, { status: 500 });
+        }
 
-        return NextResponse.json({ success: true, bet: result.rows[0] });
+        return NextResponse.json({ success: true, bet: betData });
     } catch (error) {
         console.error('Error placing bet:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -73,34 +101,49 @@ export async function POST(request) {
 export async function PUT(request) {
     try {
         const { betId, status, result: betResult } = await request.json();
-
-        const pool = await getDbConnection();
+        const supabase = getSupabaseClient();
 
         // Get bet details
-        const betQuery = await pool.query('SELECT * FROM bets WHERE id = $1', [betId]);
+        const { data: bet, error: betError } = await supabase
+            .from('bets')
+            .select('*')
+            .eq('id', betId)
+            .single();
 
-        if (betQuery.rows.length === 0) {
-            await pool.end();
+        if (betError || !bet) {
             return NextResponse.json({ error: 'Bet not found' }, { status: 404 });
         }
 
-        const bet = betQuery.rows[0];
-
         // Update bet
-        await pool.query(
-            'UPDATE bets SET status = $1, result = $2, settled_at = NOW() WHERE id = $3',
-            [status, betResult, betId]
-        );
+        const { error: updateError } = await supabase
+            .from('bets')
+            .update({
+                status,
+                result: betResult,
+                settled_at: new Date().toISOString()
+            })
+            .eq('id', betId);
+
+        if (updateError) {
+            console.error('Error updating bet:', updateError);
+            return NextResponse.json({ error: updateError.message }, { status: 500 });
+        }
 
         // If won, add payout to user balance
         if (betResult === 'won') {
-            await pool.query(
-                'UPDATE users SET balance = balance + $1 WHERE id = $2',
-                [bet.potential_payout, bet.user_id]
-            );
-        }
+            const { data: userData } = await supabase
+                .from('users')
+                .select('balance')
+                .eq('id', bet.user_id)
+                .single();
 
-        await pool.end();
+            if (userData) {
+                await supabase
+                    .from('users')
+                    .update({ balance: userData.balance + bet.potential_payout })
+                    .eq('id', bet.user_id);
+            }
+        }
 
         return NextResponse.json({ success: true });
     } catch (error) {

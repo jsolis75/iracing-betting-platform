@@ -9,27 +9,38 @@ export async function GET(request) {
         const { searchParams } = new URL(request.url);
         const raceId = searchParams.get('raceId');
 
-        const supabase = getSupabaseClient();
+        let data = null;
+        let error = null;
 
-        let query = supabase
-            .from('races')
-            .select('*');
+        // Try to fetch from Supabase (if configured)
+        try {
+            const supabase = getSupabaseClient();
 
-        if (raceId) {
-            // Fetch specific race
-            query = query.eq('id', raceId).single();
-        } else {
-            // Fetch most recently updated race, BUT only if it was updated in the last 5 minutes
-            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+            let query = supabase
+                .from('races')
+                .select('*');
 
-            query = query
-                .gt('last_updated', fiveMinutesAgo)
-                .order('last_updated', { ascending: false })
-                .limit(1)
-                .single();
+            if (raceId) {
+                // Fetch specific race
+                query = query.eq('id', raceId).single();
+            } else {
+                // Fetch most recently updated race, BUT only if it was updated in the last 5 minutes
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+                query = query
+                    .gt('last_updated', fiveMinutesAgo)
+                    .order('last_updated', { ascending: false })
+                    .limit(1)
+                    .single();
+            }
+
+            const result = await query;
+            data = result.data;
+            error = result.error;
+        } catch (dbError) {
+            // Supabase not configured, continue to local file
+            // console.log("Supabase not available:", dbError.message);
         }
-
-        const { data, error } = await query;
 
         // If we got data from DB, return it
         if (data && !error) {

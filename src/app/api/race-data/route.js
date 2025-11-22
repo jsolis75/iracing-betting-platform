@@ -17,8 +17,11 @@ export async function GET(request) {
             // Fetch specific race
             query = query.eq('id', raceId).single();
         } else {
-            // Fetch most recently updated race (regardless of status)
+            // Fetch most recently updated race, BUT only if it was updated in the last 5 minutes
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
             query = query
+                .gt('last_updated', fiveMinutesAgo)
                 .order('last_updated', { ascending: false })
                 .limit(1)
                 .single();

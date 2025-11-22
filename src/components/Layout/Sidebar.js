@@ -131,12 +131,12 @@ function SidebarContent() {
 
                 <div className={styles.divider}></div>
 
-                <button
-                    className={`${styles.navItem} ${styles.broadcastBtn} ${telemetryStatus === 'running' ? styles.broadcastBtnActive : ''}`}
-                    onClick={handleBroadcast}
-                >
-                    {telemetryStatus === 'running' ? '📡 Broadcasting' : '📡 Broadcast Race'}
-                </button>
+                <div className={styles.divider}></div>
+
+                <div className={styles.broadcastHelp}>
+                    <small style={{ color: '#666', display: 'block', marginBottom: '0.5rem' }}>To broadcast data:</small>
+                    <code style={{ background: '#222', padding: '4px', borderRadius: '4px', fontSize: '0.7rem', color: '#00ff00' }}>python broadcast_telemetry.py</code>
+                </div>
             </nav>
 
             {raceInfo && (

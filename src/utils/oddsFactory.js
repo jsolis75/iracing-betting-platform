@@ -45,45 +45,6 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
         const avgPointsFactor = Math.pow((stats.avgPoints || 50) / 50, 1.6);
 
         // Combined Historical Factor (Increased overall weight)
-        const historicalFactor = (winPctFactor * 0.6) + (avgPointsFactor * 0.4);
-
-        // --- QUALIFYING PERFORMANCE FACTOR (for lower-rated drivers) ---
-        // Lower-rated drivers' skill varies more race-to-race. Qualifying shows current form.
-        // If they qualify well, give them a HUGE boost to Win/Top 3 odds.
-        let qualifyingBonus = 1.0; // Multiplier (1.0 = no change)
-
-        if (iRating < 4000) { // Only apply to lower-rated drivers
-            // Expected position based on iRating (normalized 0-1, higher = better expected position)
-            const avgIRating = drivers.reduce((sum, d) => sum + (d.iRating || 1500), 0) / drivers.length;
-            const iRatingPercentile = (iRating - 1000) / (avgIRating - 1000); // How good is this driver?
-            const expectedPosition = fieldSize * (1 - Math.pow(iRatingPercentile, 1.5)); // Expected qual position
-
-            // Actual qualifying position
-            const actualPosition = startPos;
-
-            // Performance delta (negative = over-performed, positive = under-performed)
-            const qualDelta = actualPosition - expectedPosition;
-
-            // Convert delta to bonus multiplier
-            // Over-qualified by 10 spots? Big boost. Under-qualified by 10? Big penalty.
-            if (qualDelta < 0) {
-                // OVER-QUALIFIED: Exponential bonus for low-rated drivers who qualify well
-                const spotsAhead = Math.abs(qualDelta);
-                qualifyingBonus = 1.0 + (spotsAhead * 0.25); // 25% boost per spot ahead of expectation
-            } else if (qualDelta > 5) {
-                // UNDER-QUALIFIED: Penalty for poor qualifying
-                const spotsBehind = qualDelta - 5; // Grace period of 5 spots
-                qualifyingBonus = 1.0 / (1.0 + (spotsBehind * 0.15)); // 15% penalty per spot
-            }
-
-            // Cap the bonus/penalty
-            qualifyingBonus = Math.max(0.3, Math.min(3.0, qualifyingBonus));
-        }
-
-        // --- PRO/BLACK LICENSE BOOST ---
-        // Check if driver has Pro (P) or Black (level 6+) license
-        const licString = driver.licenseClass || driver.LicString || '';
-        const isPro = licString.includes('P') || licString.includes('Pro');
         const licLevel = driver.LicSubLevel ? Math.floor(driver.LicSubLevel / 100) : 0;
         const isBlack = licLevel >= 6;
         const proBoost = (isPro || isBlack) ? 1.35 : 1.0; // 35% boost for pros
@@ -120,22 +81,7 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
                 (liveIRatingFactor * iRatingWeight) +
                 (historicalFactor * historicalWeight) +
                 (dynamicPositionFactor * positionWeight * gapPenalty);
-        } else {
-            // PRE-RACE ODDS - Apply qualifying bonus HERE
-            winProbability =
-                (iRatingFactor * 0.30) +
-                (historicalFactor * 0.40) +
-                (startingPositionFactor * 0.30);
-
-            // Apply qualifying bonus to Win probability (for lower-rated drivers who qualified well)
-            winProbability = winProbability * qualifyingBonus;
-        }
-
-        // Apply Pro/Black license boost
-        winProbability = winProbability * proBoost;
-
-        return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress, qualifyingBonus };
-    });
+        });
 
     // Normalize probabilities to sum to 1.0
     const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);

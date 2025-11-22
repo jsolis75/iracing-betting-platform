@@ -5,7 +5,7 @@ export async function POST(request) {
     try {
         const { raceId, drivers } = await request.json();
 
-        if (!raceId || !drivers) {
+        if (!raceId && !drivers) {
             return NextResponse.json({ error: 'Missing race data' }, { status: 400 });
         }
 
@@ -22,14 +22,6 @@ export async function POST(request) {
                 .single();
 
             if (raceData && raceData.data && raceData.data.DriverInfo) {
-                // We need to reconstruct the 'drivers' array structure expected by the logic below
-                // The stored JSON is the raw iRacing data.
-                // We need to map it similar to how page.js does.
-                // This is a bit complex to duplicate the mapping logic here.
-                // Alternatively, we can just require the user to pass the data.
-                // BUT, for a robust backend, we should probably store the *processed* results or handle raw data here.
-
-                // Let's try to map the raw data.
                 const rawDrivers = raceData.data.DriverInfo.Drivers;
                 const session = raceData.data.SessionInfo.Sessions.find(s => s.SessionType === 'Race') || raceData.data.SessionInfo.Sessions[raceData.data.SessionInfo.Sessions.length - 1];
                 const resultsPositions = session.ResultsPositions || [];
@@ -46,7 +38,7 @@ export async function POST(request) {
                     let isDNF = false;
                     const dnfReasons = ["accident", "engine", "suspension", "handling", "brakes"];
                     if (dnfReasons.some(r => reasonOut.includes(r))) isDNF = true;
-                    else if ((reasonOut.includes("disconnected") || reasonOut.includes("disco"))) isDNF = true; // Simplified DNF logic for backend
+                    else if ((reasonOut.includes("disconnected") || reasonOut.includes("disco"))) isDNF = true;
 
                     return {
                         name: d.UserName,
@@ -61,7 +53,15 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Missing race results data' }, { status: 400 });
         }
 
-        // 1. Fetch ALL pending bets for this race (or parlays involving this race)
+        // 1. Fetch ALL pending bets
+        const { data: pendingBets, error: fetchError } = await supabase
+            .from('bets')
+            .select('*')
+            .eq('status', 'pending');
+
+        if (fetchError) {
+            throw fetchError;
+        }
 
         if (!pendingBets || pendingBets.length === 0) {
             return NextResponse.json({ message: 'No pending bets to settle' });
@@ -73,7 +73,7 @@ export async function POST(request) {
         // Helper to check a single leg result
         const checkLeg = (driverName, betType, drivers) => {
             const driver = drivers.find(d => d.name === driverName);
-            if (!driver) return 'unknown'; // Driver not in this race data
+            if (!driver) return 'unknown';
 
             const pos = driver.currentPosition;
             const isDNF = driver.isDNF;
@@ -96,7 +96,6 @@ export async function POST(request) {
             let result = 'pending';
 
             // Skip bets that are definitely for a different race (if we can tell)
-            // If race_id matches, or if it's a parlay (multi), we try to grade it.
             if (bet.race_id !== raceId && bet.race_id !== 'multi') {
                 continue;
             }
@@ -108,59 +107,85 @@ export async function POST(request) {
                 }
 
                 let allWon = true;
-                if (result !== 'pending') {
-                    updates.push({
-                        bet,
-                        result
-                    });
-                }
-            }
+                let anyLost = false;
+                let anyUnknown = false;
 
-            // Process updates
-            for (const update of updates) {
-                const { bet, result } = update;
+                for (const leg of bet.details) {
+                    const legResult = checkLeg(leg.driver, leg.type, raceDrivers);
 
-                // 1. Update bet status
-                await supabase
-                    .from('bets')
-                    .update({
-                        status: 'settled',
-                        result: result,
-                        settled_at: new Date().toISOString()
-                    })
-                    .eq('id', bet.id);
-
-                // 2. If won, pay the user
-                if (result === 'won') {
-                    // We need to fetch the user's CURRENT balance first to avoid race conditions 
-                    // (though strictly we should use a stored procedure or atomic increment, 
-                    // but for this MVP fetching is okay-ish if traffic is low).
-                    // Better: RPC call if we had one. 
-                    // We'll just fetch-and-update.
-                    const { data: user } = await supabase
-                        .from('users')
-                        .select('balance')
-                        .eq('id', bet.user_id)
-                        .single();
-
-                    if (user) {
-                        await supabase
-                            .from('users')
-                            .update({ balance: user.balance + bet.potential_payout })
-                            .eq('id', bet.user_id);
+                    if (legResult === 'lost') {
+                        anyLost = true;
+                        break; // Parlay is dead
+                    }
+                    if (legResult === 'unknown') {
+                        anyUnknown = true;
+                    }
+                    if (legResult !== 'won') {
+                        allWon = false;
                     }
                 }
-                settledCount++;
+
+                if (anyLost) result = 'lost';
+                else if (allWon && !anyUnknown) result = 'won';
+                else result = 'pending';
+
+            } else {
+                // Single Bet
+                const singleResult = checkLeg(bet.driver_name, bet.bet_type, raceDrivers);
+                if (singleResult !== 'unknown') {
+                    result = singleResult;
+                }
             }
 
-            return NextResponse.json({
-                success: true,
-                settledCount,
-                message: `Settled ${settledCount} bets`
-            });
-
-        } catch (error) {
-            console.error('Error settling race:', error);
-            return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+            // If we determined a result, queue the update
+            if (result !== 'pending') {
+                updates.push({
+                    bet,
+                    result
+                });
+            }
         }
+
+        // Process updates
+        for (const update of updates) {
+            const { bet, result } = update;
+
+            // 1. Update bet status
+            await supabase
+                .from('bets')
+                .update({
+                    status: 'settled',
+                    result: result,
+                    settled_at: new Date().toISOString()
+                })
+                .eq('id', bet.id);
+
+            // 2. If won, pay the user
+            if (result === 'won') {
+                const { data: user } = await supabase
+                    .from('users')
+                    .select('balance')
+                    .eq('id', bet.user_id)
+                    .single();
+
+                if (user) {
+                    await supabase
+                        .from('users')
+                        .update({ balance: user.balance + bet.potential_payout })
+                        .eq('id', bet.user_id);
+                }
+            }
+            settledCount++;
+        }
+
+        return NextResponse.json({
+            success: true,
+            settledCount,
+            message: `Settled ${settledCount} bets`
+        });
+
+    } catch (error) {
+        console.error('Error settling race:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
+}

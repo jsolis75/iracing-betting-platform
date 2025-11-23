@@ -8,9 +8,11 @@ export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const raceId = searchParams.get('raceId');
+        const ifModifiedSince = request.headers.get('if-modified-since');
 
         let data = null;
         let error = null;
+        let lastUpdated = null;
 
         // Try to fetch from Supabase (if configured)
         try {
@@ -35,48 +37,67 @@ export async function GET(request) {
             }
 
             const result = await query;
-            data = result.data;
+            if (result.data) {
+                data = result.data;
+                lastUpdated = new Date(data.last_updated);
+            }
             error = result.error;
         } catch (dbError) {
             // Supabase not configured, continue to local file
-            // console.log("Supabase not available:", dbError.message);
-        }
-
-        // If we got data from DB, return it
-        if (data && !error) {
-            return NextResponse.json(data.data);
         }
 
         // If DB failed or empty, TRY LOCAL FALLBACK
-        // console.log("DB failed or empty, checking local file...");
-        try {
-            const fs = require('fs');
-            const path = require('path');
-            const filePath = path.join(process.cwd(), 'src', 'data', 'live_race_data.json');
+        if (!data || error) {
+            try {
+                const fs = require('fs');
+                const path = require('path');
+                const filePath = path.join(process.cwd(), 'src', 'data', 'live_race_data.json');
 
-            if (fs.existsSync(filePath)) {
-                const fileContent = fs.readFileSync(filePath, 'utf-8');
-                const localData = JSON.parse(fileContent);
+                if (fs.existsSync(filePath)) {
+                    const fileContent = fs.readFileSync(filePath, 'utf-8');
+                    const localData = JSON.parse(fileContent);
 
-                // Check if data is recent (within 5 minutes)
-                const lastUpdated = new Date(localData.last_updated || 0);
-                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+                    // Check if data is recent (within 5 minutes)
+                    const localLastUpdated = new Date(localData.last_updated || 0);
+                    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
 
-                if (lastUpdated > fiveMinutesAgo) {
-                    // console.log('Serving race data from local file fallback');
-                    return NextResponse.json(localData);
+                    if (localLastUpdated > fiveMinutesAgo) {
+                        data = { data: localData }; // Structure to match DB format
+                        lastUpdated = localLastUpdated;
+                    }
                 }
+            } catch (localError) {
+                console.error('Local fallback failed:', localError);
             }
-        } catch (localError) {
-            console.error('Local fallback failed:', localError);
         }
 
-        // If both DB and Local failed, return "No active race"
-        return NextResponse.json({
-            message: "No active race found",
-            WeekendInfo: { TrackDisplayName: "Waiting for Broadcast..." },
-            DriverInfo: { Drivers: [] }
-        });
+        // If still no data, return 404/Empty
+        if (!data) {
+            return NextResponse.json({
+                message: "No active race found",
+                WeekendInfo: { TrackDisplayName: "Waiting for Broadcast..." },
+                DriverInfo: { Drivers: [] }
+            });
+        }
+
+        // CHECK CACHE
+        if (ifModifiedSince && lastUpdated) {
+            const ifModifiedSinceDate = new Date(ifModifiedSince);
+            // Compare timestamps (allow 1s difference for precision)
+            if (lastUpdated.getTime() <= ifModifiedSinceDate.getTime() + 1000) {
+                return new NextResponse(null, { status: 304 });
+            }
+        }
+
+        // Return Data with Last-Modified Header
+        const response = NextResponse.json(data.data);
+        if (lastUpdated) {
+            response.headers.set('Last-Modified', lastUpdated.toUTCString());
+            // Add Cache-Control to prevent browser from caching too aggressively without validation
+            response.headers.set('Cache-Control', 'no-cache, must-revalidate');
+        }
+
+        return response;
 
     } catch (error) {
         console.error('Error fetching race data:', error);

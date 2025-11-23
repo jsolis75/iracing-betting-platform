@@ -37,6 +37,8 @@ function HomeContent() {
     loadDriverStats();
   }, []);
 
+  const lastModifiedRef = React.useRef(null);
+
   useEffect(() => {
     // If there is no authenticated user we don't attempt to load anything.
     if (!user) {
@@ -48,12 +50,31 @@ function HomeContent() {
       try {
         // Fetch from our API route with optional raceId parameter
         const url = selectedRaceId
-          ? `/api/race-data?raceId=${selectedRaceId}&t=${Date.now()}`
-          : `/api/race-data?t=${Date.now()}`;
-        const response = await fetch(url, { signal });
+          ? `/api/race-data?raceId=${selectedRaceId}`
+          : `/api/race-data`;
+
+        const headers = {};
+        if (lastModifiedRef.current) {
+          headers['If-Modified-Since'] = lastModifiedRef.current;
+        }
+
+        const response = await fetch(url, { signal, headers });
+
+        if (response.status === 304) {
+          // Data hasn't changed, skip processing
+          return;
+        }
+
         if (!response.ok) {
           throw new Error(`Failed to fetch race data: ${response.status} `);
         }
+
+        // Update Last-Modified for next request
+        const newLastModified = response.headers.get('Last-Modified');
+        if (newLastModified) {
+          lastModifiedRef.current = newLastModified;
+        }
+
         const data = await response.json();
 
         // ---------------------------------------------------------------
@@ -265,7 +286,7 @@ function HomeContent() {
     // Poll every 5 seconds for live updates
     const interval = setInterval(() => {
       fetchRaceData(controller.signal);
-    }, 2000);
+    }, 5000);
 
     // Cleanup interval on unmount
     return () => {

@@ -14,43 +14,43 @@
 const calculatePreRaceOdds = (drivers) => {
     if (!drivers || drivers.length === 0) return [];
 
-    // Calculate field average iRating to detect outliers
-    const avgIRating = drivers.reduce((sum, d) => sum + (d.iRating || 1500), 0) / drivers.length;
+    // Calculate field statistics
+    const iRatings = drivers.map(d => Math.max(d.iRating || 1500, 1000));
+    const avgIRating = iRatings.reduce((a, b) => a + b, 0) / iRatings.length;
 
-    // Calculate win probability based ONLY on iRating
+    // Calculate win probability based ONLY on iRating with a flatter curve
     const driversWithProb = drivers.map(driver => {
         const iRating = Math.max(driver.iRating || 1500, 1000);
-
-        // Simple exponential scaling based on iRating
-        let iRatingFactor;
-        if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 4.5); // Very steep for top drivers
-        else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 3.5);
-        else iRatingFactor = Math.pow(iRating / 1000, 2.5);
-
-        // OUTLIER BONUS: If driver is significantly better than field, boost them
         const iRatingDiff = iRating - avgIRating;
-        let outlierBonus = 1.0;
-        if (iRatingDiff > 1500) {
-            // 1500+ above average: MASSIVE boost (e.g., 7k iR in 4.5k iR field)
-            outlierBonus = 4.0; // Was 2.5, increased for more favoritism
-        } else if (iRatingDiff > 1000) {
-            // 1000-1500 above average: Large boost
-            outlierBonus = 3.0; // Was 2.0
-        } else if (iRatingDiff > 500) {
-            // 500-1000 above average: Medium boost
-            outlierBonus = 2.0; // Was 1.5
-        }
 
-        return { ...driver, winProbability: iRatingFactor * outlierBonus };
+        // Base factor: Everyone has a chance
+        // Use a logistic-style function to flatten the extremes
+        // This prevents super-favorites even with high iRating gaps
+
+        // 1. Calculate raw strength relative to field
+        // 1000 iRating gap = ~2x strength (NASCAR style, not F1 style)
+        let strength = Math.pow(1.8, iRatingDiff / 1000);
+
+        // 2. Cap the maximum strength advantage to keep field tight
+        // No driver should be more than 4x likely to win than average
+        strength = Math.min(strength, 4.0);
+
+        // 3. Floor the minimum strength
+        // No driver should be less than 0.25x likely to win
+        strength = Math.max(strength, 0.25);
+
+        return { ...driver, winProbability: strength };
     });
 
     // Normalize probabilities
-    const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
-    const HOUSE_EDGE = 1.40; // Slightly less aggressive for pre-race
+    const totalStrength = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
+
+    // HOUSE EDGE: Lower edge for pre-race to encourage betting
+    const HOUSE_EDGE = 1.25;
 
     const normalized = driversWithProb.map(d => ({
         ...d,
-        winProbability: (d.winProbability / totalProb) * HOUSE_EDGE
+        winProbability: (d.winProbability / totalStrength) * HOUSE_EDGE
     }));
 
     return normalized.map(driver => {

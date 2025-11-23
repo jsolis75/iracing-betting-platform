@@ -41,9 +41,26 @@ export async function POST(request) {
                 return NextResponse.json({ error: 'Race found but has no data' }, { status: 400 });
             }
 
-            if (raceData.data.DriverInfo) {
+            if (raceData.data.SessionInfo && raceData.data.SessionInfo.Sessions) {
+                const sessions = raceData.data.SessionInfo.Sessions;
+                // Get the current active session based on SessionNum if available, otherwise last
+                const currentSessionIndex = raceData.data.SessionNum || (sessions.length - 1);
+                const session = sessions[currentSessionIndex] || sessions[sessions.length - 1];
+
+                // CRITICAL: Only settle if it's a RACE session
+                if (session.SessionType !== 'Race') {
+                    return NextResponse.json({ message: 'Race not yet finished (Current session: ' + session.SessionType + ')' });
+                }
+
+                // CRITICAL: Check SessionState to ensure race is actually over
+                // State 5 = Checkered, 6 = CoolDown, 7 = Finalized
+                // We want to wait for CoolDown (6) or Finalized (7) to be safe
+                const sessionState = raceData.data.SessionState;
+                if (sessionState < 6) { // 6 is CoolDown
+                    return NextResponse.json({ message: 'Race not yet official (State: ' + sessionState + ')' });
+                }
+
                 const rawDrivers = raceData.data.DriverInfo.Drivers;
-                const session = raceData.data.SessionInfo.Sessions.find(s => s.SessionType === 'Race') || raceData.data.SessionInfo.Sessions[raceData.data.SessionInfo.Sessions.length - 1];
                 const resultsPositions = session.ResultsPositions || [];
 
                 const posMap = {};

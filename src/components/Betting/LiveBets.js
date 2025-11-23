@@ -27,8 +27,8 @@ const LiveBets = ({ raceData }) => {
             return { status: 'In Progress', isWinning: true };
         }
 
-        // Handle slurmeister - manually settled
-        if (bet.bet_type === 'slurmeister') {
+        // Handle manual settlement bets
+        if (['slurmeister', 'fatality', 'kingkong'].includes(bet.bet_type)) {
             return {
                 status: '⚠️ Awaiting Manual Review',
                 isWinning: true

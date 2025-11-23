@@ -35,7 +35,39 @@ const SpecialsView = ({ race, isFinished }) => {
         {
             id: 'alqaeda',
             title: '💥 Al Qaeda Sighting',
-        < div className = { styles.container } >
+            question: 'Will there be an Al Qaeda sighting this race?',
+            definition: '3 or more drivers accumulating 17 or more incidents during the race.',
+            yesOdds: '+200',
+            noOdds: '-300'
+        },
+        {
+            id: 'slurmeister',
+            title: '🚫 Slurmeister',
+            question: 'Will there be a slurmeister this race?',
+            definition: '1 or more drivers drop a slur during the race (text or voice chat). Slurs determined by the National Slur Database (rsdb.org). ⚠️ Manually settled.',
+            yesOdds: '+150',
+            noOdds: '-200'
+        },
+        {
+            id: 'fatality',
+            title: '💀 Fatality',
+            question: 'Will a driver have a fatal accident?',
+            definition: 'Crash + DNF + Reasonable expectation of fatality in real life. ⚠️ Manually settled.',
+            yesOdds: '+500',
+            noOdds: '-800'
+        },
+        {
+            id: 'kingkong',
+            title: '🦍 High iRating King Kong',
+            question: 'Will a driver complain about high iRating/ego?',
+            definition: 'Driver complains about high iRating, ego, or top split racing. ⚠️ Manually settled.',
+            yesOdds: '+200',
+            noOdds: '-250'
+        }
+    ];
+
+    return (
+        <div className={styles.container}>
             <div className={styles.intro}>
                 <h3 className={styles.title}>🎲 Race Specials</h3>
                 <p className={styles.subtitle}>Bet on incident-based events during the race</p>
@@ -82,7 +114,7 @@ const SpecialsView = ({ race, isFinished }) => {
                     💡 Specials can be parlayed with regular driver bets for bigger payouts!
                 </p>
             </div>
-        </div >
+        </div>
     );
 };
 

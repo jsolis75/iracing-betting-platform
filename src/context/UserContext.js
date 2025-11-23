@@ -111,11 +111,25 @@ export const UserProvider = ({ children }) => {
         }
     };
 
-    const resetBalance = () => {
-        // This would need a backend endpoint to reset balance
-        // For now, just refresh user data
-        if (user) {
-            fetchUserData(user.username);
+    const resetBalance = async () => {
+        if (!user) return;
+
+        try {
+            const response = await fetch('/api/reset-balance', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ userId: user.id })
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    setUser(data.user);
+                    localStorage.setItem('iracing_betting_session', JSON.stringify(data.user));
+                }
+            }
+        } catch (error) {
+            console.error('Error resetting balance:', error);
         }
     };
 

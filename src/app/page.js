@@ -302,6 +302,24 @@ function HomeContent() {
     return (
       <main className="container">
         <div style={{ maxWidth: "400px", margin: "4rem auto" }}>
+
+          <div style={{
+            backgroundColor: 'rgba(46, 204, 113, 0.15)',
+            border: '1px solid #2ecc71',
+            borderRadius: '8px',
+            padding: '1.5rem',
+            marginBottom: '2rem',
+            textAlign: 'center'
+          }}>
+            <h2 style={{ color: '#2ecc71', fontSize: '1.4rem', marginBottom: '0.5rem', fontWeight: '800' }}>
+              🏁 100% Free to Play
+            </h2>
+            <p style={{ fontSize: '0.95rem', color: '#e2e8f0', lineHeight: '1.5' }}>
+              Use virtual currency to bet on live iRacing events.<br />
+              <strong style={{ color: '#fff' }}>No real money is ever involved.</strong>
+            </p>
+          </div>
+
           <h1 style={{ textAlign: "center", marginBottom: "2rem" }}>Welcome to iRacingBet</h1>
           <Login />
         </div>

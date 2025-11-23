@@ -60,6 +60,23 @@ const Login = () => {
                         {isLogin ? 'Login' : 'Sign Up'}
                     </button>
                 </form>
+
+                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border-color)' }}>
+                    <button
+                        type="button"
+                        className={styles.button}
+                        onClick={async () => {
+                            const randomId = Math.floor(Math.random() * 100000);
+                            const guestUser = `Guest_${randomId}`;
+                            const guestPass = `guest_${randomId}`;
+                            const result = await register(guestUser, '', guestPass);
+                            if (!result.success) setError(result.error);
+                        }}
+                        style={{ backgroundColor: '#4a5568' }}
+                    >
+                        Play as Guest (No Signup)
+                    </button>
+                </div>
                 <div className={styles.switchMode}>
                     {isLogin ? "Don't have an account? " : "Already have an account? "}
                     <span className={styles.link} onClick={() => setIsLogin(!isLogin)}>

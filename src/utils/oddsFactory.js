@@ -1,16 +1,55 @@
 /**
  * Odds Factory
- * Generates realistic-looking odds based on driver statistics, starting position, and LIVE race position.
- * Now includes dynamic odds that adjust as the race progresses.
+ * TWO MODELS:
+ * 1. PRE-RACE MODEL: Simple iRating-only odds for qualifying and before race starts
+ * 2. SOPHISTICATED MODEL: Advanced odds using position, stats, and live race data
+ * 
+ * Switches from pre-race to sophisticated after leader completes lap 1
  */
 
 /**
+ * PRE-RACE MODEL: Simple iRating-based odds for qualifying and pre-race
+ * Uses ONLY iRating to calculate odds - no position, no stats
+ */
+const calculatePreRaceOdds = (drivers) => {
+    if (!drivers || drivers.length === 0) return [];
+
+    // Calculate win probability based ONLY on iRating
+    const driversWithProb = drivers.map(driver => {
+        const iRating = Math.max(driver.iRating || 1500, 1000);
+
+        // Simple exponential scaling based on iRating
+        let iRatingFactor;
+        if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 4.5); // Very steep for top drivers
+        else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 3.5);
+        else iRatingFactor = Math.pow(iRating / 1000, 2.5);
+
+        return { ...driver, winProbability: iRatingFactor };
+    });
+
+    // Normalize probabilities
+    const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
+    const HOUSE_EDGE = 1.40; // Slightly less aggressive for pre-race
+
+    const normalized = driversWithProb.map(d => ({
+        ...d,
+        winProbability: (d.winProbability / totalProb) * HOUSE_EDGE
+    }));
+
+    return normalized.map(driver => {
+        const odds = calculateOdds(driver, normalized);
+        return { ...driver, odds };
+    });
+};
+
+/**
+ * SOPHISTICATED MODEL: Advanced odds calculation
  * Calculate odds for all drivers in a race field
  * @param {Array} drivers - Array of driver objects with iRating, startingPosition, currentPosition, etc.
  * @param {Object} raceState - Optional race state (lapsRemaining, totalLaps, etc.)
  * @returns {Array} - Array of drivers with calculated odds
  */
-export const calculateFieldOdds = (drivers, raceState = null) => {
+const calculateSophisticatedOdds = (drivers, raceState = null) => {
     if (!drivers || drivers.length === 0) return [];
 
     // Determine if we should use live odds (race in progress)
@@ -172,6 +211,30 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
         const odds = calculateOdds(driver, driversWithNormalizedProb);
         return { ...driver, odds };
     });
+};
+
+/**
+ * MAIN EXPORT: Determines which model to use
+ * Uses PRE-RACE model during qualifying and before lap 1 completion
+ * Switches to SOPHISTICATED model after leader completes lap 1
+ */
+export const calculateFieldOdds = (drivers, raceState = null) => {
+    if (!drivers || drivers.length === 0) return [];
+
+    // Check if race has started and leader has completed at least 1 lap
+    const raceStarted = raceState && raceState.lapsRemaining !== undefined;
+    const leaderCompletedLap1 = raceStarted && raceState.totalLaps !== "∞" &&
+        (parseInt(raceState.totalLaps) - raceState.lapsRemaining) >= 1;
+
+    // Use PRE-RACE model if race hasn't started or leader hasn't completed lap 1
+    if (!leaderCompletedLap1) {
+        console.log('Using PRE-RACE MODEL (iRating-only)');
+        return calculatePreRaceOdds(drivers);
+    }
+
+    // Use SOPHISTICATED model after lap 1
+    console.log('Using SOPHISTICATED MODEL (position + stats + iRating)');
+    return calculateSophisticatedOdds(drivers, raceState);
 };
 
 export const calculateOdds = (driver, allDrivers = [driver]) => {

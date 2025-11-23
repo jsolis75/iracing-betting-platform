@@ -38,9 +38,17 @@ const Leaderboard = () => {
         // Find bet with max profit
         const bestBet = wins.reduce((max, bet) => Number(bet.potential_payout) > Number(max.potential_payout) ? bet : max, wins[0]);
 
+        let details = `${bestBet.driver_name} (${bestBet.bet_type} @ ${bestBet.odds})`;
+
+        // Format Parlay details
+        if (bestBet.race_id === 'multi' && bestBet.details && Array.isArray(bestBet.details)) {
+            const legs = bestBet.details.map(leg => `${leg.driver} (${leg.type})`).join(' + ');
+            details = `Parlay: ${legs} (@ ${bestBet.odds})`;
+        }
+
         return {
             amount: Number(bestBet.potential_payout),
-            details: `${bestBet.driver_name} (${bestBet.bet_type} @ ${bestBet.odds})`
+            details: details
         };
     };
 
@@ -61,9 +69,17 @@ const Leaderboard = () => {
         // Find biggest contributor for tooltip
         const bestBet = underdogWins.reduce((max, bet) => Number(bet.potential_payout) > Number(max.potential_payout) ? bet : max, underdogWins[0]);
 
+        let details = `Top: ${bestBet.driver_name} (${bestBet.bet_type} @ ${bestBet.odds})`;
+
+        // Format Parlay details
+        if (bestBet.race_id === 'multi' && bestBet.details && Array.isArray(bestBet.details)) {
+            const legs = bestBet.details.map(leg => `${leg.driver} (${leg.type})`).join(' + ');
+            details = `Top: Parlay (${legs} @ ${bestBet.odds})`;
+        }
+
         return {
             amount: total,
-            details: `Top: ${bestBet.driver_name} (${bestBet.bet_type} @ ${bestBet.odds})`
+            details: details
         };
     };
 

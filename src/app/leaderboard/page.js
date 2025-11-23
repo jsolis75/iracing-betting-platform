@@ -29,30 +29,41 @@ const Leaderboard = () => {
         return () => clearInterval(interval);
     }, []);
 
-    const calculateBiggestWin = (user) => {
-        if (!user.betHistory || user.betHistory.length === 0) return 0;
+    const getBiggestWin = (user) => {
+        if (!user.betHistory || user.betHistory.length === 0) return { amount: 0, details: '' };
         const wins = user.betHistory.filter(bet => bet.result === 'won');
-        if (wins.length === 0) return 0;
-        // Database stores 'potential_payout' (profit) and 'stake'
-        // We want the biggest PROFIT, which is potential_payout.
-        // Or if we want Total Return - Stake, it's also potential_payout.
-        return Math.max(...wins.map(bet => Number(bet.potential_payout)));
+        if (wins.length === 0) return { amount: 0, details: '' };
+
+        // Find bet with max profit
+        const bestBet = wins.reduce((max, bet) => Number(bet.potential_payout) > Number(max.potential_payout) ? bet : max, wins[0]);
+
+        return {
+            amount: Number(bestBet.potential_payout),
+            details: `${bestBet.driver_name} (${bestBet.bet_type} @ ${bestBet.odds})`
+        };
     };
 
-    const calculateUnderdogProfit = (user) => {
-        if (!user.betHistory || user.betHistory.length === 0) return 0;
+    const getUnderdogStats = (user) => {
+        if (!user.betHistory || user.betHistory.length === 0) return { amount: 0, details: '' };
         const underdogWins = user.betHistory.filter(bet => {
             if (bet.result !== 'won' || !bet.odds) return false;
-
-            // Handle both string ("+400") and numeric (400) odds
             const oddsValue = typeof bet.odds === 'string'
                 ? parseInt(bet.odds.replace(/[+-]/g, ''))
                 : Math.abs(bet.odds);
-
             return oddsValue >= 400;
         });
-        // Sum of profits (potential_payout)
-        return underdogWins.reduce((sum, bet) => sum + Number(bet.potential_payout), 0);
+
+        if (underdogWins.length === 0) return { amount: 0, details: '' };
+
+        const total = underdogWins.reduce((sum, bet) => sum + Number(bet.potential_payout), 0);
+
+        // Find biggest contributor for tooltip
+        const bestBet = underdogWins.reduce((max, bet) => Number(bet.potential_payout) > Number(max.potential_payout) ? bet : max, underdogWins[0]);
+
+        return {
+            amount: total,
+            details: `Top: ${bestBet.driver_name} (${bestBet.bet_type} @ ${bestBet.odds})`
+        };
     };
 
     // Sort users by balance
@@ -60,18 +71,18 @@ const Leaderboard = () => {
 
     // Sort by biggest single win
     const topByBiggestWin = [...users]
-        .map(u => ({ ...u, biggestWin: calculateBiggestWin(u) }))
-        .sort((a, b) => b.biggestWin - a.biggestWin)
+        .map(u => ({ ...u, biggestWinData: getBiggestWin(u) }))
+        .sort((a, b) => b.biggestWinData.amount - a.biggestWinData.amount)
         .slice(0, 10);
 
     // Sort by underdog profit
     const topByUnderdog = [...users]
-        .map(u => ({ ...u, underdogProfit: calculateUnderdogProfit(u) }))
-        .filter(u => u.underdogProfit > 0)
-        .sort((a, b) => b.underdogProfit - a.underdogProfit)
+        .map(u => ({ ...u, underdogData: getUnderdogStats(u) }))
+        .filter(u => u.underdogData.amount > 0)
+        .sort((a, b) => b.underdogData.amount - a.underdogData.amount)
         .slice(0, 10);
 
-    const renderList = (users, valueExtractor, formatValue) => {
+    const renderList = (users, valueExtractor, formatValue, tooltipExtractor) => {
         if (loading) {
             return <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>Loading...</p>;
         }
@@ -92,7 +103,13 @@ const Leaderboard = () => {
                             {index + 1}
                         </span>
                         <span className={styles.username}>{u.username}</span>
-                        <span className={styles.value}>{formatValue(valueExtractor(u))}</span>
+                        <span
+                            className={styles.value}
+                            title={tooltipExtractor ? tooltipExtractor(u) : ''}
+                            style={{ cursor: tooltipExtractor ? 'help' : 'default' }}
+                        >
+                            {formatValue(valueExtractor(u))}
+                        </span>
                     </li>
                 ))}
             </ul>
@@ -113,13 +130,23 @@ const Leaderboard = () => {
 
                 <div className={styles.card}>
                     <h2 className={styles.cardTitle}>🏆 Biggest Single Win</h2>
-                    {renderList(topByBiggestWin, u => u.biggestWin || 0, v => `$${v.toFixed(2)}`)}
+                    {renderList(
+                        topByBiggestWin,
+                        u => u.biggestWinData.amount,
+                        v => `$${v.toFixed(2)}`,
+                        u => u.biggestWinData.details
+                    )}
                 </div>
 
                 <div className={styles.card}>
                     <h2 className={styles.cardTitle}>🐕 Underdog Kings</h2>
                     <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>Most profit from odds +400 or higher</p>
-                    {renderList(topByUnderdog, u => u.underdogProfit || 0, v => `$${v.toFixed(2)}`)}
+                    {renderList(
+                        topByUnderdog,
+                        u => u.underdogData.amount,
+                        v => `$${v.toFixed(2)}`,
+                        u => u.underdogData.details
+                    )}
                 </div>
             </div>
         </div>

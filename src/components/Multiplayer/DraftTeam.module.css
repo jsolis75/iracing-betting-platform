@@ -10,6 +10,15 @@
     font-size: 0.9rem;
 }
 
+.lockedWarning {
+    color: #f39c12;
+    background: rgba(243, 156, 18, 0.1);
+    padding: 0.75rem;
+    border-radius: 4px;
+    font-weight: bold;
+    margin-bottom: 1rem;
+}
+
 .driverList {
     flex: 1;
     overflow-y: auto;
@@ -41,10 +50,38 @@
     background: rgba(46, 204, 113, 0.1);
 }
 
+.locked {
+    opacity: 0.6;
+    cursor: not-allowed !important;
+}
+
+.locked:hover {
+    background: var(--background) !important;
+}
+
 .driverInfo {
     display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.driverMain {
+    display: flex;
     align-items: center;
+    gap: 0.5rem;
+}
+
+.driverStats {
+    display: flex;
     gap: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.stat {
+    display: flex;
+    align-items: center;
 }
 
 .number {

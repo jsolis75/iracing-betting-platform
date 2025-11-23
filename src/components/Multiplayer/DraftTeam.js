@@ -33,6 +33,20 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
             return alert("Please select 3 drivers and assign a Captain.");
         }
 
+        // Check if lineup is already locked
+        const lineupLocked = entry.driver_1 && entry.driver_2 && entry.driver_3;
+        if (lineupLocked) {
+            return alert("Your lineup is locked! You cannot change it once saved.");
+        }
+
+        // Warn user before first save
+        const confirmed = confirm(
+            "⚠️ WARNING: Once you save your lineup, you CANNOT edit it!\n\n" +
+            "Make sure you've selected the right drivers and captain before proceeding.\n\n" +
+            "Continue?"
+        );
+        if (!confirmed) return;
+
         setSaving(true);
         try {
             const res = await fetch('/api/multiplayer/draft', {
@@ -47,7 +61,7 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
             });
             const data = await res.json();
             if (data.success) {
-                alert("Lineup Saved!");
+                alert("Lineup Saved! Your lineup is now LOCKED.");
                 onDraftUpdate();
             } else {
                 alert(data.error);
@@ -59,12 +73,20 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
         }
     };
 
+    const lineupLocked = entry.driver_1 && entry.driver_2 && entry.driver_3;
+
     return (
         <div className={styles.container}>
             <h2>Draft Your Team</h2>
-            <p className={styles.instructions}>
-                Select 3 Drivers. Pick 1 Captain (1.5x Points).
-            </p>
+            {lineupLocked ? (
+                <p className={styles.lockedWarning}>
+                    🔒 Your lineup is LOCKED. You cannot make changes.
+                </p>
+            ) : (
+                <p className={styles.instructions}>
+                    Select 3 Drivers. Pick 1 Captain (1.5x Points). <strong>Lineup locks after saving!</strong>
+                </p>
+            )}
 
             <div className={styles.driverList}>
                 {drivers.length === 0 && (
@@ -81,15 +103,25 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
                     return (
                         <div
                             key={driver.UserID}
-                            className={`${styles.driverCard} ${isSelected ? styles.selected : ''}`}
-                            onClick={() => handleSelect(String(driver.UserID))}
+                            className={`${styles.driverCard} ${isSelected ? styles.selected : ''} ${lineupLocked ? styles.locked : ''}`}
+                            onClick={() => !lineupLocked && handleSelect(String(driver.UserID))}
                         >
                             <div className={styles.driverInfo}>
-                                <span className={styles.number}>#{driver.CarNumber || 'N/A'}</span>
-                                <span className={styles.name}>{driver.UserName || 'Unknown Driver'}</span>
+                                <div className={styles.driverMain}>
+                                    <span className={styles.number}>#{driver.CarNumber || 'N/A'}</span>
+                                    <span className={styles.name}>{driver.UserName || 'Unknown Driver'}</span>
+                                </div>
+                                <div className={styles.driverStats}>
+                                    <span className={styles.stat}>
+                                        <small>Start P{driver.CarIdxPosition || '?'}</small>
+                                    </span>
+                                    <span className={styles.stat}>
+                                        <small>iR: {driver.IRating ? Math.round(driver.IRating / 1000) + 'k' : '?'}</small>
+                                    </span>
+                                </div>
                             </div>
 
-                            {isSelected && (
+                            {isSelected && !lineupLocked && (
                                 <button
                                     className={`${styles.captainBtn} ${isCaptain ? styles.captainActive : ''}`}
                                     onClick={(e) => handleSetCaptain(String(driver.UserID), e)}
@@ -110,9 +142,9 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
                 <button
                     className={styles.saveBtn}
                     onClick={handleSave}
-                    disabled={saving || selectedDrivers.length !== 3 || !captain}
+                    disabled={lineupLocked || saving || selectedDrivers.length !== 3 || !captain}
                 >
-                    {saving ? 'Saving...' : 'Save Lineup'}
+                    {lineupLocked ? '🔒 Lineup Locked' : (saving ? 'Saving...' : 'Save Lineup (Final!)')}
                 </button>
             </div>
         </div>

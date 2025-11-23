@@ -1,0 +1,65 @@
+.container {
+    height: 100%;
+}
+
+.table {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.headerRow {
+    display: grid;
+    grid-template-columns: 0.5fr 2fr 1fr 1.5fr;
+    padding: 0.5rem;
+    font-weight: bold;
+    color: var(--text-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.row {
+    display: grid;
+    grid-template-columns: 0.5fr 2fr 1fr 1.5fr;
+    padding: 0.75rem 0.5rem;
+    background: var(--background);
+    border-radius: 4px;
+    align-items: center;
+}
+
+.me {
+    background: rgba(0, 87, 184, 0.1);
+    border: 1px solid var(--primary-blue);
+}
+
+.rank {
+    font-weight: bold;
+    color: var(--text-secondary);
+}
+
+.username {
+    font-weight: 600;
+}
+
+.score {
+    font-weight: bold;
+    color: var(--primary-green);
+}
+
+.lineup {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.miniBadge {
+    background: #333;
+    color: #fff;
+    padding: 0.1rem 0.3rem;
+    border-radius: 3px;
+    font-size: 0.7rem;
+}
+
+.cptBadge {
+    background: var(--primary-yellow);
+    color: #000;
+    font-weight: bold;
+}

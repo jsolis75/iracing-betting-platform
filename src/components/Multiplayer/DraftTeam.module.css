@@ -1,0 +1,114 @@
+.container {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.instructions {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.driverList {
+    flex: 1;
+    overflow-y: auto;
+    max-height: 500px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.driverCard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    background: var(--background);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.driverCard:hover {
+    background: var(--background-hover);
+}
+
+.selected {
+    border-color: var(--primary-green);
+    background: rgba(46, 204, 113, 0.1);
+}
+
+.driverInfo {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.number {
+    font-weight: bold;
+    color: var(--text-secondary);
+    min-width: 30px;
+}
+
+.name {
+    font-weight: 600;
+}
+
+.captainBtn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.captainActive {
+    background: var(--primary-yellow);
+    color: #000;
+    border-color: var(--primary-yellow);
+    font-weight: bold;
+}
+
+.footer {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.summary {
+    font-weight: bold;
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.captainBadge {
+    background: var(--primary-yellow);
+    color: #000;
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+}
+
+.saveBtn {
+    background: var(--primary-blue);
+    color: #fff;
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 4px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.saveBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}

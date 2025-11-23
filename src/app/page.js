@@ -375,10 +375,7 @@ function HomeContent() {
         </div>
       ) : (
         <>
-          <h1 style={{ textAlign: "center", marginBottom: "0.5rem", fontSize: "2rem" }}>Welcome to iRacingBet</h1>
-          <p style={{ textAlign: "center", marginBottom: "2rem", color: "#888", fontStyle: "italic" }}>
-            A place where iRacers can bet on their races and rig them
-          </p>
+
           {races.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '3rem', background: '#1e1e1e', borderRadius: '8px', margin: '2rem 0' }}>
               <h2>📡 Waiting for Broadcast</h2>

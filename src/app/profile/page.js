@@ -5,11 +5,21 @@ import DriverStats from '@/components/Profile/DriverStats';
 import BettingHistory from '@/components/Profile/BettingHistory';
 import { useUser } from '@/context/UserContext';
 import Login from '@/components/Auth/Login';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 const ProfilePage = () => {
     const { user, logout } = useUser();
 
-    if (!user) return <Login />;
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!user) {
+            router.push('/');
+        }
+    }, [user, router]);
+
+    if (!user) return null;
 
     return (
         <div className="container">

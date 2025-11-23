@@ -51,86 +51,36 @@ const MultiplayerContent = () => {
                     <>
                         <h1>Select a Race to Join Lobby</h1>
                         <div className={styles.raceList}>
-                            {activeRaces.length === 0 ? (
-                                <p>No active races found.</p>
-                            ) : (
-                                activeRaces.map(race => (
-                                    <div key={race.id} className={styles.raceCard}>
-                                        <h3>{race.name}</h3>
-                                        <p>{race.track}</p>
-                                        <a href={`/multiplayer?raceId=${race.id}`} className={styles.joinBtn}>
-                                            Enter Lobby
-                                        </a>
-                                    </div>
-                                ))
-                            )}
                         </div>
-                    </>
-                )}
-            </div>
-        );
-    }
+                    </div>
 
-    if (loading) return <div className={styles.container}>Loading Lobby...</div>;
-
-    return (
-        <div className={styles.container}>
-            <div className={styles.header}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <a href="/multiplayer" className={styles.backBtn}>← All Races</a>
-                    <h1>Fantasy Draft Lobby</h1>
-                </div>
-                <div className={styles.prizePool}>
-                    Prize Pool: <span>${lobby ? lobby.prize_pool : 0}</span>
-                </div>
-            </div>
-
-            {lobby && lobby.status === 'tiebreaker' && myEntry?.status === 'active' && (
-                <div className={styles.rpsOverlay}>
-                    <RockPaperScissors
-                        lobbyId={lobby.id}
-                        userId={user.id}
-                        onPlayed={() => fetchLobby()} // Refresh to check status
-                    />
-                </div>
-            )}
-
-            {!myEntry ? (
-                <div className={styles.joinSection}>
-                    <h2>Entry Fee: $500</h2>
-                    <button onClick={handleJoin} className={styles.joinBtn}>
-                        Join Contest
-                    </button>
-                </div>
-            ) : (
-                <div className={styles.gameArea}>
-                    <div className={styles.leftCol}>
-                        <DraftTeam
-                            drivers={(raceData?.DriverInfo?.Drivers || []).filter(d => d.CarIsPaceCar === 0 && d.IsSpectator === 0)}
-                            entry={myEntry}
+                {lobby && lobby.status === 'tiebreaker' && myEntry?.status === 'active' && (
+                    <div className={styles.rpsOverlay}>
+                        <RockPaperScissors
                             lobbyId={lobby.id}
-                            onDraftUpdate={fetchLobby}
+                            userId={user.id}
+                            onPlayed={() => fetchLobby()} // Refresh to check status
                         />
                     </div>
-                    <div className={styles.rightCol}>
-                        {myEntry && myEntry.driver_1 ? (
-                            <LobbyLeaderboard
-                                entries={entries}
-                                drivers={raceData?.DriverInfo?.Drivers || []}
-                                raceData={raceData}
-                            />
+                )}
+
+                {!myEntry ? (
+                    <div className={styles.joinSection}>
+                        <h2>Entry Fee: $500</h2>
+                                />
                         ) : (
-                            <div className={styles.leaderboardPlaceholder}>
-                                <h3>Live Standings</h3>
-                                <p>Draft your team to view the leaderboard!</p>
-                            </div>
-                        )}
+                        <div className={styles.leaderboardPlaceholder}>
+                            <h3>Live Standings</h3>
+                            <p>Draft your team to view the leaderboard!</p>
+                        </div>
+                            )}
                     </div>
-                </div>
-            )}
-        </div>
-    );
-};
+                    </div>
+        )
+    }
+            </div >
+        );
+    };
 
 const MultiplayerPage = () => {
     return (

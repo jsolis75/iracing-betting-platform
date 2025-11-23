@@ -74,6 +74,7 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
                     </div>
                 )}
                 {drivers.map(driver => {
+                    if (!driver || !driver.UserID) return null;
                     const isSelected = selectedDrivers.includes(String(driver.UserID));
                     const isCaptain = captain === String(driver.UserID);
 
@@ -84,8 +85,8 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
                             onClick={() => handleSelect(String(driver.UserID))}
                         >
                             <div className={styles.driverInfo}>
-                                <span className={styles.number}>#{driver.CarNumber}</span>
-                                <span className={styles.name}>{driver.UserName}</span>
+                                <span className={styles.number}>#{driver.CarNumber || 'N/A'}</span>
+                                <span className={styles.name}>{driver.UserName || 'Unknown Driver'}</span>
                             </div>
 
                             {isSelected && (

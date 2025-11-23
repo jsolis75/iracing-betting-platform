@@ -336,17 +336,19 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
 
     const threatImpact = threatsFromBehind * (0.08 * (1 - raceProgress));
 
-    // PROGRESSIVE FAVORITISM
+    // PROGRESSIVE FAVORITISM (adjusted for slightly higher odds on top 10, lower on P11-14)
     if (currentPos <= 3) {
-        top10Prob = Math.min(top10Prob * 5.0, 0.95); // -1900 to -2500
+        top10Prob = Math.min(top10Prob * 5.0, 0.92); // Was 0.95, now -1150 to -2000 (slightly higher odds)
     } else if (currentPos <= 6) {
-        top10Prob = Math.min(top10Prob * 3.5, 0.90); // -900 to -1500
+        top10Prob = Math.min(top10Prob * 3.5, 0.87); // Was 0.90, now -650 to -1200
     } else if (currentPos <= 9) {
-        top10Prob = Math.min(top10Prob * 2.5, 0.82); // -350 to -600
+        top10Prob = Math.min(top10Prob * 2.5, 0.78); // Was 0.82, now -250 to -450
     } else if (currentPos === 10) {
-        top10Prob = Math.min(top10Prob * 1.8, 0.67); // -100 to -200 (BUBBLE)
+        top10Prob = Math.min(top10Prob * 1.8, 0.64); // Was 0.67, now -80 to -180 (BUBBLE)
     } else if (currentPos <= 12) {
-        top10Prob = Math.min(top10Prob * 1.3, 0.55); // +80 to +200
+        top10Prob = Math.min(top10Prob * 1.4, 0.60); // Was 1.3/0.55, now -150 to -100 (more favorable)
+    } else if (currentPos <= 14) {
+        top10Prob = Math.min(top10Prob * 1.3, 0.57); // New tier, now -75 to -130 (more favorable)
     } else if (currentPos <= 15) {
         const fieldSizeMultiplier = fieldSize <= 25 ? 1.2 : 1.1;
         top10Prob = Math.min(top10Prob * fieldSizeMultiplier, 0.48); // +200 to +400

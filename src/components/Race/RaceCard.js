@@ -155,6 +155,7 @@ const RaceCard = ({ race }) => {
                                                 <br />
                                                 <span style={{ fontSize: '0.85em', color: '#aaa' }}>
                                                     Win: {driver.stats.winPercentage?.toFixed(1)}% • Avg Inc: {driver.stats.avgIncidents?.toFixed(2)}
+                                                    {driver.lapsLed > 0 && ` • Laps Led: ${driver.lapsLed}`}
                                                 </span>
                                             </>
                                         )}

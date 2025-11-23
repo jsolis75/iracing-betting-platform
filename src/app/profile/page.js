@@ -1,9 +1,7 @@
 "use client";
 
 import React from 'react';
-import BettingHistory from '@/components/Profile/BettingHistory';
-import { useUser } from '@/context/UserContext';
-import Login from '@/components/Auth/Login';
+import DriverStats from '@/components/Profile/DriverStats';
 
 const ProfilePage = () => {
     const { user, logout } = useUser();
@@ -44,6 +42,7 @@ const ProfilePage = () => {
                 </div>
             </div>
 
+            <DriverStats />
             <BettingHistory />
         </div>
     );

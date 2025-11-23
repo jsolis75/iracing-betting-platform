@@ -67,6 +67,12 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
             </p>
 
             <div className={styles.driverList}>
+                {drivers.length === 0 && (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: '#888' }}>
+                        No drivers loaded. <br />
+                        <small>Waiting for race data...</small>
+                    </div>
+                )}
                 {drivers.map(driver => {
                     const isSelected = selectedDrivers.includes(String(driver.UserID));
                     const isCaptain = captain === String(driver.UserID);

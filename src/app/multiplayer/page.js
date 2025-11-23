@@ -18,6 +18,17 @@ const MultiplayerContent = () => {
     const [myEntry, setMyEntry] = useState(null);
     const [loading, setLoading] = useState(true);
     const [raceData, setRaceData] = useState(null);
+    const [activeRaces, setActiveRaces] = useState([]);
+
+    // Fetch Active Races (if no raceId)
+    useEffect(() => {
+        if (!raceId) {
+            fetch('/api/races')
+                .then(res => res.json())
+                .then(data => setActiveRaces(data.races || []))
+                .catch(err => console.error("Failed to fetch races", err));
+        }
+    }, [raceId]);
 
     // Fetch Race Data (for drivers list)
     useEffect(() => {
@@ -83,7 +94,29 @@ const MultiplayerContent = () => {
         }
     };
 
-    if (!raceId) return <div className={styles.container}>Please select a race from the home page.</div>;
+    if (!raceId) {
+        return (
+            <div className={styles.container}>
+                <h1>Select a Race to Join Lobby</h1>
+                <div className={styles.raceList}>
+                    {activeRaces.length === 0 ? (
+                        <p>No active races found.</p>
+                    ) : (
+                        activeRaces.map(race => (
+                            <div key={race.id} className={styles.raceCard}>
+                                <h3>{race.name}</h3>
+                                <p>{race.track}</p>
+                                <a href={`/multiplayer?raceId=${race.id}`} className={styles.joinBtn}>
+                                    Enter Lobby
+                                </a>
+                            </div>
+                        ))
+                    )}
+                </div>
+            </div>
+        );
+    }
+
     if (loading) return <div className={styles.container}>Loading Lobby...</div>;
 
     return (

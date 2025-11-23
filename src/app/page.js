@@ -300,22 +300,22 @@ function HomeContent() {
   // ---------------------------------------------------------------------
   if (!user) {
     return (
-      <main className="container">
-        <div style={{ maxWidth: "400px", margin: "4rem auto" }}>
+      <main className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ maxWidth: "450px", width: "100%", padding: "2rem 0" }}>
 
           <div style={{
             backgroundColor: 'var(--background-card)',
             border: '1px solid var(--border-color)',
             borderRadius: '8px',
-            padding: '2rem',
+            padding: '1.5rem',
             marginBottom: '2rem',
             textAlign: 'center',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
           }}>
             <h2 style={{
               color: 'var(--primary-green)',
-              fontSize: '1.5rem',
-              marginBottom: '1rem',
+              fontSize: '1.25rem',
+              marginBottom: '0.75rem',
               fontWeight: '800',
               display: 'flex',
               alignItems: 'center',
@@ -324,15 +324,14 @@ function HomeContent() {
             }}>
               🛡️ 100% Free to Play
             </h2>
-            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', lineHeight: '1.6', maxWidth: '90%', margin: '0 auto' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
               Experience the thrill of iRacing betting with zero risk.
-              We use virtual currency only.
               <br />
-              <strong style={{ color: 'var(--text-primary)', fontWeight: '600' }}>No real money. No credit cards. Just fun.</strong>
+              <strong style={{ color: 'var(--text-primary)', fontWeight: '600' }}>No real money. Just fun.</strong>
             </p>
           </div>
 
-          <h1 style={{ textAlign: "center", marginBottom: "2rem" }}>Welcome to iRacingBet</h1>
+          <h1 style={{ textAlign: "center", marginBottom: "1.5rem", fontSize: "1.75rem" }}>Welcome to iRacingBet</h1>
           <Login />
         </div>
       </main>

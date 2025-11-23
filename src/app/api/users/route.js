@@ -1,17 +1,52 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
 
-// GET - Fetch user by username
+// GET - Fetch user by username OR all users for leaderboard
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const username = searchParams.get('username');
 
+        const supabase = getSupabaseClient();
+
+        // If no username, return all users for leaderboard
         if (!username) {
-            return NextResponse.json({ error: 'Username required' }, { status: 400 });
+            try {
+                // Fetch all users
+                const { data: users, error: usersError } = await supabase
+                    .from('users')
+                    .select('id, username, email, balance, created_at')
+                    .order('balance', { ascending: false });
+
+                if (usersError) {
+                    console.error('Error fetching users:', usersError);
+                    return NextResponse.json({ users: [] }, { status: 200 });
+                }
+
+                // Fetch bet history for all users
+                const { data: bets, error: betsError } = await supabase
+                    .from('bets')
+                    .select('*');
+
+                if (betsError) {
+                    console.error('Error fetching bets:', betsError);
+                }
+
+                // Attach bet history to each user
+                const usersWithBets = users.map(user => ({
+                    ...user,
+                    betHistory: bets ? bets.filter(bet => bet.user_id === user.id) : []
+                }));
+
+                return NextResponse.json({ users: usersWithBets });
+            } catch (err) {
+                console.error('Leaderboard data fetch error:', err);
+                // Return empty array instead of error for better UX
+                return NextResponse.json({ users: [] }, { status: 200 });
+            }
         }
 
-        const supabase = getSupabaseClient();
+        // Fetch specific user by username
         const { data, error } = await supabase
             .from('users')
             .select('id, username, email, balance, created_at')

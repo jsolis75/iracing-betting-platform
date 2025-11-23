@@ -116,7 +116,7 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
                                         <small>Start P{driver.CarIdxPosition || '?'}</small>
                                     </span>
                                     <span className={styles.stat}>
-                                        <small>iR: {driver.IRating ? Math.round(driver.IRating / 1000) + 'k' : '?'}</small>
+                                        <small>iR: {driver.IRating || '?'}</small>
                                     </span>
                                 </div>
                             </div>

@@ -7,11 +7,31 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
 
     // --- SCORING LOGIC ---
     const calculateDriverScore = (driver, isCaptain) => {
-        if (!driver || !driver.Position) return 0;
+        if (!driver) {
+            console.log("No driver data");
+            return { posPoints: 0, diffPoints: 0, total: 0 };
+        }
+
+        // Try multiple position fields
+        const currentPos = driver.Position || driver.CarIdxPosition || driver.ResultsPosition;
+        const startPos = driver.CarIdxPosition || driver.StartPosition || currentPos;
+
+        console.log("Driver scoring:", {
+            name: driver.UserName,
+            carNum: driver.CarNumber,
+            currentPos,
+            startPos,
+            availableFields: Object.keys(driver).filter(k => k.toLowerCase().includes('pos'))
+        });
+
+        if (!currentPos) {
+            console.log("No position data yet for", driver.UserName);
+            return { posPoints: 0, diffPoints: 0, total: 0 };
+        }
 
         // 1. Position Points (DraftKings Exact)
         let posPoints = 0;
-        const pos = driver.Position;
+        const pos = currentPos;
 
         if (pos === 1) posPoints = 45;
         else if (pos === 2) posPoints = 42;
@@ -24,7 +44,6 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
         }
 
         // 2. Place Differential
-        const startPos = driver.CarIdxPosition || pos;
         const diffPoints = startPos - pos;
 
         let driverScore = posPoints + diffPoints;
@@ -33,6 +52,8 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
         if (isCaptain) {
             driverScore *= 1.5;
         }
+
+        console.log("Calculated score:", { posPoints, diffPoints, total: driverScore, isCaptain });
 
         return { posPoints, diffPoints, total: driverScore };
     };

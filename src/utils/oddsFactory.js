@@ -309,15 +309,15 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     top3Odds = Math.round(top3Odds / 10) * 10;
     const top3OddsStr = top3Odds > 0 ? `+${top3Odds}` : `${top3Odds}`;
 
-    // Top 10 Odds - HARDCODED FAVORITISM FOR P1-P10 + LAPS LED FACTOR
+    // Top 10 Odds - PROGRESSIVE: P1-P3 biggest favorites, P10 = bubble (-100 to -200)
     const fieldSize = allDrivers.length;
     let top10Prob = Math.min(winProbability * 3.5 + (topFinishAbility * 0.3), 0.90);
 
-    // LAPS LED FACTOR: Drivers who have led laps remain favorites even if shuffled back
+    // LAPS LED FACTOR
     const lapsLed = driver.lapsLed || 0;
     let lapsLedBonus = 1.0;
     if (lapsLed > 0) {
-        lapsLedBonus = Math.min(1.0 + (lapsLed * 0.03), 2.0); // 3% per lap led, caps at 2.0x
+        lapsLedBonus = Math.min(1.0 + (lapsLed * 0.03), 2.0);
     }
 
     // HIGH IRATING THREAT FACTOR
@@ -334,31 +334,35 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
         }).length;
     }
 
-    const threatImpact = threatsFromBehind * (0.10 * (1 - raceProgress));
+    const threatImpact = threatsFromBehind * (0.08 * (1 - raceProgress));
 
-    // HARDCODED: TOP 10 ALWAYS GET MASSIVE FAVORITISM (negative odds)
-    if (currentPos <= 10) {
-        // Force minimum top10 probability based on position
-        const minProbForTop10 = 0.75 + (11 - currentPos) * 0.02; // P1=0.95, P10=0.77
-        top10Prob = Math.max(top10Prob * 4.0, minProbForTop10);
-        top10Prob = Math.min(top10Prob - threatImpact, 0.97);
+    // PROGRESSIVE FAVORITISM
+    if (currentPos <= 3) {
+        top10Prob = Math.min(top10Prob * 5.0, 0.95); // -1900 to -2500
+    } else if (currentPos <= 6) {
+        top10Prob = Math.min(top10Prob * 3.5, 0.90); // -900 to -1500
+    } else if (currentPos <= 9) {
+        top10Prob = Math.min(top10Prob * 2.5, 0.82); // -350 to -600
+    } else if (currentPos === 10) {
+        top10Prob = Math.min(top10Prob * 1.8, 0.67); // -100 to -200 (BUBBLE)
     } else if (currentPos <= 12) {
-        top10Prob = Math.min(top10Prob * 1.5 - threatImpact * 0.7, 0.70);
+        top10Prob = Math.min(top10Prob * 1.3, 0.55); // +80 to +200
     } else if (currentPos <= 15) {
-        const fieldSizeMultiplier = fieldSize <= 25 ? 1.35 : 1.25;
-        top10Prob = Math.min(top10Prob * fieldSizeMultiplier - threatImpact * 0.5, 0.65);
+        const fieldSizeMultiplier = fieldSize <= 25 ? 1.2 : 1.1;
+        top10Prob = Math.min(top10Prob * fieldSizeMultiplier, 0.48); // +200 to +400
     } else if (currentPos <= 20) {
-        top10Prob = Math.min(top10Prob * 1.1, 0.55);
+        top10Prob = Math.min(top10Prob * 1.05, 0.40); // +500 to +700
     } else {
         if (thisDriverIRating > highIRThreshold) {
-            top10Prob = Math.min(top10Prob * 1.05, 0.50);
+            top10Prob = Math.min(top10Prob * 1.02, 0.35);
         } else {
-            top10Prob = Math.min(top10Prob, 0.45);
+            top10Prob = Math.min(top10Prob, 0.30);
         }
     }
 
-    // Apply laps led bonus
-    top10Prob = Math.min(top10Prob * lapsLedBonus, 0.98);
+    // Apply threat impact and laps led bonus
+    top10Prob = Math.max(top10Prob - threatImpact, 0.15);
+    top10Prob = Math.min(top10Prob * lapsLedBonus, 0.97);
 
     let top10Odds = probToOdds(top10Prob);
     top10Odds = Math.max(-3000, Math.min(1200, top10Odds));

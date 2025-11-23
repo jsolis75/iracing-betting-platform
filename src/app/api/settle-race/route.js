@@ -93,8 +93,8 @@ export async function POST(request) {
 
         // Helper to check a single leg result
         const checkLeg = (driverName, betType, drivers, selection = null) => {
-            // Skip slurmeister - it's manually settled
-            if (betType === 'slurmeister') {
+            // Skip manual settlement bets
+            if (['slurmeister', 'fatality', 'kingkong'].includes(betType)) {
                 return 'unknown'; // Leave as pending for manual settlement
             }
 

@@ -87,22 +87,22 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
                         <div key={entry.id} className={`${styles.row} ${isMe ? styles.me : ''}`}>
                             <span className={styles.rank}>{index + 1}</span>
                             <span className={styles.username}>{entry.username}</span>
-                            <span className={styles.score}>{entry.scoreData.total.toFixed(1)}</span>
+                            <span className={styles.score}>{(entry.scoreData?.total || 0).toFixed(1)}</span>
                             <div className={styles.breakdown}>
-                                {entry.scoreData.breakdown.map((item, idx) => (
+                                {entry.scoreData?.breakdown?.map((item, idx) => (
                                     <div key={idx} className={`${styles.driverScore} ${item.isCaptain ? styles.captain : ''}`}>
                                         <span className={styles.driverNum}>
-                                            #{item.driver.CarNumber}
+                                            #{item.driver?.CarNumber || '?'}
                                             {item.isCaptain && ' 👑'}
                                         </span>
                                         <span className={styles.driverPts}>
-                                            {item.total.toFixed(1)}
+                                            {(item.total || 0).toFixed(1)}
                                         </span>
                                         <small className={styles.driverDetails}>
-                                            (Pos: {item.posPoints} | Diff: {item.diffPoints >= 0 ? '+' : ''}{item.diffPoints})
+                                            (Pos: {item.posPoints || 0} | Diff: {(item.diffPoints || 0) >= 0 ? '+' : ''}{item.diffPoints || 0})
                                         </small>
                                     </div>
-                                ))}
+                                )) || <span style={{ color: '#888', fontSize: '0.85rem' }}>No lineup set</span>}
                             </div>
                         </div>
                     );

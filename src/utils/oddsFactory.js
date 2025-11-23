@@ -330,94 +330,47 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
         threatsFromBehind = allDrivers.filter(d => {
             const theirPos = d.currentPosition || d.startingPosition || 99;
             const theirIR = d.iRating || 1500;
-            return theirPos > currentPos && theirIR > highIRThreshold;
-        }).length;
-    }
+            const licClass = licString.charAt(0).toUpperCase();
 
-    const threatImpact = threatsFromBehind * (0.08 * (1 - raceProgress));
+            let incidentScore = 0;
+            if (avgIncidents <= 2.0) incidentScore = 0.1;
+            else if (avgIncidents <= 3.5) incidentScore = 0.3;
+            else if (avgIncidents <= 5.0) incidentScore = 0.6;
+            else incidentScore = 0.9;
 
-    // RACE PROGRESS MULTIPLIER: As race goes on, current position becomes MORE important
-    const raceProgressMultiplier = 1.0 + (raceProgress * 0.8); // 1.0x early, up to 1.8x late
+            let licenseScore = 0;
+            if (licClass === 'P') licenseScore = 0.0;
+            else if (licClass === 'A') licenseScore = 0.2;
+            else if (licClass === 'B') licenseScore = 0.4;
+            else if (licClass === 'C') licenseScore = 0.7;
+            else licenseScore = 1.0;
 
-    // PROGRESSIVE FAVORITISM
-    if (currentPos <= 3) {
-        top10Prob = Math.min(top10Prob * 5.0 * raceProgressMultiplier, 0.96);
-    } else if (currentPos <= 6) {
-        top10Prob = Math.min(top10Prob * 3.5 * raceProgressMultiplier, 0.93);
-    } else if (currentPos <= 9) {
-        top10Prob = Math.min(top10Prob * 2.5 * raceProgressMultiplier, 0.88);
-    } else if (currentPos === 10) {
-        top10Prob = Math.min(top10Prob * 1.8 * raceProgressMultiplier, 0.80);
-    } else if (currentPos <= 12) {
-        top10Prob = Math.min(top10Prob * 1.4, 0.60);
-    } else if (currentPos <= 14) {
-        top10Prob = Math.min(top10Prob * 1.3, 0.57);
-    } else if (currentPos <= 15) {
-        const fieldSizeMultiplier = fieldSize <= 25 ? 1.2 : 1.1;
-        top10Prob = Math.min(top10Prob * fieldSizeMultiplier, 0.48);
-    } else if (currentPos <= 20) {
-        top10Prob = Math.min(top10Prob * 1.05, 0.40);
-    } else {
-        if (thisDriverIRating > highIRThreshold) {
-            top10Prob = Math.min(top10Prob * 1.02, 0.35);
-        } else {
-            top10Prob = Math.min(top10Prob, 0.30);
-        }
-    }
+            const riskScore = (incidentScore * 0.7) + (licenseScore * 0.3);
+            const baseCrashProb = 0.08;
+            const variableCrashProb = riskScore * 0.60;
+            let crashProbability = baseCrashProb + variableCrashProb;
+            crashProbability = Math.min(crashProbability * 1.25, 0.85);
 
-    // Apply threat impact and laps led bonus
-    top10Prob = Math.max(top10Prob - threatImpact, 0.15);
-    top10Prob = Math.min(top10Prob * lapsLedBonus, 0.97);
+            let crashOdds = probToOdds(crashProbability);
+            crashOdds = Math.max(-200, Math.min(800, crashOdds));
 
-    let top10Odds = probToOdds(top10Prob);
-    top10Odds = Math.max(-3000, Math.min(1200, top10Odds));
-    top10Odds = Math.round(top10Odds / 10) * 10;
-    const top10OddsStr = top10Odds > 0 ? `+${top10Odds}` : `${top10Odds}`;
+            if (Math.abs(crashOdds) < 200) crashOdds = Math.round(crashOdds / 5) * 5;
+            else crashOdds = Math.round(crashOdds / 10) * 10;
 
-    // Crash Odds
-    const avgIncidents = stats.avgIncidents || 3.0;
-    const licString = driver.LicString || driver.licenseClass || '';
-    const licClass = licString.charAt(0).toUpperCase();
+            const crashOddsStr = crashOdds > 0 ? `+${crashOdds}` : `${crashOdds}`;
 
-    let incidentScore = 0;
-    if (avgIncidents <= 2.0) incidentScore = 0.1;
-    else if (avgIncidents <= 3.5) incidentScore = 0.3;
-    else if (avgIncidents <= 5.0) incidentScore = 0.6;
-    else incidentScore = 0.9;
+            return {
+                win: winOddsStr,
+                top3: top3OddsStr,
+                top10: top10OddsStr,
+                crash: crashOddsStr
+            };
+        };
 
-    let licenseScore = 0;
-    if (licClass === 'P') licenseScore = 0.0;
-    else if (licClass === 'A') licenseScore = 0.2;
-    else if (licClass === 'B') licenseScore = 0.4;
-    else if (licClass === 'C') licenseScore = 0.7;
-    else licenseScore = 1.0;
-
-    const riskScore = (incidentScore * 0.7) + (licenseScore * 0.3);
-    const baseCrashProb = 0.08;
-    const variableCrashProb = riskScore * 0.60;
-    let crashProbability = baseCrashProb + variableCrashProb;
-    crashProbability = Math.min(crashProbability * 1.25, 0.85);
-
-    let crashOdds = probToOdds(crashProbability);
-    crashOdds = Math.max(-200, Math.min(800, crashOdds));
-
-    if (Math.abs(crashOdds) < 200) crashOdds = Math.round(crashOdds / 5) * 5;
-    else crashOdds = Math.round(crashOdds / 10) * 10;
-
-    const crashOddsStr = crashOdds > 0 ? `+${crashOdds}` : `${crashOdds}`;
-
-    return {
-        win: winOddsStr,
-        top3: top3OddsStr,
-        top10: top10OddsStr,
-        crash: crashOddsStr
-    };
-};
-
-export const mockDrivers = [
-    { id: 1, name: "Max Verstappen", iRating: 9200, wins: 150, starts: 400, avgIncidents: 2.5, number: "1", startingPosition: 1 },
-    { id: 2, name: "Lando Norris", iRating: 8500, wins: 90, starts: 350, avgIncidents: 3.1, number: "4", startingPosition: 2 },
-    { id: 3, name: "Fernando Alonso", iRating: 7800, wins: 80, starts: 500, avgIncidents: 2.8, number: "14", startingPosition: 5 },
-    { id: 4, name: "Rookie Driver", iRating: 1500, wins: 2, starts: 50, avgIncidents: 8.5, number: "99", startingPosition: 18 },
-    { id: 5, name: "Mid Pack Mike", iRating: 3500, wins: 10, starts: 200, avgIncidents: 5.0, number: "42", startingPosition: 12 },
-];
+        export const mockDrivers = [
+            { id: 1, name: "Max Verstappen", iRating: 9200, wins: 150, starts: 400, avgIncidents: 2.5, number: "1", startingPosition: 1 },
+            { id: 2, name: "Lando Norris", iRating: 8500, wins: 90, starts: 350, avgIncidents: 3.1, number: "4", startingPosition: 2 },
+            { id: 3, name: "Fernando Alonso", iRating: 7800, wins: 80, starts: 500, avgIncidents: 2.8, number: "14", startingPosition: 5 },
+            { id: 4, name: "Rookie Driver", iRating: 1500, wins: 2, starts: 50, avgIncidents: 8.5, number: "99", startingPosition: 18 },
+            { id: 5, name: "Mid Pack Mike", iRating: 3500, wins: 10, starts: 200, avgIncidents: 5.0, number: "42", startingPosition: 12 },
+        ];

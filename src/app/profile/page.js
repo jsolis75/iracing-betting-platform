@@ -2,6 +2,9 @@
 
 import React from 'react';
 import DriverStats from '@/components/Profile/DriverStats';
+import BettingHistory from '@/components/Profile/BettingHistory';
+import { useUser } from '@/context/UserContext';
+import Login from '@/components/Auth/Login';
 
 const ProfilePage = () => {
     const { user, logout } = useUser();

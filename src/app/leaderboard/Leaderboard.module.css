@@ -76,6 +76,84 @@
     flex: 1;
 }
 
+.container {
+    padding: 2rem;
+}
+
+.title {
+    font-size: 2rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 2rem;
+}
+
+.card {
+    background-color: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.cardTitle {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.listItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.listItem:last-child {
+    border-bottom: none;
+}
+
+.rank {
+    font-weight: 800;
+    color: var(--text-muted);
+    width: 30px;
+}
+
+.rank1 {
+    color: #FFD700;
+}
+
+.rank2 {
+    color: #C0C0C0;
+}
+
+.rank3 {
+    color: #CD7F32;
+}
+
+.username {
+    font-weight: 600;
+    color: var(--text-primary);
+    flex: 1;
+}
+
 .value {
     font-weight: 700;
     color: var(--primary-blue);
@@ -83,4 +161,38 @@
 
 .highlight {
     color: var(--status-success);
+}
+
+.tooltipContainer {
+    position: relative;
+    display: inline-block;
+    cursor: help;
+}
+
+.tooltipText {
+    visibility: hidden;
+    width: 200px;
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 5px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    /* Position above */
+    left: 50%;
+    margin-left: -100px;
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 0.8rem;
+    font-weight: normal;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    /* Prevent flickering */
+}
+
+.tooltipContainer:hover .tooltipText {
+    visibility: visible;
+    opacity: 1;
 }

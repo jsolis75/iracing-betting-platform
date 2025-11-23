@@ -104,13 +104,20 @@ const Leaderboard = () => {
                             {index + 1}
                         </span>
                         <span className={styles.username}>{u.username}</span>
-                        <span
-                            className={styles.value}
-                            title={tooltipExtractor ? tooltipExtractor(u) : ''}
-                            style={{ cursor: tooltipExtractor ? 'help' : 'default' }}
-                        >
-                            {formatValue(valueExtractor(u))}
-                        </span>
+                        {tooltipExtractor ? (
+                            <div className={styles.tooltipContainer}>
+                                <span className={styles.value}>
+                                    {formatValue(valueExtractor(u))}
+                                </span>
+                                <span className={styles.tooltipText}>
+                                    {tooltipExtractor(u)}
+                                </span>
+                            </div>
+                        ) : (
+                            <span className={styles.value}>
+                                {formatValue(valueExtractor(u))}
+                            </span>
+                        )}
                     </li>
                 ))}
             </ul>

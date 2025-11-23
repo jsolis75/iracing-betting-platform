@@ -303,6 +303,8 @@ function HomeContent() {
       <main className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ maxWidth: "450px", width: "100%", padding: "2rem 0" }}>
 
+          <h1 style={{ textAlign: "center", marginBottom: "1.5rem", fontSize: "1.75rem" }}>Welcome to iRacingBet</h1>
+
           <div style={{
             backgroundColor: 'var(--background-card)',
             border: '1px solid var(--border-color)',
@@ -331,7 +333,6 @@ function HomeContent() {
             </p>
           </div>
 
-          <h1 style={{ textAlign: "center", marginBottom: "1.5rem", fontSize: "1.75rem" }}>Welcome to iRacingBet</h1>
           <Login />
         </div>
       </main>

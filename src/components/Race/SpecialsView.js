@@ -39,6 +39,14 @@ const SpecialsView = ({ race, isFinished }) => {
             definition: '3 or more drivers accumulating 17 or more incidents during the race.',
             yesOdds: '+200',
             noOdds: '-300'
+        },
+        {
+            id: 'slurmeister',
+            title: '🚫 Slurmeister',
+            question: 'Will there be a slurmeister this race?',
+            definition: '1 or more drivers drop a slur during the race (text or voice chat). Slurs determined by the National Slur Database (rsdb.org). ⚠️ Manually settled.',
+            yesOdds: '+150',
+            noOdds: '-200'
         }
     ];
 

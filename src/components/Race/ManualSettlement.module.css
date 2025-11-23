@@ -1,0 +1,114 @@
+.container {
+    background-color: rgba(239, 68, 68, 0.1);
+    border: 2px solid #ef4444;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 1rem 0;
+}
+
+.header {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #ef4444;
+    margin: 0 0 0.5rem 0;
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.betsList {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.betCard {
+    background-color: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 1rem;
+}
+
+.betInfo {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.betDetails {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.betTitle {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.betMeta {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.payout {
+    font-size: 0.9rem;
+    color: var(--primary-green);
+    font-weight: 600;
+}
+
+.actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.settleBtn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+    border: 2px solid;
+    min-width: 80px;
+}
+
+.settleBtn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.winBtn {
+    background-color: #10b981;
+    border-color: #10b981;
+    color: white;
+}
+
+.winBtn:hover:not(:disabled) {
+    background-color: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.loseBtn {
+    background-color: #ef4444;
+    border-color: #ef4444;
+    color: white;
+}
+
+.loseBtn:hover:not(:disabled) {
+    background-color: #dc2626;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(239, 68, 68, 0.3);
+}

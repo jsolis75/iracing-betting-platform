@@ -7,6 +7,7 @@ import RaceCard from "@/components/Race/RaceCard";
 import BetSlip from "@/components/Betting/BetSlip";
 import LiveBets from "@/components/Betting/LiveBets";
 import Login from "@/components/Auth/Login";
+import ManualSettlement from "@/components/Race/ManualSettlement";
 import { useUser } from "@/context/UserContext";
 import { useBetting } from "@/context/BettingContext";
 
@@ -398,6 +399,7 @@ function HomeContent() {
               }}>
                 Last Updated: {new Date().toLocaleTimeString()}
               </div>
+              <ManualSettlement />
               <LiveBets raceData={races[0]} />
               {races.map((race) => <RaceCard key={race.id} race={race} />)}
             </>

@@ -14,6 +14,9 @@
 const calculatePreRaceOdds = (drivers) => {
     if (!drivers || drivers.length === 0) return [];
 
+    // Calculate field average iRating to detect outliers
+    const avgIRating = drivers.reduce((sum, d) => sum + (d.iRating || 1500), 0) / drivers.length;
+
     // Calculate win probability based ONLY on iRating
     const driversWithProb = drivers.map(driver => {
         const iRating = Math.max(driver.iRating || 1500, 1000);
@@ -24,7 +27,21 @@ const calculatePreRaceOdds = (drivers) => {
         else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 3.5);
         else iRatingFactor = Math.pow(iRating / 1000, 2.5);
 
-        return { ...driver, winProbability: iRatingFactor };
+        // OUTLIER BONUS: If driver is significantly better than field, boost them
+        const iRatingDiff = iRating - avgIRating;
+        let outlierBonus = 1.0;
+        if (iRatingDiff > 1500) {
+            // 1500+ above average: MASSIVE boost (e.g., 7k iR in 4.5k iR field)
+            outlierBonus = 2.5;
+        } else if (iRatingDiff > 1000) {
+            // 1000-1500 above average: Large boost
+            outlierBonus = 2.0;
+        } else if (iRatingDiff > 500) {
+            // 500-1000 above average: Medium boost
+            outlierBonus = 1.5;
+        }
+
+        return { ...driver, winProbability: iRatingFactor * outlierBonus };
     });
 
     // Normalize probabilities
@@ -75,6 +92,23 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
         if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 4.0);
         else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 3.0);
         else iRatingFactor = Math.pow(iRating / 1000, 2.0);
+
+        // OUTLIER BONUS: Detect and boost drivers significantly better than field
+        const avgIRating = drivers.reduce((sum, d) => sum + (d.iRating || 1500), 0) / drivers.length;
+        const iRatingDiff = iRating - avgIRating;
+        let outlierBonus = 1.0;
+        if (iRatingDiff > 1500) {
+            // 1500+ above average: MASSIVE boost (e.g., 7k iR in 4.5k iR field)
+            outlierBonus = 2.2;
+        } else if (iRatingDiff > 1000) {
+            // 1000-1500 above average: Large boost
+            outlierBonus = 1.8;
+        } else if (iRatingDiff > 500) {
+            // 500-1000 above average: Medium boost
+            outlierBonus = 1.4;
+        }
+
+        iRatingFactor = iRatingFactor * outlierBonus;
 
         // --- 2. Historical Performance Component ---
         const winPctFactor = Math.pow((stats.winPercentage || 0) / 10, 1.3);

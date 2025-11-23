@@ -45,9 +45,19 @@ const Chat = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // Auto-scroll to bottom when new messages arrive
+    const messagesContainerRef = useRef(null);
+
+    // Auto-scroll to bottom only if user is near bottom
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        const container = messagesContainerRef.current;
+        if (!container) return;
+
+        // Check if user is near bottom (within 100px)
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+
+        if (isNearBottom) {
+            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }
     }, [messages]);
 
     const handleSend = async () => {
@@ -100,7 +110,7 @@ const Chat = () => {
 
             {!isMinimized && (
                 <>
-                    <div className={styles.messagesContainer}>
+                    <div className={styles.messagesContainer} ref={messagesContainerRef}>
                         {messages.length === 0 ? (
                             <div className={styles.emptyState}>
                                 No messages yet. Start the conversation!

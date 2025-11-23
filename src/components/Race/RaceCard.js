@@ -154,6 +154,15 @@ const RaceCard = ({ race }) => {
                 >
                     🎲 {viewMode === 'specials' ? '← Back to Drivers' : 'Specials'}
                 </button>
+
+                <a
+                    href={`/multiplayer?raceId=${race.id}`}
+                    className={styles.fantasyBtn}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    🏆 Fantasy Lobby
+                </a>
             </div>
 
             {viewMode === 'drivers' ? (

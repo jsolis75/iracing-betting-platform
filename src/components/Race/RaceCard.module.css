@@ -1,3 +1,22 @@
+.fantasyBtn {
+    background-color: var(--primary-yellow);
+    color: #000;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    font-weight: bold;
+    text-decoration: none;
+    margin-left: 1rem;
+    transition: transform 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fantasyBtn:hover {
+    transform: scale(1.05);
+    background-color: #ffd700;
+}
+
 .card {
     background-color: var(--background-card);
     border-radius: 12px;

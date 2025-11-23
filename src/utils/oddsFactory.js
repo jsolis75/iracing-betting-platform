@@ -32,13 +32,13 @@ const calculatePreRaceOdds = (drivers) => {
         let outlierBonus = 1.0;
         if (iRatingDiff > 1500) {
             // 1500+ above average: MASSIVE boost (e.g., 7k iR in 4.5k iR field)
-            outlierBonus = 2.5;
+            outlierBonus = 4.0; // Was 2.5, increased for more favoritism
         } else if (iRatingDiff > 1000) {
             // 1000-1500 above average: Large boost
-            outlierBonus = 2.0;
+            outlierBonus = 3.0; // Was 2.0
         } else if (iRatingDiff > 500) {
             // 500-1000 above average: Medium boost
-            outlierBonus = 1.5;
+            outlierBonus = 2.0; // Was 1.5
         }
 
         return { ...driver, winProbability: iRatingFactor * outlierBonus };
@@ -99,13 +99,13 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
         let outlierBonus = 1.0;
         if (iRatingDiff > 1500) {
             // 1500+ above average: MASSIVE boost (e.g., 7k iR in 4.5k iR field)
-            outlierBonus = 2.2;
+            outlierBonus = 3.5; // Was 2.2, increased significantly
         } else if (iRatingDiff > 1000) {
             // 1000-1500 above average: Large boost
-            outlierBonus = 1.8;
+            outlierBonus = 2.5; // Was 1.8
         } else if (iRatingDiff > 500) {
             // 500-1000 above average: Medium boost
-            outlierBonus = 1.4;
+            outlierBonus = 1.8; // Was 1.4
         }
 
         iRatingFactor = iRatingFactor * outlierBonus;

@@ -26,7 +26,7 @@ const SpecialsView = ({ race, isFinished }) => {
     const specials = [
         {
             id: 'terrorist',
-            title: '🔥 The Terrorist',
+            title: '🔥 Natural Born Terrorist',
             question: 'Will there be a terrorist this race?',
             definition: 'A driver who accumulates 17 or more incidents during the race.',
             yesOdds: '-110',

@@ -174,10 +174,30 @@ const RaceCard = ({ race }) => {
                                     <div className={styles.colDriver}>
                                         <span className={styles.number}>#{driver.number}</span>
                                         <div className={styles.driverDetails}>
-                                            <span className={styles.driverName}>
-                                                {driver.name}
-                                                {driver.isDNF && <span className={styles.retiredBadge}>RETIRED</span>}
-                                            </span>
+                                            {(() => {
+                                                const starts = driver.stats?.starts || 0;
+                                                const winPct = driver.stats?.winPercentage || 0;
+                                                const top25 = driver.stats?.top25Percent || 0;
+
+                                                let tooltipText = "❓ No Data Available";
+                                                if (starts > 0) {
+                                                    const isProfitable = winPct > 5 || top25 > 50;
+                                                    tooltipText = isProfitable
+                                                        ? "💰 Usually Profitable for Users"
+                                                        : "📉 Usually Sells User's Parlays";
+                                                }
+
+                                                return (
+                                                    <span
+                                                        className={styles.driverName}
+                                                        title={tooltipText}
+                                                        style={{ cursor: 'help', textDecoration: 'underline dotted #666' }}
+                                                    >
+                                                        {driver.name}
+                                                        {driver.isDNF && <span className={styles.retiredBadge}>RETIRED</span>}
+                                                    </span>
+                                                );
+                                            })()}
                                             <span className={styles.driverStats}>
                                                 iR: {driver.iRating} • {driver.licenseClass} • Started P{driver.startingPosition}
                                                 {driver.stats && (

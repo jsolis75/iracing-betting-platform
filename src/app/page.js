@@ -304,7 +304,10 @@ function HomeContent() {
       <main className="container">
         <div style={{ maxWidth: "900px", margin: "4rem auto", padding: "0 1rem" }}>
 
-          <h1 style={{ textAlign: "center", marginBottom: "3rem", fontSize: "2rem" }}>Welcome to iRacingBet</h1>
+          <h1 style={{ textAlign: "center", marginBottom: "0.5rem", fontSize: "2rem" }}>Welcome to iRacingBet</h1>
+          <p style={{ textAlign: "center", marginBottom: "3rem", color: "#888", fontStyle: "italic" }}>
+            A place where iRacers can bet on their races and rig them
+          </p>
 
           <div style={{
             display: 'flex',

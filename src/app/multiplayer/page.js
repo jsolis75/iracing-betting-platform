@@ -156,11 +156,18 @@ const MultiplayerContent = () => {
                         />
                     </div>
                     <div className={styles.rightCol}>
-                        <LobbyLeaderboard
-                            entries={entries}
-                            drivers={raceData?.DriverInfo?.Drivers || []}
-                            raceData={raceData}
-                        />
+                        {myEntry && myEntry.driver_1 ? (
+                            <LobbyLeaderboard
+                                entries={entries}
+                                drivers={raceData?.DriverInfo?.Drivers || []}
+                                raceData={raceData}
+                            />
+                        ) : (
+                            <div className={styles.leaderboardPlaceholder}>
+                                <h3>Live Standings</h3>
+                                <p>Draft your team to view the leaderboard!</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

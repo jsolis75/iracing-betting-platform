@@ -1,7 +1,7 @@
 -- Create multiplayer_lobbies table
 CREATE TABLE IF NOT EXISTS multiplayer_lobbies (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    race_id INTEGER NOT NULL,
+    race_id UUID NOT NULL,
     status TEXT NOT NULL DEFAULT 'open', -- 'open', 'live', 'finished', 'tiebreaker', 'settled'
     prize_pool DECIMAL(10, 2) DEFAULT 0,
     created_at TIMESTAMPTZ DEFAULT NOW(),

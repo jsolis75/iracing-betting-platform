@@ -301,39 +301,63 @@ function HomeContent() {
   if (!user) {
     return (
       <main className="container">
-        <div style={{ maxWidth: "450px", margin: "4rem auto", padding: "0 1rem" }}>
+        <div style={{ maxWidth: "900px", margin: "4rem auto", padding: "0 1rem" }}>
 
-          <h1 style={{ textAlign: "center", marginBottom: "1rem", fontSize: "1.75rem" }}>Welcome to iRacingBet</h1>
+          <h1 style={{ textAlign: "center", marginBottom: "3rem", fontSize: "2rem" }}>Welcome to iRacingBet</h1>
 
           <div style={{
-            backgroundColor: 'var(--background-card)',
-            border: '1px solid var(--border-color)',
-            borderRadius: '8px',
-            padding: '1rem',
-            marginBottom: '1.5rem',
-            textAlign: 'center',
-            boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1)'
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '2rem',
+            alignItems: 'flex-start',
+            justifyContent: 'center'
           }}>
-            <h2 style={{
-              color: 'var(--primary-green)',
-              fontSize: '1.1rem',
-              marginBottom: '0.5rem',
-              fontWeight: '800',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem'
-            }}>
-              🛡️ 100% Free to Play
-            </h2>
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
-              Experience the thrill of iRacing betting with zero risk.
-              <br />
-              <strong style={{ color: 'var(--text-primary)', fontWeight: '600' }}>No real money. Just fun.</strong>
-            </p>
-          </div>
 
-          <Login />
+            {/* Left Column: Free to Play Banner */}
+            <div style={{
+              flex: '1 1 350px',
+              maxWidth: '400px',
+              backgroundColor: 'var(--background-card)',
+              border: '1px solid var(--border-color)',
+              borderRadius: '8px',
+              padding: '2rem',
+              textAlign: 'center',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              height: '100%'
+            }}>
+              <h2 style={{
+                color: 'var(--primary-green)',
+                fontSize: '1.5rem',
+                marginBottom: '1.5rem',
+                fontWeight: '800',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem'
+              }}>
+                🛡️ 100% Free to Play
+              </h2>
+              <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '1.5rem' }}>
+                Experience the thrill of iRacing betting with zero risk.
+                We use virtual currency so you can compete on the leaderboard without spending a dime.
+              </p>
+              <div style={{
+                padding: '1rem',
+                backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                borderRadius: '6px',
+                color: 'var(--text-primary)',
+                fontWeight: '600'
+              }}>
+                No real money. Just fun.
+              </div>
+            </div>
+
+            {/* Right Column: Login Form */}
+            <div style={{ flex: '1 1 350px', maxWidth: '400px' }}>
+              <Login />
+            </div>
+
+          </div>
         </div>
       </main>
     );

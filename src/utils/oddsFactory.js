@@ -309,9 +309,9 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     top3Odds = Math.round(top3Odds / 10) * 10;
     const top3OddsStr = top3Odds > 0 ? `+${top3Odds}` : `${top3Odds}`;
 
-    // Top 10 Odds - MASSIVELY AGGRESSIVE FOR DRIVERS ALREADY IN TOP 10
+    // Top 10 Odds - VERY GRADUATED BY POSITION (for sophisticated model)
     const fieldSize = allDrivers.length;
-    let top10Prob = Math.min(winProbability * 3.0 + (topFinishAbility * 0.25), 0.95);
+    let top10Prob = Math.min(winProbability * 3.5 + (topFinishAbility * 0.3), 0.90);
 
     // HIGH IRATING THREAT FACTOR
     const thisDriverIRating = driver.iRating || 1500;
@@ -327,28 +327,46 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
         }).length;
     }
 
-    const threatImpact = threatsFromBehind * (0.15 * (1 - raceProgress));
+    const threatImpact = threatsFromBehind * (0.12 * (1 - raceProgress));
 
-    // IF YOU'RE IN TOP 10, YOU'RE A MASSIVE FAVORITE
-    if (currentPos <= 3) {
-        top10Prob = Math.min(top10Prob * (2.5 - threatImpact), 0.99); // HUGE boost
-    } else if (currentPos <= 5) {
-        top10Prob = Math.min(top10Prob * (2.3 - threatImpact), 0.99);
-    } else if (currentPos <= 7) {
-        top10Prob = Math.min(top10Prob * (2.1 - threatImpact), 0.98);
-    } else if (currentPos <= 10) {
-        top10Prob = Math.min(top10Prob * (1.9 - threatImpact), 0.98); // YOU'RE ALREADY IN TOP 10!
+    // VERY GRADUATED MULTIPLIERS - Each position in top 10 gets distinct odds
+    if (currentPos === 1) {
+        top10Prob = Math.min(top10Prob * (3.5 - threatImpact), 0.97);
+    } else if (currentPos === 2) {
+        top10Prob = Math.min(top10Prob * (3.3 - threatImpact), 0.96);
+    } else if (currentPos === 3) {
+        top10Prob = Math.min(top10Prob * (3.1 - threatImpact), 0.95);
+    } else if (currentPos === 4) {
+        top10Prob = Math.min(top10Prob * (2.9 - threatImpact), 0.94);
+    } else if (currentPos === 5) {
+        top10Prob = Math.min(top10Prob * (2.7 - threatImpact), 0.93);
+    } else if (currentPos === 6) {
+        top10Prob = Math.min(top10Prob * (2.5 - threatImpact), 0.92);
+    } else if (currentPos === 7) {
+        top10Prob = Math.min(top10Prob * (2.3 - threatImpact), 0.91);
+    } else if (currentPos === 8) {
+        top10Prob = Math.min(top10Prob * (2.1 - threatImpact), 0.90);
+    } else if (currentPos === 9) {
+        top10Prob = Math.min(top10Prob * (1.9 - threatImpact), 0.89);
+    } else if (currentPos === 10) {
+        top10Prob = Math.min(top10Prob * (1.7 - threatImpact), 0.88);
+    } else if (currentPos <= 12) {
+        top10Prob = Math.min(top10Prob * (1.5 - threatImpact * 0.7), 0.85);
     } else if (currentPos <= 15) {
-        const fieldSizeMultiplier = fieldSize <= 25 ? 1.4 : 1.3;
-        top10Prob = Math.min(top10Prob * (fieldSizeMultiplier - threatImpact * 0.5), 0.93);
+        const fieldSizeMultiplier = fieldSize <= 25 ? 1.35 : 1.25;
+        top10Prob = Math.min(top10Prob * (fieldSizeMultiplier - threatImpact * 0.5), 0.80);
+    } else if (currentPos <= 20) {
+        top10Prob = Math.min(top10Prob * 1.1, 0.70);
     } else {
         if (thisDriverIRating > highIRThreshold) {
-            top10Prob = Math.min(top10Prob * 1.15, 0.88);
+            top10Prob = Math.min(top10Prob * 1.05, 0.60);
+        } else {
+            top10Prob = Math.min(top10Prob, 0.55);
         }
     }
 
     let top10Odds = probToOdds(top10Prob);
-    top10Odds = Math.max(-2500, Math.min(600, top10Odds));
+    top10Odds = Math.max(-3000, Math.min(1200, top10Odds));
     top10Odds = Math.round(top10Odds / 10) * 10;
     const top10OddsStr = top10Odds > 0 ? `+${top10Odds}` : `${top10Odds}`;
 

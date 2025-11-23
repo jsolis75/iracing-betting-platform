@@ -149,7 +149,7 @@ const MultiplayerContent = () => {
                 <div className={styles.gameArea}>
                     <div className={styles.leftCol}>
                         <DraftTeam
-                            drivers={raceData?.DriverInfo?.Drivers || []}
+                            drivers={(raceData?.DriverInfo?.Drivers || []).filter(d => d.CarIsPaceCar === 0 && d.IsSpectator === 0)}
                             entry={myEntry}
                             lobbyId={lobby.id}
                             onDraftUpdate={fetchLobby}

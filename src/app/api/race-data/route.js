@@ -90,7 +90,9 @@ export async function GET(request) {
         }
 
         // Return Data with Last-Modified Header
-        const response = NextResponse.json(data.data);
+        // Inject the Database UUID so the frontend can reference this race correctly
+        const responsePayload = { ...data.data, _dbId: data.id };
+        const response = NextResponse.json(responsePayload);
         if (lastUpdated) {
             response.headers.set('Last-Modified', lastUpdated.toUTCString());
             // Add Cache-Control to prevent browser from caching too aggressively without validation

@@ -171,7 +171,7 @@ function HomeContent() {
         const lapsRemaining = (totalLaps || 0) - (activeSession?.ResultsLapsComplete || winnerLaps || 0);
 
         const raceData = {
-          id: data.WeekendInfo?.SessionID || Date.now(),
+          id: data._dbId || data.WeekendInfo?.SessionID || Date.now(),
           name: data.WeekendInfo?.TrackDisplayName || "Unknown Track",
           track: data.WeekendInfo?.TrackDisplayShortName || "",
           time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

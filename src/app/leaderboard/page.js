@@ -24,8 +24,8 @@ const Leaderboard = () => {
         };
 
         fetchLeaderboardData();
-        // Refresh every 30 seconds
-        const interval = setInterval(fetchLeaderboardData, 30000);
+        // Refresh every 60 seconds
+        const interval = setInterval(fetchLeaderboardData, 60000);
         return () => clearInterval(interval);
     }, []);
 

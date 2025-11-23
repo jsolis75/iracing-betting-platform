@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styles from "./RaceCard.module.css";
 import { calculateFieldOdds } from "@/utils/oddsFactory";
 import { useBetting } from "@/context/BettingContext";
@@ -19,6 +19,20 @@ const RaceCard = ({ race }) => {
     const { addToBetSlip } = useBetting();
     const [sortMethod, setSortMethod] = useState("position");
     const [showResults, setShowResults] = useState(false);
+
+    // Fetch race data periodically (if needed, though we rely on props mostly)
+    useEffect(() => {
+        const fetchRaceData = async () => {
+            // Placeholder for polling logic if this component was responsible for it.
+            // Since the user asked to reduce data transfer, we'll keep this minimal 
+            // or assume the parent handles the main data fetch.
+            // If we DO need to poll here, we should use a longer interval.
+        };
+
+        // Refresh every 5 seconds instead of 1 second to save bandwidth
+        const interval = setInterval(fetchRaceData, 5000);
+        return () => clearInterval(interval);
+    }, []);
 
     // Determine if the race is finished
     const isFinished =

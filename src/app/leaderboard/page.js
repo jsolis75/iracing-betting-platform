@@ -38,11 +38,16 @@ const Leaderboard = () => {
 
     const calculateUnderdogProfit = (user) => {
         if (!user.betHistory || user.betHistory.length === 0) return 0;
-        const underdogWins = user.betHistory.filter(bet =>
-            bet.result === 'won' &&
-            bet.odds &&
-            parseInt(bet.odds.replace('+', '')) >= 400
-        );
+        const underdogWins = user.betHistory.filter(bet => {
+            if (bet.result !== 'won' || !bet.odds) return false;
+
+            // Handle both string ("+400") and numeric (400) odds
+            const oddsValue = typeof bet.odds === 'string'
+                ? parseInt(bet.odds.replace(/[+-]/g, ''))
+                : Math.abs(bet.odds);
+
+            return oddsValue >= 400;
+        });
         return underdogWins.reduce((sum, bet) => sum + (bet.payout - bet.amount), 0);
     };
 

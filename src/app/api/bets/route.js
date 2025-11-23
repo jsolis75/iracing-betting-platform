@@ -115,19 +115,22 @@ export async function PUT(request) {
             return NextResponse.json({ error: 'Bet not found' }, { status: 404 });
         }
 
-        // Update bet
-        const { error: updateError } = await supabase
+        // Update bet - ATOMIC CHECK
+        const { data: settledBet, error: updateError } = await supabase
             .from('bets')
             .update({
                 status,
                 result: betResult,
                 settled_at: new Date().toISOString()
             })
-            .eq('id', betId);
+            .eq('id', betId)
+            .eq('status', 'pending') // CRITICAL: Only update if still pending
+            .select()
+            .single();
 
-        if (updateError) {
-            console.error('Error updating bet:', updateError);
-            return NextResponse.json({ error: updateError.message }, { status: 500 });
+        if (updateError || !settledBet) {
+            // If update failed or returned no data, it means another process already settled this bet
+            return NextResponse.json({ error: 'Bet already settled or update failed' }, { status: 400 });
         }
 
         // If won, add payout to user balance
@@ -139,9 +142,12 @@ export async function PUT(request) {
                 .single();
 
             if (userData) {
+                // FIX: Refund Stake + Pay Profit
+                const totalPayout = Number(bet.stake) + Number(bet.potential_payout);
+
                 await supabase
                     .from('users')
-                    .update({ balance: userData.balance + bet.potential_payout })
+                    .update({ balance: userData.balance + totalPayout })
                     .eq('id', bet.user_id);
             }
         }

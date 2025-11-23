@@ -179,17 +179,27 @@ export async function POST(request) {
         for (const update of updates) {
             const { bet, result } = update;
 
-            // 1. Update bet status
-            await supabase
+            // 1. ATOMIC UPDATE: Try to set status to 'settled' WHERE status is 'pending'
+            // This prevents race conditions where multiple requests settle the same bet
+            const { data: settledBet, error: updateError } = await supabase
                 .from('bets')
                 .update({
                     status: 'settled',
                     result: result,
                     settled_at: new Date().toISOString()
                 })
-                .eq('id', bet.id);
+                .eq('id', bet.id)
+                .eq('status', 'pending') // CRITICAL: Only update if still pending
+                .select()
+                .single();
 
-            // 2. If won, pay the user
+            if (updateError || !settledBet) {
+                // If update failed or returned no data, it means another process already settled this bet
+                debugLogs.push(`Skipping payment for bet ${bet.id}: Already settled or update failed`);
+                continue;
+            }
+
+            // 2. If won, pay the user (Stake + Profit)
             if (result === 'won') {
                 const { data: user } = await supabase
                     .from('users')
@@ -198,10 +208,16 @@ export async function POST(request) {
                     .single();
 
                 if (user) {
+                    // FIX: Refund Stake + Pay Profit
+                    // potential_payout is currently stored as PROFIT only
+                    const totalPayout = Number(bet.stake) + Number(bet.potential_payout);
+
                     await supabase
                         .from('users')
-                        .update({ balance: user.balance + bet.potential_payout })
+                        .update({ balance: user.balance + totalPayout })
                         .eq('id', bet.user_id);
+
+                    debugLogs.push(`Paid out $${totalPayout} for bet ${bet.id}`);
                 }
             }
             settledCount++;

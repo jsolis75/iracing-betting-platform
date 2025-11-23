@@ -17,6 +17,7 @@ function HomeContent() {
   const [races, setRaces] = useState([]);
   const [loading, setLoading] = useState(true);
   const [driverStats, setDriverStats] = useState({}); // New: CSV stats storage
+  const [hasSettled, setHasSettled] = useState(false); // Prevent multiple settlement calls
 
   const { settleBets } = useBetting();
 
@@ -230,9 +231,12 @@ function HomeContent() {
         setRaces([raceData]);
         // If race is finished, settle bets
         // If race is finished, trigger server-side settlement
-        if (raceData.flagStatus === "Checkered" || raceData.lapsRemaining <= 0) {
+        // If race is finished, trigger server-side settlement
+        // Check if we already triggered settlement to avoid spamming the API
+        if ((raceData.flagStatus === "Checkered" || raceData.lapsRemaining <= 0) && !hasSettled) {
+          setHasSettled(true); // Mark as settled immediately
+
           // Call the settlement API
-          // We use sendBeacon if possible for reliability on unload, but fetch is fine here since we are polling
           fetch('/api/settle-race', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -240,7 +244,10 @@ function HomeContent() {
               raceId: raceData.id,
               drivers: raceData.drivers
             })
-          }).catch(err => console.error("Error triggering settlement:", err));
+          }).catch(err => {
+            console.error("Error triggering settlement:", err);
+            setHasSettled(false); // Retry on error? Or maybe not to be safe.
+          });
         }
       } catch (err) {
         if (err.name !== 'AbortError') {

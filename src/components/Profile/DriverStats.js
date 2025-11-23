@@ -4,17 +4,20 @@ import React, { useState, useMemo } from 'react';
 import styles from './DriverStats.module.css';
 import { useBetting } from '@/context/BettingContext';
 
-const DriverStats = () => {
-    const { placedBets } = useBetting();
+const DriverStats = ({ bets, titlePrefix = '' }) => {
+    const { placedBets: contextBets } = useBetting();
     const [bannedSort, setBannedSort] = useState('amount'); // 'amount' or 'frequency'
     const [profitSort, setProfitSort] = useState('amount'); // 'amount' or 'frequency'
 
+    // Use provided bets prop or fall back to context (user's bets)
+    const betsToAnalyze = bets || contextBets;
+
     const stats = useMemo(() => {
-        if (!placedBets) return { banned: [], profitable: [] };
+        if (!betsToAnalyze) return { banned: [], profitable: [] };
 
         const driverMap = {};
 
-        placedBets.forEach(bet => {
+        betsToAnalyze.forEach(bet => {
             // Skip pending bets
             if (bet.status === 'pending') return;
 
@@ -64,14 +67,14 @@ const DriverStats = () => {
             });
 
         return { banned, profitable };
-    }, [placedBets, bannedSort, profitSort]);
+    }, [betsToAnalyze, bannedSort, profitSort]);
 
     return (
         <div className={styles.container}>
             {/* PARLAY BANNED LIST (Net Losers) */}
             <div className={styles.card}>
                 <div className={styles.title}>
-                    <span className={styles.bannedTitle}>🚫 Parlay Banned List</span>
+                    <span className={styles.bannedTitle}>🚫 {titlePrefix} Parlay Banned List</span>
                 </div>
                 <div className={styles.controls}>
                     <span>Sort by:</span>
@@ -90,7 +93,7 @@ const DriverStats = () => {
                 </div>
 
                 {stats.banned.length === 0 ? (
-                    <div className={styles.empty}>No drivers have lost you money yet!</div>
+                    <div className={styles.empty}>No drivers have lost money yet!</div>
                 ) : (
                     <ul className={styles.list}>
                         {stats.banned.map(driver => (
@@ -113,7 +116,7 @@ const DriverStats = () => {
             {/* MOST PROFITABLE (Net Winners) */}
             <div className={styles.card}>
                 <div className={styles.title}>
-                    <span className={styles.profitableTitle}>💰 Most Profitable</span>
+                    <span className={styles.profitableTitle}>💰 {titlePrefix} Most Profitable</span>
                 </div>
                 <div className={styles.controls}>
                     <span>Sort by:</span>

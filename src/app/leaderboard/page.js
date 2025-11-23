@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import styles from './Leaderboard.module.css';
+import DriverStats from '@/components/Profile/DriverStats';
 
 const Leaderboard = () => {
     const [users, setUsers] = useState([]);
@@ -148,6 +149,11 @@ const Leaderboard = () => {
                         u => u.underdogData.details
                     )}
                 </div>
+            </div>
+
+            <div style={{ marginTop: '3rem' }}>
+                <h2 className={styles.title} style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Global Driver Performance</h2>
+                <DriverStats bets={users.flatMap(u => u.betHistory || [])} titlePrefix="Global" />
             </div>
         </div>
     );

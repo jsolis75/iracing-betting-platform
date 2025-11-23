@@ -336,24 +336,27 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
 
     const threatImpact = threatsFromBehind * (0.08 * (1 - raceProgress));
 
-    // PROGRESSIVE FAVORITISM (adjusted for slightly higher odds on top 10, lower on P11-14)
+    // RACE PROGRESS MULTIPLIER: As race goes on, current position becomes MORE important
+    const raceProgressMultiplier = 1.0 + (raceProgress * 0.8); // 1.0x early, up to 1.8x late
+
+    // PROGRESSIVE FAVORITISM
     if (currentPos <= 3) {
-        top10Prob = Math.min(top10Prob * 5.0, 0.92); // Was 0.95, now -1150 to -2000 (slightly higher odds)
+        top10Prob = Math.min(top10Prob * 5.0 * raceProgressMultiplier, 0.96);
     } else if (currentPos <= 6) {
-        top10Prob = Math.min(top10Prob * 3.5, 0.87); // Was 0.90, now -650 to -1200
+        top10Prob = Math.min(top10Prob * 3.5 * raceProgressMultiplier, 0.93);
     } else if (currentPos <= 9) {
-        top10Prob = Math.min(top10Prob * 2.5, 0.78); // Was 0.82, now -250 to -450
+        top10Prob = Math.min(top10Prob * 2.5 * raceProgressMultiplier, 0.88);
     } else if (currentPos === 10) {
-        top10Prob = Math.min(top10Prob * 1.8, 0.64); // Was 0.67, now -80 to -180 (BUBBLE)
+        top10Prob = Math.min(top10Prob * 1.8 * raceProgressMultiplier, 0.80);
     } else if (currentPos <= 12) {
-        top10Prob = Math.min(top10Prob * 1.4, 0.60); // Was 1.3/0.55, now -150 to -100 (more favorable)
+        top10Prob = Math.min(top10Prob * 1.4, 0.60);
     } else if (currentPos <= 14) {
-        top10Prob = Math.min(top10Prob * 1.3, 0.57); // New tier, now -75 to -130 (more favorable)
+        top10Prob = Math.min(top10Prob * 1.3, 0.57);
     } else if (currentPos <= 15) {
         const fieldSizeMultiplier = fieldSize <= 25 ? 1.2 : 1.1;
-        top10Prob = Math.min(top10Prob * fieldSizeMultiplier, 0.48); // +200 to +400
+        top10Prob = Math.min(top10Prob * fieldSizeMultiplier, 0.48);
     } else if (currentPos <= 20) {
-        top10Prob = Math.min(top10Prob * 1.05, 0.40); // +500 to +700
+        top10Prob = Math.min(top10Prob * 1.05, 0.40);
     } else {
         if (thisDriverIRating > highIRThreshold) {
             top10Prob = Math.min(top10Prob * 1.02, 0.35);

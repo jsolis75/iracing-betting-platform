@@ -304,19 +304,31 @@ function HomeContent() {
         <div style={{ maxWidth: "400px", margin: "4rem auto" }}>
 
           <div style={{
-            backgroundColor: 'rgba(46, 204, 113, 0.15)',
-            border: '1px solid #2ecc71',
+            backgroundColor: 'var(--background-card)',
+            border: '1px solid var(--border-color)',
             borderRadius: '8px',
-            padding: '1.5rem',
+            padding: '2rem',
             marginBottom: '2rem',
-            textAlign: 'center'
+            textAlign: 'center',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
           }}>
-            <h2 style={{ color: '#2ecc71', fontSize: '1.4rem', marginBottom: '0.5rem', fontWeight: '800' }}>
-              🏁 100% Free to Play
+            <h2 style={{
+              color: 'var(--primary-green)',
+              fontSize: '1.5rem',
+              marginBottom: '1rem',
+              fontWeight: '800',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.5rem'
+            }}>
+              🛡️ 100% Free to Play
             </h2>
-            <p style={{ fontSize: '0.95rem', color: '#e2e8f0', lineHeight: '1.5' }}>
-              Use virtual currency to bet on live iRacing events.<br />
-              <strong style={{ color: '#fff' }}>No real money is ever involved.</strong>
+            <p style={{ fontSize: '1rem', color: 'var(--text-secondary)', lineHeight: '1.6', maxWidth: '90%', margin: '0 auto' }}>
+              Experience the thrill of iRacing betting with zero risk.
+              We use virtual currency only.
+              <br />
+              <strong style={{ color: 'var(--text-primary)', fontWeight: '600' }}>No real money. No credit cards. Just fun.</strong>
             </p>
           </div>
 

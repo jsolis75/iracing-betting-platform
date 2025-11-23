@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useUser } from '@/context/UserContext';
 import DraftTeam from '@/components/Multiplayer/DraftTeam';
@@ -8,7 +8,7 @@ import LobbyLeaderboard from '@/components/Multiplayer/LobbyLeaderboard';
 import RockPaperScissors from '@/components/Multiplayer/RockPaperScissors';
 import styles from './Multiplayer.module.css';
 
-const MultiplayerPage = () => {
+const MultiplayerContent = () => {
     const { user } = useUser();
     const searchParams = useSearchParams();
     const raceId = searchParams.get('raceId');
@@ -83,8 +83,8 @@ const MultiplayerPage = () => {
         }
     };
 
-    if (!raceId) return <div className="container">Please select a race from the home page.</div>;
-    if (loading) return <div className="container">Loading Lobby...</div>;
+    if (!raceId) return <div className={styles.container}>Please select a race from the home page.</div>;
+    if (loading) return <div className={styles.container}>Loading Lobby...</div>;
 
     return (
         <div className={styles.container}>
@@ -132,6 +132,14 @@ const MultiplayerPage = () => {
                 </div>
             )}
         </div>
+    );
+};
+
+const MultiplayerPage = () => {
+    return (
+        <Suspense fallback={<div className={styles.container}>Loading...</div>}>
+            <MultiplayerContent />
+        </Suspense>
     );
 };
 

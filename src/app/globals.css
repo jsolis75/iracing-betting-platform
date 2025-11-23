@@ -1,5 +1,37 @@
-:root {
-  /* iRacing Inspired Light Theme */
+/* Dark Mode (Default) */
+[data-theme="dark"] {
+  /* Background */
+  --background: #0a0e1a;
+  --foreground: #e4e6eb;
+
+  /* Card & UI Elements */
+  --background-card: #1a1f2e;
+  --background-input: #252b3b;
+  --border-color: #2d3748;
+
+  /* iRacing Brand Colors */
+  --primary-blue: #0057b8;
+  --primary-red: #d32d27;
+  --primary-green: #22c55e;
+
+  /* Text Colors */
+  --text-primary: #e4e6eb;
+  --text-secondary: #a0aec0;
+  --text-muted: #718096;
+
+  /* Status Colors */
+  --status-live: #d32d27;
+  --status-success: #22c55e;
+  --status-error: #ef4444;
+
+  /* Accents */
+  --accent-color: var(--primary-blue);
+  --accent-hover: #0070dd;
+}
+
+/* Light Mode */
+[data-theme="light"] {
+  /* Background */
   --background: #f0f2f5;
   --foreground: #1a1a1a;
 
@@ -10,11 +42,8 @@
 
   /* iRacing Brand Colors */
   --primary-blue: #0057b8;
-  /* iRacing Blue */
   --primary-red: #d32d27;
-  /* iRacing Red */
   --primary-green: #22c55e;
-  /* Success/Go */
 
   /* Text Colors */
   --text-primary: #1a1a1a;
@@ -40,10 +69,11 @@ body {
 
 body {
   color: var(--text-primary);
-  background: var(--background-main);
+  background: var(--background);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Oxygen, Ubuntu, Cantarell, Fira Sans, Droid Sans, Helvetica Neue, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background 0.3s ease, color 0.3s ease;
 }
 
 * {

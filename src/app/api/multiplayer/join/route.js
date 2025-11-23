@@ -41,7 +41,7 @@ export async function POST(request) {
             .single();
 
         if (existingEntry) {
-            return NextResponse.json({ message: 'Already joined', entry: existingEntry, lobby });
+            return NextResponse.json({ success: true, alreadyJoined: true, entry: existingEntry, lobby });
         }
 
         // 3. Deduct Balance (Transaction-like)

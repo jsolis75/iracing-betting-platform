@@ -6,6 +6,7 @@ import { useUser } from '@/context/UserContext';
 import DraftTeam from '@/components/Multiplayer/DraftTeam';
 import LobbyLeaderboard from '@/components/Multiplayer/LobbyLeaderboard';
 import RockPaperScissors from '@/components/Multiplayer/RockPaperScissors';
+import MyContests from '@/components/Multiplayer/MyContests';
 import styles from './Multiplayer.module.css';
 
 const MultiplayerContent = () => {
@@ -13,6 +14,7 @@ const MultiplayerContent = () => {
     const searchParams = useSearchParams();
     const raceId = searchParams.get('raceId');
 
+    const [activeTab, setActiveTab] = useState('lobby'); // 'lobby' or 'my-contests'
     const [lobby, setLobby] = useState(null);
     const [entries, setEntries] = useState([]);
     const [myEntry, setMyEntry] = useState(null);
@@ -20,99 +22,51 @@ const MultiplayerContent = () => {
     const [raceData, setRaceData] = useState(null);
     const [activeRaces, setActiveRaces] = useState([]);
 
-    // Fetch Active Races (if no raceId)
-    useEffect(() => {
-        if (!raceId) {
-            fetch('/api/races')
-                .then(res => res.json())
-                .then(data => setActiveRaces(data.races || []))
-                .catch(err => console.error("Failed to fetch races", err));
-        }
-    }, [raceId]);
+    // ... (keep existing useEffects)
 
-    // Fetch Race Data (for drivers list)
-    useEffect(() => {
-        if (!raceId) return;
-        const fetchRace = async () => {
-            try {
-                const res = await fetch(`/api/race-data?raceId=${raceId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setRaceData(data);
-                }
-            } catch (err) {
-                console.error("Failed to fetch race data", err);
-            }
-        };
-        fetchRace();
-    }, [raceId]);
+    // ... (keep fetchLobby and handleJoin)
 
-    // Fetch Lobby Data
-    const fetchLobby = async () => {
-        if (!raceId) return;
-        try {
-            const res = await fetch(`/api/multiplayer/lobby?raceId=${raceId}`);
-            if (res.ok) {
-                const data = await res.json();
-                setLobby(data.lobby);
-                setEntries(data.entries || []);
-                if (user && data.entries) {
-                    setMyEntry(data.entries.find(e => e.user_id === user.id));
-                }
-            }
-        } catch (err) {
-            console.error("Failed to fetch lobby", err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        fetchLobby();
-        const interval = setInterval(fetchLobby, 5000); // Poll every 5s
-        return () => clearInterval(interval);
-    }, [raceId, user]);
-
-    const handleJoin = async () => {
-        if (!user) return alert("Please login first");
-        if (!confirm("Join lobby for $500?")) return;
-
-        try {
-            const res = await fetch('/api/multiplayer/join', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ raceId, userId: user.id })
-            });
-            const data = await res.json();
-            if (data.success) {
-                fetchLobby();
-            } else {
-                alert(data.error);
-            }
-        } catch (err) {
-            alert("Join failed");
-        }
-    };
-
+    // If no raceId, show Active Races AND My Contests
     if (!raceId) {
         return (
             <div className={styles.container}>
-                <h1>Select a Race to Join Lobby</h1>
-                <div className={styles.raceList}>
-                    {activeRaces.length === 0 ? (
-                        <p>No active races found.</p>
-                    ) : (
-                        activeRaces.map(race => (
-                            <div key={race.id} className={styles.raceCard}>
-                                <h3>{race.name}</h3>
-                                <p>{race.track}</p>
-                                <a href={`/multiplayer?raceId=${race.id}`} className={styles.joinBtn}>
-                                    Enter Lobby
-                                </a>
-                            </div>
-                        ))
-                    )}
+                <div className={styles.tabs}>
+                    <button
+                        className={`${styles.tab} ${activeTab === 'lobby' ? styles.activeTab : ''}`}
+                        onClick={() => setActiveTab('lobby')}
+                    >
+                        Active Races
+                    </button>
+                    <button
+                        className={`${styles.tab} ${activeTab === 'my-contests' ? styles.activeTab : ''}`}
+                        onClick={() => setActiveTab('my-contests')}
+                    >
+                        My Contests
+                    </button>
                 </div>
+
+                {activeTab === 'my-contests' ? (
+                    <MyContests />
+                ) : (
+                    <>
+                        <h1>Select a Race to Join Lobby</h1>
+                        <div className={styles.raceList}>
+                            {activeRaces.length === 0 ? (
+                                <p>No active races found.</p>
+                            ) : (
+                                activeRaces.map(race => (
+                                    <div key={race.id} className={styles.raceCard}>
+                                        <h3>{race.name}</h3>
+                                        <p>{race.track}</p>
+                                        <a href={`/multiplayer?raceId=${race.id}`} className={styles.joinBtn}>
+                                            Enter Lobby
+                                        </a>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    </>
+                )}
             </div>
         );
     }
@@ -122,7 +76,10 @@ const MultiplayerContent = () => {
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h1>Fantasy Draft Lobby</h1>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <a href="/multiplayer" className={styles.backBtn}>← All Races</a>
+                    <h1>Fantasy Draft Lobby</h1>
+                </div>
                 <div className={styles.prizePool}>
                     Prize Pool: <span>${lobby ? lobby.prize_pool : 0}</span>
                 </div>

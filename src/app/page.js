@@ -300,24 +300,24 @@ function HomeContent() {
   // ---------------------------------------------------------------------
   if (!user) {
     return (
-      <main className="container" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ maxWidth: "450px", width: "100%", padding: "2rem 0" }}>
+      <main className="container">
+        <div style={{ maxWidth: "450px", margin: "4rem auto", padding: "0 1rem" }}>
 
-          <h1 style={{ textAlign: "center", marginBottom: "1.5rem", fontSize: "1.75rem" }}>Welcome to iRacingBet</h1>
+          <h1 style={{ textAlign: "center", marginBottom: "1rem", fontSize: "1.75rem" }}>Welcome to iRacingBet</h1>
 
           <div style={{
             backgroundColor: 'var(--background-card)',
             border: '1px solid var(--border-color)',
             borderRadius: '8px',
-            padding: '1.5rem',
-            marginBottom: '2rem',
+            padding: '1rem',
+            marginBottom: '1.5rem',
             textAlign: 'center',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+            boxShadow: '0 2px 4px -1px rgba(0, 0, 0, 0.1)'
           }}>
             <h2 style={{
               color: 'var(--primary-green)',
-              fontSize: '1.25rem',
-              marginBottom: '0.75rem',
+              fontSize: '1.1rem',
+              marginBottom: '0.5rem',
               fontWeight: '800',
               display: 'flex',
               alignItems: 'center',
@@ -326,7 +326,7 @@ function HomeContent() {
             }}>
               🛡️ 100% Free to Play
             </h2>
-            <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: '1.4' }}>
               Experience the thrill of iRacing betting with zero risk.
               <br />
               <strong style={{ color: 'var(--text-primary)', fontWeight: '600' }}>No real money. Just fun.</strong>

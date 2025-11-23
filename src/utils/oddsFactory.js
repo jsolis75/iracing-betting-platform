@@ -62,7 +62,8 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
         // --- 4. Final Probability Calculation ---
         let winProbability;
         if (useLiveOdds && raceProgress > 0) {
-            // LIVE ODDS: Sophisticated model with position dominance
+            // LIVE ODDS: Position becomes dominant, but not too extreme for top 10
+
             const cappedIRating = Math.min(iRating, 7000);
             const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.5);
 
@@ -70,13 +71,15 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
             const historicalWeight = 0.05 * Math.pow(1 - raceProgress, 2.0);
             const positionWeight = 1 - (iRatingWeight + historicalWeight);
 
-            const dynamicExponent = 3.2 + (raceProgress * 18);
+            // Balanced position curve - competitive but differentiated
+            const dynamicExponent = 3.2 + (raceProgress * 18); // Sweet spot between flat and steep
             const dynamicPositionFactor = Math.pow((fieldSize - currentPos + 1) / fieldSize, dynamicExponent);
 
+            // Gap penalty: Only for positions 13+ (deeper in field)
             let gapPenalty = 1.0;
-            if (raceProgress > 0.4 && currentPos > 12) {
-                const gap = currentPos - 12;
-                gapPenalty = Math.pow(0.80, gap);
+            if (raceProgress > 0.4 && currentPos > 12) { // After 40% AND outside top 12
+                const gap = currentPos - 12; // How far from P12
+                gapPenalty = Math.pow(0.80, gap); // 20% per position (was 18%)
             }
 
             winProbability =
@@ -84,9 +87,11 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
                 (historicalFactor * historicalWeight) +
                 (dynamicPositionFactor * positionWeight * gapPenalty);
         } else {
-            // PRE-RACE ODDS: Simple iRating + starting position only
-            // No historical stats or complex factors before green flag
-            winProbability = (iRatingFactor * 0.60) + (startingPositionFactor * 0.40);
+            // PRE-RACE ODDS
+            winProbability =
+                (iRatingFactor * 0.30) +
+                (historicalFactor * 0.40) +
+                (startingPositionFactor * 0.30);
         }
 
         // Apply Pro/Black license boost

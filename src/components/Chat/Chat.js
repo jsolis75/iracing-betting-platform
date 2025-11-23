@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import styles from './Chat.module.css';
 
 const Chat = () => {
-    const [isMinimized, setIsMinimized] = useState(false);
+    const [isMinimized, setIsMinimized] = useState(true);
     const [messages, setMessages] = useState([]);
     const [inputValue, setInputValue] = useState('');
     const [username, setUsername] = useState('Guest');

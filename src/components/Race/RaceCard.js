@@ -5,6 +5,7 @@ import styles from "./RaceCard.module.css";
 import { calculateFieldOdds } from "@/utils/oddsFactory";
 import { useBetting } from "@/context/BettingContext";
 import ResultsModal from "./ResultsModal";
+import SpecialsView from "./SpecialsView";
 
 const RaceCard = ({ race }) => {
     const {
@@ -18,6 +19,7 @@ const RaceCard = ({ race }) => {
     } = race;
     const { addToBetSlip } = useBetting();
     const [sortMethod, setSortMethod] = useState("position");
+    const [viewMode, setViewMode] = useState("drivers"); // 'drivers' or 'specials'
     const [showResults, setShowResults] = useState(false);
 
     // Fetch race data periodically (if needed, though we rely on props mostly)
@@ -118,122 +120,140 @@ const RaceCard = ({ race }) => {
             </div>
 
             <div className={styles.sortControls}>
-                <span className={styles.sortLabel}>Sort by:</span>
+                {viewMode === 'drivers' && (
+                    <>
+                        <span className={styles.sortLabel}>Sort by:</span>
+                        <button
+                            className={`${styles.sortBtn} ${sortMethod === "position" ? styles.activeSort : ""
+                                }`}
+                            onClick={() => setSortMethod("position")}
+                        >
+                            Live Pos
+                        </button>
+                        <button
+                            className={`${styles.sortBtn} ${sortMethod === "start" ? styles.activeSort : ""
+                                }`}
+                            onClick={() => setSortMethod("start")}
+                        >
+                            Start
+                        </button>
+                        <button
+                            className={`${styles.sortBtn} ${sortMethod === "irating" ? styles.activeSort : ""
+                                }`}
+                            onClick={() => setSortMethod("irating")}
+                        >
+                            iRating
+                        </button>
+                    </>
+                )}
+
                 <button
-                    className={`${styles.sortBtn} ${sortMethod === "position" ? styles.activeSort : ""
-                        }`}
-                    onClick={() => setSortMethod("position")}
+                    className={`${styles.specialsBtn} ${viewMode === 'specials' ? styles.specialsActive : ''}`}
+                    onClick={() => setViewMode(viewMode === 'drivers' ? 'specials' : 'drivers')}
+                    style={{ marginLeft: viewMode === 'drivers' ? '1rem' : '0' }}
                 >
-                    Live Pos
-                </button>
-                <button
-                    className={`${styles.sortBtn} ${sortMethod === "start" ? styles.activeSort : ""
-                        }`}
-                    onClick={() => setSortMethod("start")}
-                >
-                    Start
-                </button>
-                <button
-                    className={`${styles.sortBtn} ${sortMethod === "irating" ? styles.activeSort : ""
-                        }`}
-                    onClick={() => setSortMethod("irating")}
-                >
-                    iRating
+                    🎲 {viewMode === 'specials' ? '← Back to Drivers' : 'Specials'}
                 </button>
             </div>
 
-            <div className={styles.tableHeader}>
-                <div className={styles.colDriver}>Driver</div>
-                <div className={styles.colOdds}>Win</div>
-                <div className={styles.colOdds}>Top 3</div>
-                <div className={styles.colOdds}>Top 10</div>
-                <div className={styles.colOdds}>Crash</div>
-            </div>
+            {viewMode === 'drivers' ? (
+                <>
+                    <div className={styles.tableHeader}>
+                        <div className={styles.colDriver}>Driver</div>
+                        <div className={styles.colOdds}>Win</div>
+                        <div className={styles.colOdds}>Top 3</div>
+                        <div className={styles.colOdds}>Top 10</div>
+                        <div className={styles.colOdds}>Crash</div>
+                    </div>
 
-            <div className={styles.driverList}>
-                {sortedDrivers.map((driver) => {
-                    const odds = driver.odds;
-                    return (
-                        <div key={driver.id} className={`${styles.driverRow} ${driver.isDNF ? styles.crashed : ''}`}>
-                            <div className={styles.colDriver}>
-                                <span className={styles.number}>#{driver.number}</span>
-                                <div className={styles.driverDetails}>
-                                    <span className={styles.driverName}>
-                                        {driver.name}
-                                        {driver.isDNF && <span className={styles.retiredBadge}>RETIRED</span>}
-                                    </span>
-                                    <span className={styles.driverStats}>
-                                        iR: {driver.iRating} • {driver.licenseClass} • Started P{driver.startingPosition}
-                                        {driver.stats && (
-                                            <>
-                                                <br />
-                                                <span style={{ fontSize: '0.85em', color: '#aaa' }}>
-                                                    Win: {driver.stats.winPercentage?.toFixed(1)}% • Avg Inc: {driver.stats.avgIncidents?.toFixed(2)}
-                                                    {driver.lapsLed > 0 && ` • Laps Led: ${driver.lapsLed}`}
+                    <div className={styles.driverList}>
+                        {sortedDrivers.map((driver) => {
+                            const odds = driver.odds;
+                            return (
+                                <div key={driver.id} className={`${styles.driverRow} ${driver.isDNF ? styles.crashed : ''}`}>
+                                    <div className={styles.colDriver}>
+                                        <span className={styles.number}>#{driver.number}</span>
+                                        <div className={styles.driverDetails}>
+                                            <span className={styles.driverName}>
+                                                {driver.name}
+                                                {driver.isDNF && <span className={styles.retiredBadge}>RETIRED</span>}
+                                            </span>
+                                            <span className={styles.driverStats}>
+                                                iR: {driver.iRating} • {driver.licenseClass} • Started P{driver.startingPosition}
+                                                {driver.stats && (
+                                                    <>
+                                                        <br />
+                                                        <span style={{ fontSize: '0.85em', color: '#aaa' }}>
+                                                            Win: {driver.stats.winPercentage?.toFixed(1)}% • Avg Inc: {driver.stats.avgIncidents?.toFixed(2)}
+                                                            {driver.lapsLed > 0 && ` • Laps Led: ${driver.lapsLed}`}
+                                                        </span>
+                                                    </>
+                                                )}
+                                                {driver.currentIncidents > 0 && ` • ${driver.currentIncidents}x`}
+                                                {totalLaps > 0 && ` • Lap ${driver.lapsComplete}/${totalLaps}`}
+                                            </span>
+                                            {driver.currentPosition > 0 && !driver.isDNF && (
+                                                <span
+                                                    className={styles.currentPosition}
+                                                    style={{
+                                                        color:
+                                                            driver.currentPosition < driver.startingPosition
+                                                                ? "#4ade80"
+                                                                : driver.currentPosition > driver.startingPosition
+                                                                    ? "#f87171"
+                                                                    : "#94a3b8",
+                                                    }}
+                                                >
+                                                    Currently Running P{driver.currentPosition}
+                                                    {driver.currentPosition < driver.startingPosition &&
+                                                        ` ↑${driver.startingPosition - driver.currentPosition}`}
+                                                    {driver.currentPosition > driver.startingPosition &&
+                                                        ` ↓${driver.currentPosition - driver.startingPosition}`}
                                                 </span>
-                                            </>
-                                        )}
-                                        {driver.currentIncidents > 0 && ` • ${driver.currentIncidents}x`}
-                                        {totalLaps > 0 && ` • Lap ${driver.lapsComplete}/${totalLaps}`}
-                                    </span>
-                                    {driver.currentPosition > 0 && !driver.isDNF && (
-                                        <span
-                                            className={styles.currentPosition}
-                                            style={{
-                                                color:
-                                                    driver.currentPosition < driver.startingPosition
-                                                        ? "#4ade80"
-                                                        : driver.currentPosition > driver.startingPosition
-                                                            ? "#f87171"
-                                                            : "#94a3b8",
-                                            }}
-                                        >
-                                            Currently Running P{driver.currentPosition}
-                                            {driver.currentPosition < driver.startingPosition &&
-                                                ` ↑${driver.startingPosition - driver.currentPosition}`}
-                                            {driver.currentPosition > driver.startingPosition &&
-                                                ` ↓${driver.currentPosition - driver.startingPosition}`}
-                                        </span>
-                                    )}
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Bet buttons – disabled when race is finished OR driver has crashed */}
+                                    <button
+                                        className={styles.betButton}
+                                        onClick={() => handleBet(driver, "Win", odds.win)}
+                                        disabled={isFinished || driver.isDNF}
+                                    >
+                                        <span className={styles.oddsValue}>{odds.win}</span>
+                                    </button>
+
+                                    <button
+                                        className={styles.betButton}
+                                        onClick={() => handleBet(driver, "Top 3", odds.top3)}
+                                        disabled={isFinished || driver.isDNF}
+                                    >
+                                        <span className={styles.oddsValue}>{odds.top3}</span>
+                                    </button>
+
+                                    <button
+                                        className={styles.betButton}
+                                        onClick={() => handleBet(driver, "Top 10", odds.top10)}
+                                        disabled={isFinished || driver.isDNF}
+                                    >
+                                        <span className={styles.oddsValue}>{odds.top10}</span>
+                                    </button>
+
+                                    <button
+                                        className={`${styles.betButton} ${styles.crashButton}`}
+                                        onClick={() => handleBet(driver, "Crash", odds.crash)}
+                                        disabled={isFinished || driver.isDNF}
+                                    >
+                                        <span className={styles.oddsValue}>{odds.crash}</span>
+                                    </button>
                                 </div>
-                            </div>
-
-                            {/* Bet buttons – disabled when race is finished OR driver has crashed */}
-                            <button
-                                className={styles.betButton}
-                                onClick={() => handleBet(driver, "Win", odds.win)}
-                                disabled={isFinished || driver.isDNF}
-                            >
-                                <span className={styles.oddsValue}>{odds.win}</span>
-                            </button>
-
-                            <button
-                                className={styles.betButton}
-                                onClick={() => handleBet(driver, "Top 3", odds.top3)}
-                                disabled={isFinished || driver.isDNF}
-                            >
-                                <span className={styles.oddsValue}>{odds.top3}</span>
-                            </button>
-
-                            <button
-                                className={styles.betButton}
-                                onClick={() => handleBet(driver, "Top 10", odds.top10)}
-                                disabled={isFinished || driver.isDNF}
-                            >
-                                <span className={styles.oddsValue}>{odds.top10}</span>
-                            </button>
-
-                            <button
-                                className={`${styles.betButton} ${styles.crashButton}`}
-                                onClick={() => handleBet(driver, "Crash", odds.crash)}
-                                disabled={isFinished || driver.isDNF}
-                            >
-                                <span className={styles.oddsValue}>{odds.crash}</span>
-                            </button>
-                        </div>
-                    );
-                })}
-            </div>
+                            );
+                        })}
+                    </div>
+                </>
+            ) : (
+                <SpecialsView race={race} isFinished={isFinished} />
+            )}
 
             {/* Post-Race Banner */}
             {isFinished && (

@@ -63,7 +63,8 @@ export async function POST(request) {
                     return {
                         name: d.UserName,
                         currentPosition: posMap[d.CarIdx] || 999,
-                        isDNF: isDNF
+                        isDNF: isDNF,
+                        incidents: d.CurDriverIncidentCount || 0
                     };
                 });
             }
@@ -91,7 +92,23 @@ export async function POST(request) {
         const updates = [];
 
         // Helper to check a single leg result
-        const checkLeg = (driverName, betType, drivers) => {
+        const checkLeg = (driverName, betType, drivers, selection = null) => {
+            // Handle special bets
+            if (betType === 'terrorist' || betType === 'alqaeda') {
+                const terroristCount = drivers.filter(d => d.incidents >= 17).length;
+
+                if (betType === 'terrorist') {
+                    // The Terrorist: 1+ driver with 17+ incidents
+                    const hasTerrorist = terroristCount >= 1;
+                    return (selection === 'Yes' && hasTerrorist) || (selection === 'No' && !hasTerrorist) ? 'won' : 'lost';
+                } else if (betType === 'alqaeda') {
+                    // Al Qaeda: 3+ drivers with 17+ incidents
+                    const hasAlQaeda = terroristCount >= 3;
+                    return (selection === 'Yes' && hasAlQaeda) || (selection === 'No' && !hasAlQaeda) ? 'won' : 'lost';
+                }
+            }
+
+            // Handle regular driver bets
             const driver = drivers.find(d => d.name === driverName);
             if (!driver) return 'unknown';
 
@@ -157,11 +174,26 @@ export async function POST(request) {
 
             } else {
                 // Single Bet
-                const singleResult = checkLeg(bet.driver_name, bet.bet_type, raceDrivers);
-                if (singleResult !== 'unknown') {
-                    result = singleResult;
+                const betType = bet.bet_type;
+
+                // Check if it's a special bet
+                if (betType === 'terrorist' || betType === 'alqaeda') {
+                    // Extract selection from driver_name (e.g., "terrorist - Yes" or "alqaeda - No")
+                    const selection = bet.driver_name?.includes('Yes') ? 'Yes' : 'No';
+                    const singleResult = checkLeg(null, betType, raceDrivers, selection);
+                    if (singleResult !== 'unknown') {
+                        result = singleResult;
+                    } else {
+                        debugLogs.push(`Bet ${bet.id} special bet grading failed`);
+                    }
                 } else {
-                    debugLogs.push(`Bet ${bet.id} driver unknown: ${bet.driver_name}`);
+                    // Regular driver bet
+                    const singleResult = checkLeg(bet.driver_name, betType, raceDrivers);
+                    if (singleResult !== 'unknown') {
+                        result = singleResult;
+                    } else {
+                        debugLogs.push(`Bet ${bet.id} driver unknown: ${bet.driver_name}`);
+                    }
                 }
             }
 

@@ -27,6 +27,30 @@ const LiveBets = ({ raceData }) => {
             return { status: 'In Progress', isWinning: true };
         }
 
+        // Handle special bets
+        if (bet.bet_type === 'terrorist' || bet.bet_type === 'alqaeda') {
+            const drivers = raceData.drivers || [];
+            const terroristCount = drivers.filter(d => (d.currentIncidents || 0) >= 17).length;
+            const maxIncidents = Math.max(...drivers.map(d => d.currentIncidents || 0));
+            const selection = bet.driver_name?.includes('Yes') ? 'Yes' : 'No';
+
+            if (bet.bet_type === 'terrorist') {
+                const hasTerrorist = terroristCount >= 1;
+                const isWinning = (selection === 'Yes' && hasTerrorist) || (selection === 'No' && !hasTerrorist);
+                return {
+                    status: `Max Incidents: ${maxIncidents} (${terroristCount} @ 17+)`,
+                    isWinning: isWinning
+                };
+            } else if (bet.bet_type === 'alqaeda') {
+                const hasAlQaeda = terroristCount >= 3;
+                const isWinning = (selection === 'Yes' && hasAlQaeda) || (selection === 'No' && !hasAlQaeda);
+                return {
+                    status: `Terrorists: ${terroristCount}/3 needed`,
+                    isWinning: isWinning
+                };
+            }
+        }
+
         const driver = raceData.drivers.find(d => d.name === bet.driver);
         if (!driver) return { status: 'Driver not found', isWinning: false };
 

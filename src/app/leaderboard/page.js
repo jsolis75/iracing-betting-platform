@@ -33,7 +33,10 @@ const Leaderboard = () => {
         if (!user.betHistory || user.betHistory.length === 0) return 0;
         const wins = user.betHistory.filter(bet => bet.result === 'won');
         if (wins.length === 0) return 0;
-        return Math.max(...wins.map(bet => bet.payout - bet.amount));
+        // Database stores 'potential_payout' (profit) and 'stake'
+        // We want the biggest PROFIT, which is potential_payout.
+        // Or if we want Total Return - Stake, it's also potential_payout.
+        return Math.max(...wins.map(bet => Number(bet.potential_payout)));
     };
 
     const calculateUnderdogProfit = (user) => {
@@ -48,7 +51,8 @@ const Leaderboard = () => {
 
             return oddsValue >= 400;
         });
-        return underdogWins.reduce((sum, bet) => sum + (bet.payout - bet.amount), 0);
+        // Sum of profits (potential_payout)
+        return underdogWins.reduce((sum, bet) => sum + Number(bet.potential_payout), 0);
     };
 
     // Sort users by balance

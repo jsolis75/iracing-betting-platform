@@ -67,8 +67,8 @@ def broadcast_data():
                 except Exception as req_err:
                     print(f"\n⚠️ Connection Error: {req_err}")
                 
-                # Rate limit (1 second is good for free tier)
-                time.sleep(1)
+                # Rate limit (5 seconds to match frontend polling)
+                time.sleep(5)
                 
         except KeyboardInterrupt:
             print("\n\n🛑 Broadcasting stopped.")

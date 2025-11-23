@@ -18,6 +18,13 @@ const BetSlip = () => {
         calculateParlayInfo
     } = useBetting();
 
+    // Auto-disable parlay mode if bets drop below 2
+    React.useEffect(() => {
+        if (bets.length < 2 && parlayMode) {
+            setParlayMode(false);
+        }
+    }, [bets.length, parlayMode, setParlayMode]);
+
     const parlayInfo = calculateParlayInfo();
 
     // Calculate totals for Single Bets mode

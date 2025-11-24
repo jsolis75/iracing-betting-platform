@@ -83,10 +83,23 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
         scoreData: calculateScore(entry)
     })).sort((a, b) => b.scoreData.total - a.scoreData.total);
 
+    // Extract race info
+    const raceSession = raceData?.SessionInfo?.Sessions?.find(s => s.SessionType === 'Race');
+    const totalLaps = raceSession?.SessionLaps || '?';
+    const seriesName = raceData?.WeekendInfo?.SeriesID ? 'iRacing Race' : 'Race';
+    const trackName = raceData?.WeekendInfo?.TrackDisplayName || 'Track';
+
     return (
         <div className={styles.container}>
             <div className={styles.header}>
-                <h2>Live Standings</h2>
+                <div>
+                    <h2>Live Standings</h2>
+                    {raceData?.WeekendInfo && (
+                        <p className={styles.raceInfo}>
+                            {seriesName} at {trackName}
+                        </p>
+                    )}
+                </div>
                 <button
                     className={styles.rulesButton}
                     onClick={() => setShowScoringRules(!showScoringRules)}
@@ -110,16 +123,23 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
                 <div className={styles.headerRow}>
                     <span>Rank</span>
                     <span>User</span>
+                    <span>Lap</span>
                     <span>Score</span>
-                    <span>Breakdown</span>
+                    <span>Lineup</span>
                 </div>
                 {scoredEntries.map((entry, index) => {
                     const isMe = user && entry.user_id === user.id;
+
+                    // Calculate lap info - use lowest lap from their drivers
+                    const entryLaps = entry.scoreData?.breakdown?.map(item => item.driver?.Lap).filter(Boolean) || [];
+                    const currentLap = entryLaps.length > 0 ? Math.min(...entryLaps) : 0;
+
                     return (
                         <div key={entry.id} className={`${styles.row} ${isMe ? styles.me : ''}`}>
                             <span className={styles.rank}>{index + 1}</span>
                             <span className={styles.username}>{entry.username}</span>
-                            <span className={styles.score}>{(entry.scoreData?.total || 0).toFixed(1)}</span>
+                            <span className={styles.lapInfo}>{currentLap}/{totalLaps}</span>
+                            <span className={styles.score}>{(entry.scoreData?.total || 0).toFixed(1)}pts</span>
                             <div className={styles.breakdown}>
                                 {entry.scoreData?.breakdown?.map((item, idx) => {
                                     const currentPlace = item.currentPos ? getOrdinal(item.currentPos) : '?';
@@ -128,15 +148,18 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
 
                                     return (
                                         <div key={idx} className={`${styles.driverScore} ${item.isCaptain ? styles.captain : ''}`}>
-                                            <span className={styles.driverNum}>
+                                            <span className={styles.driverName}>
                                                 {item.driver?.UserName || item.driver?.AbbrevName || '#' + item.driver?.CarNumber}
                                                 {item.isCaptain && ' 👑'}
+                                            </span>
+                                            <span className={styles.positionInfo}>
+                                                P{item.currentPos || '?'} <span className={styles.startedAt}>(started P{startPlace})</span>
                                             </span>
                                             <span className={styles.driverPts}>
                                                 {(item.total || 0).toFixed(1)}pts
                                             </span>
                                             <small className={styles.driverDetails}>
-                                                ({currentPlace} place, {diffText} differential | started P{startPlace})
+                                                ({currentPlace} place, {diffText} differential)
                                             </small>
                                         </div>
                                     );
@@ -144,7 +167,7 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
                             </div>
                         </div>
                     );
-                })}\
+                })}
             </div>
         </div>
     );

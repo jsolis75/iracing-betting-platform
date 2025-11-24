@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
 
+function getStateName(state) {
+    const states = {
+        0: 'Invalid', 1: 'GetInCar', 2: 'Warmup', 3: 'ParadeLaps',
+        4: 'Racing', 5: 'Checkered', 6: 'CoolDown'
+    };
+    return states[state] || 'Unknown';
+}
+
+
 export async function POST(request) {
     try {
         const { raceId, drivers } = await request.json();
@@ -53,11 +62,13 @@ export async function POST(request) {
                 }
 
                 // CRITICAL: Check SessionState to ensure race is actually over
-                // State 5 = Checkered, 6 = CoolDown, 7 = Finalized
-                // We want to wait for CoolDown (6) or Finalized (7) to be safe
+                // State 4 = Racing, 5 = Checkered, 6 = CoolDown, 7 = Finalized
+                // Allow settlement at checkered (5) or later
                 const sessionState = raceData.data.SessionState;
-                if (sessionState < 6) { // 6 is CoolDown
-                    return NextResponse.json({ message: 'Race not yet official (State: ' + sessionState + ')' });
+                if (sessionState < 5) {
+                    return NextResponse.json({
+                        message: `Race not yet finished (State: ${sessionState} - ${getStateName(sessionState)})`
+                    });
                 }
 
                 const rawDrivers = raceData.data.DriverInfo.Drivers;

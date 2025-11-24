@@ -68,6 +68,63 @@ export async function GET(request) {
 
         // 4. Process Fantasy Entries
         const { data: entries, error: entriesError } = await supabase
+            .from('multiplayer_entries')
+            .select(`
+                *,
+                lobby:multiplayer_lobbies (
+                    id,
+                    status,
+                    prize_pool,
+                    winner_username
+                )
+            `)
+            .eq('user_id', user.id);
+
+        if (entriesError) throw entriesError;
+
+        let totalFantasyFees = 0;
+        let totalFantasyWinnings = 0;
+
+        entries.forEach(entry => {
+            // Fee is hardcoded 500 in join logic
+            const fee = 500;
+            totalFantasyFees += fee;
+
+            // Check if won
+            // Logic: If lobby is completed and winner_username matches
+            if (entry.lobby?.status === 'completed' && entry.lobby?.winner_username === username) {
+                // Winnings = Pot
+                // Use prize_pool if available, otherwise we'd need to calculate it.
+                const pot = Number(entry.lobby.prize_pool) || 0;
+
+                if (pot > 0) {
+                    totalFantasyWinnings += pot;
+                    log.push(`Fantasy Win (Lobby ${entry.lobby.id}): +${pot}`);
+                }
+            }
+        });
+
+        // 4b. Fetch won lobbies to get accurate pot if prize_pool was missing
+        const wonLobbyIds = entries
+            .filter(e => e.lobby?.status === 'completed' && e.lobby?.winner_username === username && !e.lobby.prize_pool)
+            .map(e => e.lobby.id);
+
+        for (const lobbyId of wonLobbyIds) {
+            const { count } = await supabase
+                .from('multiplayer_entries')
+                .select('*', { count: 'exact', head: true })
+                .eq('lobby_id', lobbyId);
+
+            const fee = 500;
+            const pot = fee * (count || 0);
+            totalFantasyWinnings += pot;
+            log.push(`Fantasy Win (Lobby ${lobbyId} - Calc): +${pot}`);
+        }
+
+        calculatedBalance = calculatedBalance - totalFantasyFees + totalFantasyWinnings;
+        log.push(`Net Fantasy: -$${totalFantasyFees} fees + $${totalFantasyWinnings} winnings`);
+
+        // 5. Update User
         const { error: updateError } = await supabase
             .from('users')
             .update({ balance: calculatedBalance })

@@ -88,6 +88,7 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
         const stats = driver.Stats || { starts: 0, wins: 0, avgPoints: 0, avgIncidents: 0, avgFinish: 0, top25Percent: 0, winPercentage: 0 };
 
         // --- 1. iRating Component (Skill) --- STEEPENED FOR AGGRESSIVE FAVORITES
+        let winProbability = 0;
         let iRatingFactor;
         if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 4.0);
         else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 3.0);
@@ -151,61 +152,49 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
         // HIGH IRATING BACKMARKER ADJUSTMENT (Last-to-First Challenge)
         // If a high iRating driver starts in the back, they are likely doing it for fun/content
         // and are still extremely dangerous. Don't let the position penalty crush their odds.
+        // and are still extremely dangerous. Don't let the position penalty crush their odds.
         if (iRating > 5000 && startPos > 10) {
             // Calculate how "back" they are (0.0 to 1.0)
             const backness = (startPos - 10) / (fieldSize - 10);
-            // LIVE ODDS: NASCAR-STYLE
-            const cappedIRating = Math.min(iRating, 7000);
-            const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.7);
 
-            const iRatingWeight = 0.15 * Math.pow(1 - raceProgress, 2.5);
-            const historicalWeight = 0.10 * Math.pow(1 - raceProgress, 2.0);
-            const positionWeight = 1 - (iRatingWeight + historicalWeight);
+            // The higher the iRating, the more we ignore the starting position
+            const iRatingTrust = Math.min((iRating - 5000) / 4000, 1.0); // 0.0 at 5k, 1.0 at 9k+
 
-            const dynamicExponent = 2.8 + (raceProgress * 15);
-            const dynamicPositionFactor = Math.pow((fieldSize - currentPos + 1) / fieldSize, dynamicExponent);
+            // Boost factor: Recover up to 70% of the lost position value
+            const recoveryFactor = 0.3 + (iRatingTrust * 0.5);
 
-            let gapPenalty = 1.0;
-            if (raceProgress > 0.5 && currentPos > 15) {
-                const gap = currentPos - 15;
-                gapPenalty = Math.pow(0.85, gap);
+            // Apply boost
+            startingPositionFactor = Math.max(startingPositionFactor, 0.4 * recoveryFactor);
+
+            // FORCE TOP 5 PROBABILITY RULE
+            // If iRating is significantly high (>6000 or >2000 above avg) and starting back,
+            // FORCE their starting position factor to be equivalent to a Top 5 starter.
+            if (iRating > 6000 || iRatingDiff > 2000) {
+                // P5 starting factor is approx (fieldSize - 5 / fieldSize)^2 ~= 0.8
+                // We'll give them a factor of 0.75 to 0.90 depending on just HOW good they are
+                const superBoost = 0.75 + (Math.min(iRating - 6000, 4000) / 4000) * 0.15;
+                startingPositionFactor = Math.max(startingPositionFactor, superBoost);
             }
-
-            // POSITION DIFFERENTIAL BONUS: Drivers who've passed many cars are clearly fast
-            let positionDifferentialBonus = 1.0;
-            const positionsGained = startPos - currentPos; // Positive = gained positions
-            if (positionsGained > 3) {
-                // Give bonus for making up positions (shows current race speed)
-                positionDifferentialBonus = 1.0 + (positionsGained * 0.08); // 8% per position gained
-            }
-
-            winProbability =
-                (liveIRatingFactor * iRatingWeight) +
-                (historicalFactor * historicalWeight) +
-                (dynamicPositionFactor * positionWeight * gapPenalty);
-
-            // Apply position differential bonus
-            winProbability = winProbability * positionDifferentialBonus;
-        } else {
-            // PRE-RACE ODDS
-            // Base calculation with INCREASED iRating weight (helps good drivers starting deep)
-            winProbability =
-                (iRatingFactor * 0.40) +  // Was 0.30 - higher weight helps talented drivers in back
-                (historicalFactor * 0.40) +
-                (startingPositionFactor * 0.20); // Was 0.30 - reduced generic position impact
-
-            // FRONT RUNNER BONUS: Top 1/3 of field gets massive boost (makes them favorites)
-            const frontRunnerThreshold = Math.ceil(fieldSize / 3); // Top third
-            if (startPos <= frontRunnerThreshold) {
-                // Graduated bonus: P1 gets biggest boost, decreases as you go back
-                const frontRunnerBonus = 1.0 + ((frontRunnerThreshold - startPos + 1) / frontRunnerThreshold) * 0.8;
-                winProbability = winProbability * frontRunnerBonus;
-            }
-
-            // Apply qualifying bonus (for lower-rated drivers who qualified well)
-            winProbability = winProbability * qualifyingBonus;
-            winProbability = winProbability + qualifyingAdditiveBoost;
         }
+
+        // STANDARD ODDS CALCULATION (Used for both Pre-Race and Live)
+        // Base calculation with INCREASED iRating weight (helps good drivers starting deep)
+        winProbability =
+            (iRatingFactor * 0.40) +  // Was 0.30 - higher weight helps talented drivers in back
+            (historicalFactor * 0.40) +
+            (startingPositionFactor * 0.20); // Was 0.30 - reduced generic position impact
+
+        // FRONT RUNNER BONUS: Top 1/3 of field gets massive boost (makes them favorites)
+        const frontRunnerThreshold = Math.ceil(fieldSize / 3); // Top third
+        if (startPos <= frontRunnerThreshold) {
+            // Graduated bonus: P1 gets biggest boost, decreases as you go back
+            const frontRunnerBonus = 1.0 + ((frontRunnerThreshold - startPos + 1) / frontRunnerThreshold) * 0.8;
+            winProbability = winProbability * frontRunnerBonus;
+        }
+
+        // Apply qualifying bonus (for lower-rated drivers who qualified well)
+        winProbability = winProbability * qualifyingBonus;
+        winProbability = winProbability + qualifyingAdditiveBoost;
 
         // --- PRO/BLACK LICENSE BOOST ---
         // SIGNIFICANTLY INCREASED for DWC/Pro drivers

@@ -13,6 +13,12 @@
     margin: 0;
 }
 
+.raceInfo {
+    margin: 0.25rem 0 0 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
 .rulesButton {
     background: var(--primary-blue);
     color: white;
@@ -58,21 +64,42 @@
 }
 
 .headerRow {
-    display: grid;
-    grid-template-columns: 0.5fr 1.5fr 1fr 3fr;
-    padding: 0.5rem;
+    display: flex;
+    gap: 1rem;
+    padding: 0.5rem 1rem;
     font-weight: bold;
     color: var(--text-secondary);
     border-bottom: 1px solid var(--border-color);
 }
 
+.headerRow span:nth-child(1) {
+    min-width: 50px;
+}
+
+.headerRow span:nth-child(2) {
+    min-width: 120px;
+    flex: 1;
+}
+
+.headerRow span:nth-child(3) {
+    min-width: 80px;
+}
+
+.headerRow span:nth-child(4) {
+    min-width: 90px;
+}
+
+.headerRow span:nth-child(5) {
+    flex: 3;
+}
+
 .row {
-    display: grid;
-    grid-template-columns: 0.5fr 1.5fr 1fr 3fr;
-    padding: 0.75rem 0.5rem;
+    display: flex;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
     background: var(--background);
     border-radius: 4px;
-    align-items: center;
+    align-items: flex-start;
 }
 
 .me {
@@ -83,49 +110,71 @@
 .rank {
     font-weight: bold;
     color: var(--text-secondary);
+    min-width: 50px;
 }
 
 .username {
     font-weight: 600;
+    min-width: 120px;
+    flex: 1;
+}
+
+.lapInfo {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    min-width: 80px;
 }
 
 .score {
     font-weight: bold;
     color: var(--primary-green);
+    min-width: 90px;
 }
 
 .breakdown {
+    flex: 3;
     display: flex;
     flex-direction: column;
-    gap: 0.25rem;
+    gap: 0.5rem;
 }
 
 .driverScore {
-    display: flex;
+    display: grid;
+    grid-template-columns: 180px 200px 90px auto;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
+    gap: 1rem;
+    font-size: 0.9rem;
 }
 
-.driverNum {
+.driverName {
     font-weight: 600;
-    min-width: 120px;
+}
+
+.positionInfo {
+    color: var(--primary-blue);
+    font-weight: bold;
+}
+
+.startedAt {
+    color: var(--text-secondary);
+    font-weight: normal;
+    font-size: 0.85rem;
+    margin-left: 0.5rem;
 }
 
 .driverPts {
     color: var(--primary-green);
     font-weight: bold;
-    min-width: 60px;
 }
 
 .driverDetails {
     color: var(--text-secondary);
-    font-size: 0.75rem;
+    font-size: 0.8rem;
 }
 
 .captain {
     background: rgba(243, 156, 18, 0.1);
-    padding: 0.25rem 0.5rem;
+    padding: 0.3rem 0.6rem;
     border-radius: 3px;
     border-left: 2px solid var(--primary-yellow);
 }

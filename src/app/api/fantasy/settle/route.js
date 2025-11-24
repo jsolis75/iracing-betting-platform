@@ -157,18 +157,31 @@ export async function POST(request) {
 
         console.log(`Awarding ${pot} to user ${winner.user_id} (${winner.username})`);
 
-        // Update winner's balance
-        const { data: balanceUpdate, error: balanceError } = await supabase.rpc('increment_balance', {
-            user_id_input: winner.user_id,
-            amount: pot
-        });
+        // Update winner's balance - use direct SQL update instead of RPC
+        const { data: currentUser, error: userFetchError } = await supabase
+            .from('users')
+            .select('balance')
+            .eq('id', winner.user_id)
+            .single();
+
+        if (userFetchError || !currentUser) {
+            console.error('Failed to fetch user:', userFetchError);
+            throw new Error(`Failed to fetch user balance: ${userFetchError?.message || 'User not found'}`);
+        }
+
+        const newBalance = (currentUser.balance || 0) + pot;
+
+        const { error: balanceError } = await supabase
+            .from('users')
+            .update({ balance: newBalance })
+            .eq('id', winner.user_id);
 
         if (balanceError) {
             console.error('Balance update failed:', balanceError);
             throw new Error(`Failed to award payout: ${balanceError.message}`);
         }
 
-        console.log('Balance updated successfully');
+        console.log(`Balance updated successfully from ${currentUser.balance} to ${newBalance}`);
 
         // 7. Mark lobby as settled
         await supabase

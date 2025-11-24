@@ -3,16 +3,30 @@ import { createClient } from '@supabase/supabase-js';
 // Get Supabase URL and key from environment
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Create Supabase client
 export const supabase = supabaseUrl && supabaseKey
     ? createClient(supabaseUrl, supabaseKey)
     : null;
 
-// Get Supabase client for server-side use
+// Get Supabase client for client-side and basic server-side use
 export function getSupabaseClient() {
     if (!supabase) {
         throw new Error('Supabase client not initialized. Check environment variables.');
     }
     return supabase;
+}
+
+// Get Supabase service client for server-side admin operations (bypasses RLS)
+export function getSupabaseServiceClient() {
+    if (!supabaseUrl || !supabaseServiceKey) {
+        throw new Error('Supabase service client not configured. Check SUPABASE_SERVICE_ROLE_KEY.');
+    }
+    return createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    });
 }

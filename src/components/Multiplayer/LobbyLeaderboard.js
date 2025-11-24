@@ -7,40 +7,29 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
 
     // --- SCORING LOGIC ---
     const calculateDriverScore = (driver, isCaptain) => {
-        if (!driver) {
-            console.log("No driver data");
-            return { posPoints: 0, diffPoints: 0, total: 0 };
-        }
+        if (!driver) return { posPoints: 0, diffPoints: 0, total: 0, currentPos: null };
 
-        // DEBUG: Log the FULL driver object to see all available fields
-        console.log("FULL Driver Object:", driver);
-        console.log("All driver fields:", Object.keys(driver));
+        const currentPos = driver.Position;
+        const startPos = driver.CarIdxPosition;
 
-        // Try multiple position fields
-        const currentPos = driver.Position || driver.CarIdxPosition || driver.ResultsPosition;
-        const startPos = driver.CarIdxPosition || driver.StartPosition || currentPos;
-
-        if (!currentPos) {
-            console.log("No position data yet for", driver.UserName);
-            return { posPoints: 0, diffPoints: 0, total: 0 };
+        if (!currentPos || !startPos) {
+            return { posPoints: 0, diffPoints: 0, total: 0, currentPos: null };
         }
 
         // 1. Position Points (DraftKings Exact)
         let posPoints = 0;
-        const pos = currentPos;
-
-        if (pos === 1) posPoints = 45;
-        else if (pos === 2) posPoints = 42;
-        else if (pos === 3) posPoints = 41;
-        else if (pos === 4) posPoints = 40;
-        else if (pos >= 5 && pos <= 43) {
-            posPoints = 44 - pos;
+        if (currentPos === 1) posPoints = 45;
+        else if (currentPos === 2) posPoints = 42;
+        else if (currentPos === 3) posPoints = 41;
+        else if (currentPos === 4) posPoints = 40;
+        else if (currentPos >= 5 && currentPos <= 43) {
+            posPoints = 44 - currentPos;
         } else {
             posPoints = 1;
         }
 
-        // 2. Place Differential
-        const diffPoints = startPos - pos;
+        // 2. Place Differential (start - current, positive = gained, negative = lost)
+        const diffPoints = startPos - currentPos;
 
         let driverScore = posPoints + diffPoints;
 
@@ -49,9 +38,7 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
             driverScore *= 1.5;
         }
 
-        console.log("Calculated score:", { posPoints, diffPoints, total: driverScore, isCaptain });
-
-        return { posPoints, diffPoints, total: driverScore };
+        return { posPoints, diffPoints, total: driverScore, currentPos };
     };
 
     const calculateScore = (entry) => {
@@ -109,14 +96,17 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
                                 {entry.scoreData?.breakdown?.map((item, idx) => (
                                     <div key={idx} className={`${styles.driverScore} ${item.isCaptain ? styles.captain : ''}`}>
                                         <span className={styles.driverNum}>
-                                            #{item.driver?.CarNumber || '?'}
+                                            {item.driver?.UserName || item.driver?.AbbrevName || '#' + item.driver?.CarNumber}
                                             {item.isCaptain && ' 👑'}
+                                        </span>
+                                        <span className={styles.currentPos}>
+                                            P{item.currentPos || '?'}
                                         </span>
                                         <span className={styles.driverPts}>
                                             {(item.total || 0).toFixed(1)}
                                         </span>
                                         <small className={styles.driverDetails}>
-                                            (Pos: {item.posPoints || 0} | Diff: {(item.diffPoints || 0) >= 0 ? '+' : ''}{item.diffPoints || 0})
+                                            (Base: {item.posPoints || 0} | Diff: {item.diffPoints >= 0 ? '+' : ''}{item.diffPoints || 0})
                                         </small>
                                     </div>
                                 )) || <span style={{ color: '#888', fontSize: '0.85rem' }}>No lineup set</span>}

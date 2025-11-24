@@ -60,7 +60,14 @@
 
 .driverNum {
     font-weight: 600;
-    min-width: 50px;
+    min-width: 120px;
+}
+
+.currentPos {
+    color: var(--primary-blue);
+    font-weight: bold;
+    min-width: 40px;
+    font-size: 0.9rem;
 }
 
 .driverPts {

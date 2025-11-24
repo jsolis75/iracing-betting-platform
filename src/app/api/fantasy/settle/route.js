@@ -30,91 +30,127 @@ export async function POST(request) {
             .single();
 
         if (raceError || !race || !race.data) {
-            const { data: entries, error: entriesError } = await supabase
-                .from('fantasy_entries')
-                .select('*')
-                .eq('lobby_id', lobbyId);
+            return NextResponse.json({ error: 'Race data not found' }, { status: 404 });
+        }
 
-            if (entriesError) {
-                throw entriesError;
+        // 3. Extract driver results from race session
+        const sessions = race.data.SessionInfo?.Sessions || [];
+        const raceSession = sessions.find(s => s.SessionType === 'Race') || sessions[sessions.length - 1];
+        const qualifyingSession = sessions.find(s => s.SessionType === 'Qualify');
+
+        if (!raceSession?.ResultsPositions) {
+            return NextResponse.json({ error: 'No race results available' }, { status: 400 });
+        }
+
+        const drivers = race.data.DriverInfo?.Drivers || [];
+
+        // Get starting positions from qualifying
+        const startingPositions = {};
+        if (qualifyingSession?.ResultsPositions) {
+            qualifyingSession.ResultsPositions.forEach(result => {
+                startingPositions[result.CarIdx] = result.Position;
+            });
+        }
+
+        // Create driver lookup with positions
+        const driverResults = {};
+        raceSession.ResultsPositions.forEach(result => {
+            const driver = drivers.find(d => d.CarIdx === result.CarIdx);
+            if (driver) {
+                driverResults[driver.UserID] = {
+                    position: result.Position,
+                    startingPosition: startingPositions[result.CarIdx] || result.Position,
+                    name: driver.UserName
+                };
+            }
+        });
+
+        // 4. Get all entries for this lobby
+        const { data: entries, error: entriesError } = await supabase
+            .from('fantasy_entries')
+            .select('*')
+            .eq('lobby_id', lobbyId);
+
+        if (entriesError) {
+            throw entriesError;
+        }
+
+        // 5. Calculate scores
+        const calculateDriverScore = (driverId, isCaptain) => {
+            const result = driverResults[driverId];
+            if (!result) return 0;
+
+            const { position, startingPosition } = result;
+
+            // Position points (DraftKings scoring)
+            let posPoints = 0;
+            if (position === 1) posPoints = 45;
+            else if (position === 2) posPoints = 42;
+            else if (position === 3) posPoints = 41;
+            else if (position === 4) posPoints = 40;
+            else if (position >= 5 && position <= 43) {
+                posPoints = 44 - position;
+            } else {
+                posPoints = 1;
             }
 
-            // 5. Calculate scores
-            const calculateDriverScore = (driverId, isCaptain) => {
-                const result = driverResults[driverId];
-                if (!result) return 0;
+            // Place differential (starting - current)
+            const diffPoints = startingPosition - position;
 
-                const { position, startingPosition } = result;
+            let total = posPoints + diffPoints;
 
-                // Position points (DraftKings scoring)
-                let posPoints = 0;
-                if (position === 1) posPoints = 45;
-                else if (position === 2) posPoints = 42;
-                else if (position === 3) posPoints = 41;
-                else if (position === 4) posPoints = 40;
-                else if (position >= 5 && position <= 43) {
-                    posPoints = 44 - position;
-                } else {
-                    posPoints = 1;
-                }
+            // Captain multiplier
+            if (isCaptain) {
+                total *= 1.5;
+            }
 
-                // Place differential (starting - current, so positive = gained)
-                const diffPoints = startingPosition - position;
+            return total;
+        };
 
-                let total = posPoints + diffPoints;
+        const scoredEntries = entries.map(entry => {
+            const score1 = calculateDriverScore(entry.driver_1, entry.captain_driver === entry.driver_1);
+            const score2 = calculateDriverScore(entry.driver_2, entry.captain_driver === entry.driver_2);
+            const score3 = calculateDriverScore(entry.driver_3, entry.captain_driver === entry.driver_3);
+            const totalScore = score1 + score2 + score3;
 
-                // Captain multiplier
-                if (isCaptain) {
-                    total *= 1.5;
-                }
-
-                return total;
+            return {
+                ...entry,
+                finalScore: totalScore
             };
+        });
 
-            const scoredEntries = entries.map(entry => {
-                const score1 = calculateDriverScore(entry.driver_1, entry.captain_driver === entry.driver_1);
-                const score2 = calculateDriverScore(entry.driver_2, entry.captain_driver === entry.driver_2);
-                const score3 = calculateDriverScore(entry.driver_3, entry.captain_driver === entry.driver_3);
-                const totalScore = score1 + score2 + score3;
+        // Sort by score descending
+        scoredEntries.sort((a, b) => b.finalScore - a.finalScore);
 
-                return {
-                    ...entry,
-                    finalScore: totalScore
-                };
-            });
+        // 6. Award payouts (winner takes all)
+        const winner = scoredEntries[0];
+        const pot = lobby.entry_fee * entries.length;
 
-            // Sort by score
-            scoredEntries.sort((a, b) => b.finalScore - a.finalScore);
+        // Update winner's balance
+        await supabase.rpc('increment_balance', {
+            user_id_input: winner.user_id,
+            amount: pot
+        });
 
-            // 6. Award payouts (winner takes all for now)
-            const winner = scoredEntries[0];
-            const pot = lobby.entry_fee * entries.length;
+        // 7. Mark lobby as settled
+        await supabase
+            .from('fantasy_lobbies')
+            .update({ status: 'completed' })
+            .eq('id', lobbyId);
 
-            // Update winner's balance
-            await supabase.rpc('increment_balance', {
-                user_id_input: winner.user_id,
-                amount: pot
-            });
+        return NextResponse.json({
+            success: true,
+            winner: winner.username,
+            winnings: pot,
+            finalStandings: scoredEntries.map((e, idx) => ({
+                rank: idx + 1,
+                username: e.username,
+                score: e.finalScore
+            }))
+        });
 
-            // 7. Mark lobby as settled
-            await supabase
-                .from('fantasy_lobbies')
-                .update({ status: 'completed' })
-                .eq('id', lobbyId);
-
-            return NextResponse.json({
-                success: true,
-                winner: winner.username,
-                winnings: pot,
-                finalStandings: scoredEntries.map((e, idx) => ({
-                    rank: idx + 1,
-                    username: e.username,
-                    score: e.finalScore
-                }))
-            });
-
-        } catch (error) {
-            console.error('Fantasy settlement error:', error);
-            return NextResponse.json({ error: 'Settlement failed' }, { status: 500 });
-        }
+    } catch (error) {
+        console.error('Fantasy settlement error:', error);
+        return NextResponse.json({ error: 'Settlement failed: ' + error.message }, { status: 500 });
     }
+}

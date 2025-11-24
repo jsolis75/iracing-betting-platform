@@ -2,6 +2,16 @@ import React, { useState } from 'react';
 import { useUser } from '@/context/UserContext';
 import styles from './LobbyLeaderboard.module.css';
 
+// Series mapping
+const seriesMapping = {
+    164: "NASCAR Truck Series",
+    165: "NASCAR Xfinity Series",
+    166: "NASCAR Cup Series",
+    312: "ARCA Menards Series",
+    382: "Street Stock",
+    // Add more as needed
+};
+
 // Helper to get ordinal suffix (1st, 2nd, 3rd, etc.)
 const getOrdinal = (n) => {
     const s = ['th', 'st', 'nd', 'rd'];
@@ -9,9 +19,37 @@ const getOrdinal = (n) => {
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
 };
 
-const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
+const LobbyLeaderboard = ({ entries, drivers, raceData, lobbyId }) => {
     const { user } = useUser();
     const [showScoringRules, setShowScoringRules] = useState(false);
+    const [settling, setSettling] = useState(false);
+
+    // Force settle function
+    const handleForceSettle = async () => {
+        if (!confirm('Force settle this fantasy lobby? This cannot be undone.')) return;
+
+        setSettling(true);
+        try {
+            const res = await fetch('/api/fantasy/settle', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lobbyId })
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                alert(`Settlement complete! Winner: ${data.winner} ($${data.winnings})`);
+                window.location.reload();
+            } else {
+                const error = await res.json();
+                alert(`Settlement failed: ${error.error}`);
+            }
+        } catch (err) {
+            alert('Settlement error: ' + err.message);
+        } finally {
+            setSettling(false);
+        }
+    };
 
     // --- SCORING LOGIC ---
     const calculateDriverScore = (driver, isCaptain) => {
@@ -86,7 +124,8 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
     // Extract race info
     const raceSession = raceData?.SessionInfo?.Sessions?.find(s => s.SessionType === 'Race');
     const totalLaps = raceSession?.SessionLaps || '?';
-    const seriesName = raceData?.WeekendInfo?.SeriesID ? 'iRacing Race' : 'Race';
+    const seriesId = raceData?.WeekendInfo?.SeriesID;
+    const seriesName = seriesId ? (seriesMapping[seriesId] || `Series ${seriesId}`) : 'Race';
     const trackName = raceData?.WeekendInfo?.TrackDisplayName || 'Track';
 
     return (
@@ -100,12 +139,23 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
                         </p>
                     )}
                 </div>
-                <button
-                    className={styles.rulesButton}
-                    onClick={() => setShowScoringRules(!showScoringRules)}
-                >
-                    &#9432; How Scoring Works
-                </button>
+                <div className={styles.headerButtons}>
+                    {user?.username === 'dumindu' && (
+                        <button
+                            className={styles.settleButton}
+                            onClick={handleForceSettle}
+                            disabled={settling}
+                        >
+                            {settling ? 'Settling...' : '⚡ Force Settle'}
+                        </button>
+                    )}
+                    <button
+                        className={styles.rulesButton}
+                        onClick={() => setShowScoringRules(!showScoringRules)}
+                    >
+                        &#9432; How Scoring Works
+                    </button>
+                </div>
             </div>
 
             {showScoringRules && (

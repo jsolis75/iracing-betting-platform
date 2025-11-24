@@ -211,6 +211,7 @@ const MultiplayerContent = () => {
                                         entries={entries}
                                         drivers={raceData?.DriverInfo?.Drivers || []}
                                         raceData={raceData}
+                                        lobbyId={lobby.id}
                                     />
                                 ) : (
                                     <div className={styles.leaderboardPlaceholder}>
@@ -227,6 +228,7 @@ const MultiplayerContent = () => {
                                 entries={entries}
                                 drivers={raceData?.DriverInfo?.Drivers || []}
                                 raceData={raceData}
+                                lobbyId={lobby.id}
                             />
                         </div>
                     )}

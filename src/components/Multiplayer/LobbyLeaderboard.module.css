@@ -13,6 +13,33 @@
     margin: 0;
 }
 
+.headerButtons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.settleButton {
+    background: var(--primary-green);
+    color: #000;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 0.2s;
+}
+
+.settleButton:hover:not(:disabled) {
+    background: #27ae60;
+}
+
+.settleButton:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 .raceInfo {
     margin: 0.25rem 0 0 0;
     color: var(--text-secondary);

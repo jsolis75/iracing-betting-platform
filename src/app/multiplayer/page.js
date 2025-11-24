@@ -76,7 +76,15 @@ const MultiplayerContent = () => {
     useEffect(() => {
         console.log("MultiplayerPage mounted. RaceId:", raceId, "User:", user?.username);
         fetchLobby();
-        const interval = setInterval(fetchLobby, 5000); // Poll every 5s
+
+        // Poll every 30 seconds (reduced from 5s to save costs)
+        const interval = setInterval(() => {
+            // Only poll if tab is visible to save API calls
+            if (document.visibilityState === 'visible') {
+                fetchLobby();
+            }
+        }, 30000); // 30 seconds
+
         return () => clearInterval(interval);
     }, [raceId, user]);
 

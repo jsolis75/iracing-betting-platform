@@ -113,7 +113,7 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
                                 </div>
                                 <div className={styles.driverStats}>
                                     <span className={styles.stat}>
-                                        <small>Start P{driver.CarIdxPosition || '?'}</small>
+                                        <small>Start: P{driver.CarIdxPosition || driver.StartPosition || driver.CarIdxLap || '?'}</small>
                                     </span>
                                     <span className={styles.stat}>
                                         <small>iR: {driver.IRating || '?'}</small>

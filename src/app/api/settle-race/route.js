@@ -279,205 +279,6 @@ export async function POST(request) {
 
                 if (user) {
                     // FIX: Refund Stake + Pay Profit
-                    const dnfReasons = ["accident", "engine", "suspension", "handling", "brakes"];
-                    if (dnfReasons.some(r => reasonOut.includes(r))) isDNF = true;
-                    else if ((reasonOut.includes("disconnected") || reasonOut.includes("disco"))) isDNF = true;
-
-                    return {
-                        name: d.UserName,
-                        currentPosition: posMap[d.CarIdx] || 999,
-                        isDNF: isDNF,
-                        incidents: d.CurDriverIncidentCount || 0
-                    };
-                });
-            }
-        }
-
-        if (!raceDrivers) {
-            return NextResponse.json({ error: 'Missing race results data' }, { status: 400 });
-        }
-
-        // 1. Fetch ALL pending bets
-        const { data: pendingBets, error: fetchError } = await supabase
-            .from('bets')
-            .select('*')
-            .eq('status', 'pending');
-
-        if (fetchError) {
-            throw fetchError;
-        }
-
-        if (!pendingBets || pendingBets.length === 0) {
-            return NextResponse.json({ message: 'No pending bets to settle' });
-        }
-
-        let settledCount = 0;
-        const updates = [];
-        const settled = []; // Track successfully settled bets
-        const failed = []; // Track bets that failed to settle (e.g., already settled by another process)
-
-
-        // Helper to check a single leg result
-        const checkLeg = (driverName, betType, drivers, selection = null) => {
-            // Skip manual settlement bets
-            if (['slurmeister', 'fatality', 'kingkong'].includes(betType)) {
-                return 'unknown'; // Leave as pending for manual settlement
-            }
-
-            // Handle special bets
-            if (betType === 'terrorist' || betType === 'alqaeda') {
-                const terroristCount = drivers.filter(d => d.incidents >= 17).length;
-
-                if (betType === 'terrorist') {
-                    // The Terrorist: 1+ driver with 17+ incidents
-                    const hasTerrorist = terroristCount >= 1;
-                    return (selection === 'Yes' && hasTerrorist) || (selection === 'No' && !hasTerrorist) ? 'won' : 'lost';
-                } else if (betType === 'alqaeda') {
-                    // Al Qaeda: 3+ drivers with 17+ incidents
-                    const hasAlQaeda = terroristCount >= 3;
-                    return (selection === 'Yes' && hasAlQaeda) || (selection === 'No' && !hasAlQaeda) ? 'won' : 'lost';
-                }
-            }
-
-            // Handle regular driver bets
-            const driver = drivers.find(d => d.name === driverName);
-            if (!driver) return 'unknown';
-
-            const pos = driver.currentPosition;
-            const isDNF = driver.isDNF;
-
-            switch (betType) {
-                case 'Win':
-                    return pos === 1 ? 'won' : 'lost';
-                case 'Top 3':
-                    return pos <= 3 ? 'won' : 'lost';
-                case 'Top 10':
-                    return pos <= 10 ? 'won' : 'lost';
-                case 'Crash':
-                    return isDNF ? 'won' : 'lost';
-                default:
-                    return 'unknown';
-            }
-        };
-
-        const debugLogs = [];
-        debugLogs.push(`Settling race ${raceId} (Target Session: ${targetSessionId})`);
-        debugLogs.push(`Found ${pendingBets.length} total pending bets in DB`);
-
-        for (const bet of pendingBets) {
-            let result = 'pending';
-
-            // Skip bets that are for a different race
-            // Accept EITHER the database UUID OR the iRacing session ID
-            const matchesUUID = String(bet.race_id) === String(raceId);
-            const matchesSessionID = String(bet.race_id) === String(targetSessionId);
-            const isMulti = bet.race_id === 'multi';
-
-            if (!matchesUUID && !matchesSessionID && !isMulti) {
-                debugLogs.push(`Skipping bet ${bet.id}: Race ID mismatch (${bet.race_id} !== ${raceId} / ${targetSessionId})`);
-                continue;
-            }
-
-            if (bet.bet_type === 'Parlay') {
-                if (!bet.details || !Array.isArray(bet.details)) {
-                    debugLogs.push(`Skipping parlay ${bet.id}: Missing details (Legacy bet?)`);
-                    continue;
-                }
-
-                let allWon = true;
-                let anyLost = false;
-                let anyUnknown = false;
-
-                for (const leg of bet.details) {
-                    const legResult = checkLeg(leg.driver, leg.type, raceDrivers);
-
-                    if (legResult === 'lost') {
-                        anyLost = true;
-                        break; // Parlay is dead
-                    }
-                    if (legResult === 'unknown') {
-                        anyUnknown = true;
-                        debugLogs.push(`Parlay ${bet.id} leg unknown: ${leg.driver}`);
-                    }
-                    if (legResult !== 'won') {
-                        allWon = false;
-                    }
-                }
-
-                if (anyLost) result = 'lost';
-                else if (allWon && !anyUnknown) result = 'won';
-                else result = 'pending';
-
-            } else {
-                // Single Bet
-                const betType = bet.bet_type;
-
-                // Check if it's a special bet
-                if (betType === 'terrorist' || betType === 'alqaeda') {
-                    // Extract selection from driver_name (e.g., "terrorist - Yes" or "alqaeda - No")
-                    const selection = bet.driver_name?.includes('Yes') ? 'Yes' : 'No';
-                    const singleResult = checkLeg(null, betType, raceDrivers, selection);
-                    if (singleResult !== 'unknown') {
-                        result = singleResult;
-                    } else {
-                        debugLogs.push(`Bet ${bet.id} special bet grading failed`);
-                    }
-                } else {
-                    // Regular driver bet
-                    const singleResult = checkLeg(bet.driver_name, betType, raceDrivers);
-                    if (singleResult !== 'unknown') {
-                        result = singleResult;
-                    } else {
-                        debugLogs.push(`Bet ${bet.id} driver unknown: ${bet.driver_name}`);
-                    }
-                }
-            }
-
-            // If we determined a result, queue the update
-            if (result !== 'pending') {
-                updates.push({
-                    bet,
-                    result
-                });
-                debugLogs.push(`Queueing update for bet ${bet.id}: ${result}`);
-            }
-        }
-
-        // Process updates
-        for (const update of updates) {
-            const { bet, result } = update;
-
-            // 1. ATOMIC UPDATE: Try to set status to 'settled' WHERE status is 'pending'
-            // This prevents race conditions where multiple requests settle the same bet
-            const { data: settledBet, error: updateError } = await supabase
-                .from('bets')
-                .update({
-                    status: 'settled',
-                    result: result,
-                    settled_at: new Date().toISOString()
-                })
-                .eq('id', bet.id)
-                .eq('status', 'pending') // CRITICAL: Only update if still pending
-                .select()
-                .single();
-
-            if (updateError || !settledBet) {
-                // If update failed or returned no data, it means another process already settled this bet
-                debugLogs.push(`Skipping payment for bet ${bet.id}: Already settled or update failed`);
-                failed.push(bet.id);
-                continue;
-            }
-
-            // 2. If won, pay the user (Stake + Profit)
-            if (result === 'won') {
-                const { data: user } = await supabase
-                    .from('users')
-                    .select('balance')
-                    .eq('id', bet.user_id)
-                    .single();
-
-                if (user) {
-                    // FIX: Refund Stake + Pay Profit
                     // potential_payout is currently stored as PROFIT only
                     const totalPayout = Number(bet.stake) + Number(bet.potential_payout);
 
@@ -490,17 +291,10 @@ export async function POST(request) {
                 }
             }
             settledCount++;
-            settled.push(bet.id);
         }
 
-        console.log(`\n===== SETTLEMENT SUMMARY for Session ${targetSessionId} =====`);
-        console.log(`✅ Settled ${settled.length} bets successfully`);
-        console.log(`⚠️  ${failed.length} bets failed to settle`);
-        console.log(`🏁 Race complete: ${raceDrivers[0]?.UserName || 'Unknown'} wins!`);
-        console.log(`========================================\n`);
-
         // ===== AUTO-SETTLE FANTASY LOBBIES =====
-        console.log(`\n🎮 Checking for fantasy lobbies to settle...`);
+        console.log(`\n🎮 Checking for fantasy lobbies to settle for race ${raceData.id}...`);
         try {
             // Find all open fantasy lobbies for this race
             const { data: fantasyLobbies, error: lobbyError } = await supabase
@@ -519,7 +313,8 @@ export async function POST(request) {
                         console.log(`Settling fantasy lobby ${lobby.id}...`);
 
                         // Call the fantasy settle endpoint internally
-                        const settleRes = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/fantasy/settle`, {
+                        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
+                        const settleRes = await fetch(`${baseUrl}/api/fantasy/settle`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ lobbyId: lobby.id })
@@ -545,13 +340,13 @@ export async function POST(request) {
 
         return NextResponse.json({
             success: true,
-            settled: settled.length,
-            failed: failed.length,
-            raceWinner: raceDrivers[0]?.UserName || 'Unknown'
+            settledCount,
+            message: `Settled ${settledCount} bets`,
+            debug: debugLogs
         });
 
     } catch (error) {
-        console.error('Error settling bets:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        console.error('Error settling race:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

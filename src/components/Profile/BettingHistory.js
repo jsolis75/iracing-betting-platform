@@ -1,13 +1,52 @@
 "use client";
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import styles from './BettingHistory.module.css';
 import { useUser } from '@/context/UserContext';
 import { useBetting } from '@/context/BettingContext';
 
+// Series mapping
+const seriesMapping = {
+    164: "NASCAR Truck Series",
+    165: "NASCAR Xfinity Series",
+    166: "NASCAR Cup Series",
+    312: "ARCA Menards Series",
+    382: "Street Stock",
+    // Add more as needed
+};
+
 const BettingHistory = () => {
     const { user } = useUser();
     const { placedBets } = useBetting();
+    const [raceData, setRaceData] = useState({});
+
+    useEffect(() => {
+        const fetchRaceData = async () => {
+            if (!placedBets || placedBets.length === 0) return;
+
+            const raceIds = [...new Set(placedBets.map(bet => bet.race_id).filter(id => id !== 'multi'))];
+
+            for (const raceId of raceIds) {
+                try {
+                    const res = await fetch(`/api/race-data?raceId=${raceId}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        const seriesId = data?.WeekendInfo?.SeriesID;
+                        const trackName = data?.WeekendInfo?.TrackDisplayName || 'Unknown Track';
+                        const seriesName = seriesId ? (seriesMapping[seriesId] || `Series ${seriesId}`) : 'Race';
+                        setRaceData(prev => ({
+                            ...prev,
+                            [raceId]: `${seriesName} at ${trackName}`
+                        }));
+                    }
+                } catch (err) {
+                    console.error(`Failed to fetch race ${raceId}:`, err);
+                }
+            }
+        };
+
+        fetchRaceData();
+    }, [placedBets]);
 
     if (!user) return null;
 
@@ -36,7 +75,7 @@ const BettingHistory = () => {
                         {history.map((bet, index) => (
                             <tr key={index}>
                                 <td>{new Date(bet.created_at).toLocaleDateString()}</td>
-                                <td>{bet.race_id === 'multi' ? 'Parlay' : 'Race ' + bet.race_id}</td>
+                                <td>{bet.race_id === 'multi' ? 'Parlay' : (raceData[bet.race_id] || `Race ${bet.race_id}`)}</td>
                                 <td>
                                     {bet.driver_name}
                                     {bet.details && (

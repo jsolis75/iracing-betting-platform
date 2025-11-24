@@ -23,7 +23,7 @@ export async function GET(request) {
             .from('multiplayer_entries')
             .select(`
                 *,
-                lobby:multiplayer_lobbies (
+                lobby:multiplayer_lobbies!inner (
                     id,
                     status,
                     prize_pool,
@@ -31,6 +31,7 @@ export async function GET(request) {
                 )
             `)
             .eq('user_id', userId)
+            .neq('lobby.status', 'completed')
             .order('created_at', { ascending: false });
 
         if (error) throw error;

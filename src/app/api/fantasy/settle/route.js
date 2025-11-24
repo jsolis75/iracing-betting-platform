@@ -81,13 +81,19 @@ export async function POST(request) {
             }
         });
 
-        // 4. Get all entries for this lobby
+        // 4. Get all entries for this lobby with usernames
         const { data: entries, error: entriesError } = await supabase
             .from('multiplayer_entries')
-            .select('*')
+            .select(`
+                *,
+                user:users!multiplayer_entries_user_id_fkey (
+                    username
+                )
+            `)
             .eq('lobby_id', lobbyId);
 
         if (entriesError) {
+            console.error('Entries fetch error:', entriesError);
             throw entriesError;
         }
 
@@ -131,6 +137,7 @@ export async function POST(request) {
 
             return {
                 ...entry,
+                username: entry.user?.username || 'Unknown',
                 finalScore: totalScore
             };
         });
@@ -138,15 +145,30 @@ export async function POST(request) {
         // Sort by score descending
         scoredEntries.sort((a, b) => b.finalScore - a.finalScore);
 
+        console.log('Scored entries:', scoredEntries.map(e => ({ username: e.username, score: e.finalScore })));
+
         // 6. Award payouts (winner takes all)
+        if (!scoredEntries || scoredEntries.length === 0) {
+            return NextResponse.json({ error: 'No entries found to settle' }, { status: 400 });
+        }
+
         const winner = scoredEntries[0];
         const pot = lobby.entry_fee * entries.length;
 
+        console.log(`Awarding ${pot} to user ${winner.user_id} (${winner.username})`);
+
         // Update winner's balance
-        await supabase.rpc('increment_balance', {
+        const { data: balanceUpdate, error: balanceError } = await supabase.rpc('increment_balance', {
             user_id_input: winner.user_id,
             amount: pot
         });
+
+        if (balanceError) {
+            console.error('Balance update failed:', balanceError);
+            throw new Error(`Failed to award payout: ${balanceError.message}`);
+        }
+
+        console.log('Balance updated successfully');
 
         // 7. Mark lobby as settled
         await supabase

@@ -1,8 +1,9 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import DriverStats from '@/components/Profile/DriverStats';
 import BettingHistory from '@/components/Profile/BettingHistory';
+import FantasyHistory from '@/components/Profile/FantasyHistory';
 import { useUser } from '@/context/UserContext';
 import Login from '@/components/Auth/Login';
 import { useRouter } from 'next/navigation';
@@ -10,7 +11,7 @@ import { useEffect } from 'react';
 
 const ProfilePage = () => {
     const { user, logout } = useUser();
-
+    const [activeTab, setActiveTab] = useState('betting');
     const router = useRouter();
 
     useEffect(() => {
@@ -56,7 +57,45 @@ const ProfilePage = () => {
             </div>
 
             <DriverStats />
-            <BettingHistory />
+
+            {/* History Tabs */}
+            <div style={{ marginTop: '2rem', marginBottom: '1rem', borderBottom: '2px solid var(--border-color)' }}>
+                <div style={{ display: 'flex', gap: '1rem' }}>
+                    <button
+                        onClick={() => setActiveTab('betting')}
+                        style={{
+                            padding: '0.75rem 1.5rem',
+                            background: activeTab === 'betting' ? 'var(--primary-blue)' : 'transparent',
+                            color: activeTab === 'betting' ? '#fff' : 'var(--text-secondary)',
+                            border: 'none',
+                            borderBottom: activeTab === 'betting' ? '3px solid var(--primary-blue)' : 'none',
+                            cursor: 'pointer',
+                            fontWeight: '700',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Betting History
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('fantasy')}
+                        style={{
+                            padding: '0.75rem 1.5rem',
+                            background: activeTab === 'fantasy' ? 'var(--primary-blue)' : 'transparent',
+                            color: activeTab === 'fantasy' ? '#fff' : 'var(--text-secondary)',
+                            border: 'none',
+                            borderBottom: activeTab === 'fantasy' ? '3px solid var(--primary-blue)' : 'none',
+                            cursor: 'pointer',
+                            fontWeight: '700',
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        Fantasy History
+                    </button>
+                </div>
+            </div>
+
+            {activeTab === 'betting' && <BettingHistory />}
+            {activeTab === 'fantasy' && <FantasyHistory />}
         </div>
     );
 };

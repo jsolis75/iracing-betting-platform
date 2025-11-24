@@ -93,23 +93,35 @@ export async function GET(request) {
         // Inject the Database UUID so the frontend can reference this race correctly
         let responsePayload = { ...data.data, _dbId: data.id };
 
-        // MERGE LIVE POSITIONS: Combine DriverInfo with current race positions from SessionInfo
+        // MERGE LIVE POSITIONS: Combine DriverInfo with race positions and qualifying starts
         if (responsePayload.SessionInfo?.Sessions && responsePayload.DriverInfo?.Drivers) {
-            // Find the current session (last one in the array)
             const sessions = responsePayload.SessionInfo.Sessions;
-            const currentSession = sessions[sessions.length - 1];
 
-            if (currentSession?.ResultsPositions) {
+            // Find qualifying session for starting grid positions
+            const qualifyingSession = sessions.find(s => s.SessionType === 'Qualify');
+            const startingPositions = {};
+            if (qualifyingSession?.ResultsPositions) {
+                qualifyingSession.ResultsPositions.forEach(result => {
+                    startingPositions[result.CarIdx] = result.Position;
+                });
+            }
+
+            // Find race session for current positions
+            const raceSession = sessions.find(s => s.SessionType === 'Race') || sessions[sessions.length - 1];
+
+            if (raceSession?.ResultsPositions) {
                 // Create lookup by CarIdx
                 const positionsByCarIdx = {};
-                currentSession.ResultsPositions.forEach(result => {
+                raceSession.ResultsPositions.forEach(result => {
                     positionsByCarIdx[result.CarIdx] = result;
                 });
 
                 // Merge position data into each driver
                 responsePayload.DriverInfo.Drivers = responsePayload.DriverInfo.Drivers.map(driver => ({
                     ...driver,
-                    // Add live position fields
+                    // Add starting position from qualifying (THIS IS THE GRID POSITION)
+                    CarIdxPosition: startingPositions[driver.CarIdx] || driver.CarIdxPosition,
+                    // Add current race position fields
                     Position: positionsByCarIdx[driver.CarIdx]?.Position,
                     ClassPosition: positionsByCarIdx[driver.CarIdx]?.ClassPosition,
                     Lap: positionsByCarIdx[driver.CarIdx]?.Lap,

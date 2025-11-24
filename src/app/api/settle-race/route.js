@@ -298,7 +298,7 @@ export async function POST(request) {
         try {
             // Find all open fantasy lobbies for this race
             const { data: fantasyLobbies, error: lobbyError } = await supabase
-                .from('fantasy_lobbies')
+                .from('multiplayer_lobbies')
                 .select('id, race_id')
                 .eq('race_id', raceData.id) // Use the UUID from races table
                 .eq('status', 'open');

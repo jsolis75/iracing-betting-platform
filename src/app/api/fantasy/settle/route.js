@@ -13,7 +13,7 @@ export async function POST(request) {
 
         // 1. Get lobby details
         const { data: lobby, error: lobbyError } = await supabase
-            .from('fantasy_lobbies')
+            .from('multiplayer_lobbies')
             .select('*')
             .eq('id', lobbyId)
             .single();
@@ -83,7 +83,7 @@ export async function POST(request) {
 
         // 4. Get all entries for this lobby
         const { data: entries, error: entriesError } = await supabase
-            .from('fantasy_entries')
+            .from('multiplayer_entries')
             .select('*')
             .eq('lobby_id', lobbyId);
 
@@ -150,7 +150,7 @@ export async function POST(request) {
 
         // 7. Mark lobby as settled
         await supabase
-            .from('fantasy_lobbies')
+            .from('multiplayer_lobbies')
             .update({ status: 'completed' })
             .eq('id', lobbyId);
 

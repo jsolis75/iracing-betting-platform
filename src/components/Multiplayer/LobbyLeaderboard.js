@@ -12,17 +12,13 @@ const LobbyLeaderboard = ({ entries, drivers, raceData }) => {
             return { posPoints: 0, diffPoints: 0, total: 0 };
         }
 
+        // DEBUG: Log the FULL driver object to see all available fields
+        console.log("FULL Driver Object:", driver);
+        console.log("All driver fields:", Object.keys(driver));
+
         // Try multiple position fields
         const currentPos = driver.Position || driver.CarIdxPosition || driver.ResultsPosition;
         const startPos = driver.CarIdxPosition || driver.StartPosition || currentPos;
-
-        console.log("Driver scoring:", {
-            name: driver.UserName,
-            carNum: driver.CarNumber,
-            currentPos,
-            startPos,
-            availableFields: Object.keys(driver).filter(k => k.toLowerCase().includes('pos'))
-        });
 
         if (!currentPos) {
             console.log("No position data yet for", driver.UserName);

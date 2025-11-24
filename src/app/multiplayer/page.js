@@ -190,32 +190,46 @@ const MultiplayerContent = () => {
                 </div>
             ) : (
                 <div className={styles.gameArea}>
-                    <div className={styles.leftCol}>
-                        {/* DEBUG INFO */}
-                        <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.5rem' }}>
-                            Drivers Loaded: {raceData?.DriverInfo?.Drivers?.length || 0}
-                        </div>
-                        <DraftTeam
-                            drivers={(raceData?.DriverInfo?.Drivers || []).filter(d => d.CarIsPaceCar === 0 && d.IsSpectator === 0)}
-                            entry={myEntry}
-                            lobbyId={lobby.id}
-                            onDraftUpdate={fetchLobby}
-                        />
-                    </div>
-                    <div className={styles.rightCol}>
-                        {myEntry && myEntry.driver_1 ? (
+                    {/* Check if lineup is locked */}
+                    {!myEntry || !myEntry.driver_1 || !myEntry.driver_2 || !myEntry.driver_3 ? (
+                        <>
+                            <div className={styles.leftCol}>
+                                {/* DEBUG INFO */}
+                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.5rem' }}>
+                                    Drivers Loaded: {raceData?.DriverInfo?.Drivers?.length || 0}
+                                </div>
+                                <DraftTeam
+                                    drivers={(raceData?.DriverInfo?.Drivers || []).filter(d => d.CarIsPaceCar === 0 && d.IsSpectator === 0)}
+                                    entry={myEntry}
+                                    lobbyId={lobby.id}
+                                    onDraftUpdate={fetchLobby}
+                                />
+                            </div>
+                            <div className={styles.rightCol}>
+                                {myEntry && myEntry.driver_1 ? (
+                                    <LobbyLeaderboard
+                                        entries={entries}
+                                        drivers={raceData?.DriverInfo?.Drivers || []}
+                                        raceData={raceData}
+                                    />
+                                ) : (
+                                    <div className={styles.leaderboardPlaceholder}>
+                                        <h3>Live Standings</h3>
+                                        <p>Draft your team to view the leaderboard!</p>
+                                    </div>
+                                )}
+                            </div>
+                        </>
+                    ) : (
+                        // Lineup is locked - show only leaderboard at full width
+                        <div className={styles.fullWidthCol}>
                             <LobbyLeaderboard
                                 entries={entries}
                                 drivers={raceData?.DriverInfo?.Drivers || []}
                                 raceData={raceData}
                             />
-                        ) : (
-                            <div className={styles.leaderboardPlaceholder}>
-                                <h3>Live Standings</h3>
-                                <p>Draft your team to view the leaderboard!</p>
-                            </div>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
             )}
         </div>

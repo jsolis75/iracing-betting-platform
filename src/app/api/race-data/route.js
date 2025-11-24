@@ -98,7 +98,9 @@ export async function GET(request) {
             const sessions = responsePayload.SessionInfo.Sessions;
 
             // Find qualifying session for starting grid positions
-            const qualifyingSession = sessions.find(s => s.SessionType === 'Qualify');
+            const qualifyingSession = sessions.find(s =>
+                s.SessionType === 'Qualify' || s.SessionType === 'Lone Qualify'
+            );
             const startingPositions = {};
             if (qualifyingSession?.ResultsPositions) {
                 qualifyingSession.ResultsPositions.forEach(result => {

@@ -36,7 +36,9 @@ export async function POST(request) {
         // 3. Extract driver results from race session
         const sessions = race.data.SessionInfo?.Sessions || [];
         const raceSession = sessions.find(s => s.SessionType === 'Race') || sessions[sessions.length - 1];
-        const qualifyingSession = sessions.find(s => s.SessionType === 'Qualify');
+        const qualifyingSession = sessions.find(s =>
+            s.SessionType === 'Qualify' || s.SessionType === 'Lone Qualify'
+        );
 
         if (!raceSession?.ResultsPositions) {
             return NextResponse.json({ error: 'No race results available' }, { status: 400 });

@@ -169,9 +169,14 @@ export async function POST(request) {
         for (const bet of pendingBets) {
             let result = 'pending';
 
-            // Skip bets that are definitely for a different race (if we can tell)
-            if (String(bet.race_id) !== String(targetSessionId) && bet.race_id !== 'multi') {
-                debugLogs.push(`Skipping bet ${bet.id}: Race ID mismatch (${bet.race_id} !== ${targetSessionId})`);
+            // Skip bets that are for a different race
+            // Accept EITHER the database UUID OR the iRacing session ID
+            const matchesUUID = String(bet.race_id) === String(raceId);
+            const matchesSessionID = String(bet.race_id) === String(targetSessionId);
+            const isMulti = bet.race_id === 'multi';
+
+            if (!matchesUUID && !matchesSessionID && !isMulti) {
+                debugLogs.push(`Skipping bet ${bet.id}: Race ID mismatch (${bet.race_id} !== ${raceId} / ${targetSessionId})`);
                 continue;
             }
 

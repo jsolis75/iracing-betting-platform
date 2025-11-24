@@ -91,7 +91,34 @@ export async function GET(request) {
 
         // Return Data with Last-Modified Header
         // Inject the Database UUID so the frontend can reference this race correctly
-        const responsePayload = { ...data.data, _dbId: data.id };
+        let responsePayload = { ...data.data, _dbId: data.id };
+
+        // MERGE LIVE POSITIONS: Combine DriverInfo with current race positions from SessionInfo
+        if (responsePayload.SessionInfo?.Sessions && responsePayload.DriverInfo?.Drivers) {
+            // Find the current session (last one in the array)
+            const sessions = responsePayload.SessionInfo.Sessions;
+            const currentSession = sessions[sessions.length - 1];
+
+            if (currentSession?.ResultsPositions) {
+                // Create lookup by CarIdx
+                const positionsByCarIdx = {};
+                currentSession.ResultsPositions.forEach(result => {
+                    positionsByCarIdx[result.CarIdx] = result;
+                });
+
+                // Merge position data into each driver
+                responsePayload.DriverInfo.Drivers = responsePayload.DriverInfo.Drivers.map(driver => ({
+                    ...driver,
+                    // Add live position fields
+                    Position: positionsByCarIdx[driver.CarIdx]?.Position,
+                    ClassPosition: positionsByCarIdx[driver.CarIdx]?.ClassPosition,
+                    Lap: positionsByCarIdx[driver.CarIdx]?.Lap,
+                    LastTime: positionsByCarIdx[driver.CarIdx]?.LastTime,
+                    FastestTime: positionsByCarIdx[driver.CarIdx]?.FastestTime
+                }));
+            }
+        }
+
         const response = NextResponse.json(responsePayload);
         if (lastUpdated) {
             response.headers.set('Last-Modified', lastUpdated.toUTCString());

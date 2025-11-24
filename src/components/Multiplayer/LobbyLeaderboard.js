@@ -26,25 +26,37 @@ const LobbyLeaderboard = ({ entries, drivers, raceData, lobbyId }) => {
 
     // Force settle function
     const handleForceSettle = async () => {
+        console.log('Force settle clicked. Lobby ID:', lobbyId);
+        if (!lobbyId) {
+            alert('No lobby ID available');
+            return;
+        }
+
         if (!confirm('Force settle this fantasy lobby? This cannot be undone.')) return;
 
         setSettling(true);
         try {
+            console.log('Sending settle request for lobby:', lobbyId);
             const res = await fetch('/api/fantasy/settle', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ lobbyId })
             });
 
+            console.log('Settlement response status:', res.status);
+
             if (res.ok) {
                 const data = await res.json();
+                console.log('Settlement success:', data);
                 alert(`Settlement complete! Winner: ${data.winner} ($${data.winnings})`);
                 window.location.reload();
             } else {
                 const error = await res.json();
-                alert(`Settlement failed: ${error.error}`);
+                console.error('Settlement error response:', error);
+                alert(`Settlement failed: ${error.error}\\nDetails: ${error.details || 'None'}`);
             }
         } catch (err) {
+            console.error('Settlement exception:', err);
             alert('Settlement error: ' + err.message);
         } finally {
             setSettling(false);
@@ -62,7 +74,7 @@ const LobbyLeaderboard = ({ entries, drivers, raceData, lobbyId }) => {
             return { posPoints: 0, diffPoints: 0, total: 0, currentPos: null, startPos: null };
         }
 
-        // 1. Position Points (DraftKings Exact)
+        //1. Position Points (DraftKings Exact)
         let posPoints = 0;
         if (currentPos === 1) posPoints = 45;
         else if (currentPos === 2) posPoints = 42;

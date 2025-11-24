@@ -19,7 +19,21 @@ export async function POST(request) {
             .single();
 
         if (lobbyError || !lobby) {
-            return NextResponse.json({ error: 'Lobby not found' }, { status: 404 });
+            console.error('Lobby lookup failed:', { lobbyId, lobbyError, foundLobby: !!lobby });
+            return NextResponse.json({
+                error: 'Lobby not found',
+                details: lobbyError?.message || 'No lobby with this ID'
+            }, { status: 404 });
+        }
+
+        console.log(`Found lobby ${lobbyId}, status: ${lobby.status}, race_id: ${lobby.race_id}`);
+
+        // Check if already completed
+        if (lobby.status === 'completed') {
+            return NextResponse.json({
+                error: 'Lobby already settled',
+                winner: lobby.winner_username
+            }, { status: 400 });
         }
 
         // 2. Get race data

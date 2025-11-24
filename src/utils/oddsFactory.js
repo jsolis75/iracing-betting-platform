@@ -154,20 +154,6 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
         if (iRating > 5000 && startPos > 10) {
             // Calculate how "back" they are (0.0 to 1.0)
             const backness = (startPos - 10) / (fieldSize - 10);
-
-            // The higher the iRating, the more we ignore the starting position
-            const iRatingTrust = Math.min((iRating - 5000) / 4000, 1.0); // 0.0 at 5k, 1.0 at 9k+
-
-            // Boost factor: Recover up to 70% of the lost position value
-            const recoveryFactor = 0.3 + (iRatingTrust * 0.5);
-
-            // Apply boost
-            startingPositionFactor = Math.max(startingPositionFactor, 0.4 * recoveryFactor);
-        }
-
-        // --- 4. Final Probability Calculation ---
-        let winProbability;
-        if (useLiveOdds && raceProgress > 0) {
             // LIVE ODDS: NASCAR-STYLE
             const cappedIRating = Math.min(iRating, 7000);
             const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.7);
@@ -377,21 +363,24 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     } else if (currentPos <= 10) {
         top10Prob = Math.min(top10Prob * 2.0 * raceProgressMultiplier, 0.80); // P9-P10
     } else if (currentPos <= 11) {
-        top10Prob = Math.min(top10Prob * 1.8 * raceProgressMultiplier, 0.75); // P11 (Smoothed)
+        top10Prob = Math.min(top10Prob * 1.9 * raceProgressMultiplier, 0.78); // P11 (Smoothed)
     } else if (currentPos <= 12) {
-        top10Prob = Math.min(top10Prob * 1.6 * raceProgressMultiplier, 0.70); // P12 (Smoothed)
+        top10Prob = Math.min(top10Prob * 1.8 * raceProgressMultiplier, 0.76); // P12 (Smoothed)
     } else if (currentPos <= 13) {
-        top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.65); // P13 (Smoothed)
+        top10Prob = Math.min(top10Prob * 1.7 * raceProgressMultiplier, 0.74); // P13 (Smoothed)
     } else if (currentPos <= 14) {
-        top10Prob = Math.min(top10Prob * 1.3 * raceProgressMultiplier, 0.60); // P14
+        top10Prob = Math.min(top10Prob * 1.6 * raceProgressMultiplier, 0.72); // P14 (Smoothed)
     } else if (currentPos <= 15) {
-        const fieldSizeMultiplier = fieldSize <= 25 ? 1.2 : 1.1;
-        top10Prob = Math.min(top10Prob * fieldSizeMultiplier, 0.52);
+        top10Prob = Math.min(top10Prob * 1.5 * raceProgressMultiplier, 0.70); // P15 (Smoothed)
+    } else if (currentPos <= 16) {
+        top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.65); // P16
+    } else if (currentPos <= 18) {
+        top10Prob = Math.min(top10Prob * 1.2 * raceProgressMultiplier, 0.55); // P17-P18
     } else if (currentPos <= 20) {
-        top10Prob = Math.min(top10Prob * 1.05, 0.42);
+        top10Prob = Math.min(top10Prob * 1.1 * raceProgressMultiplier, 0.45); // P19-P20
     } else {
         if (thisDriverIRating > highIRThreshold) {
-            top10Prob = Math.min(top10Prob * 1.02, 0.35);
+            top10Prob = Math.min(top10Prob * 1.05, 0.40);
         } else {
             top10Prob = Math.min(top10Prob, 0.30);
         }

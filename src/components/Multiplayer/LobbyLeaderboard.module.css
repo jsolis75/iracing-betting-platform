@@ -2,6 +2,55 @@
     height: 100%;
 }
 
+.header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.header h2 {
+    margin: 0;
+}
+
+.rulesButton {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.rulesButton:hover {
+    background: #0056b3;
+}
+
+.scoringRules {
+    background: rgba(0, 87, 184, 0.1);
+    border-left: 3px solid var(--primary-blue);
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border-radius: 4px;
+}
+
+.scoringRules h3 {
+    margin-top: 0;
+    color: var(--primary-blue);
+}
+
+.scoringRules ul {
+    margin: 0.5rem 0 0 0;
+    padding-left: 1.5rem;
+}
+
+.scoringRules li {
+    margin-bottom: 0.5rem;
+    line-height: 1.5;
+}
+
 .table {
     display: flex;
     flex-direction: column;
@@ -63,17 +112,10 @@
     min-width: 120px;
 }
 
-.currentPos {
-    color: var(--primary-blue);
-    font-weight: bold;
-    min-width: 40px;
-    font-size: 0.9rem;
-}
-
 .driverPts {
     color: var(--primary-green);
     font-weight: bold;
-    min-width: 40px;
+    min-width: 60px;
 }
 
 .driverDetails {

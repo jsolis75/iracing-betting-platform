@@ -32,7 +32,6 @@ export async function POST(request) {
         if (lobby.status === 'completed') {
             return NextResponse.json({
                 error: 'Lobby already settled',
-                winner: lobby.winner_username
             }, { status: 400 });
         }
 
@@ -188,7 +187,6 @@ export async function POST(request) {
             .from('multiplayer_lobbies')
             .update({
                 status: 'completed',
-                winner_username: winner.username,
             })
             .eq('id', lobbyId);
 

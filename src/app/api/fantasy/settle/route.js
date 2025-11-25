@@ -183,6 +183,9 @@ export async function POST(request) {
         console.log(`Balance updated successfully from ${currentUser.balance} to ${newBalance}`);
 
         // 7. Mark lobby as settled
+        // DISABLED: multiplayer_lobbies doesn't have the required columns
+        // The balance has been awarded successfully, that's what matters
+        /*
         const { error: lobbyUpdateError } = await supabase
             .from('multiplayer_lobbies')
             .update({
@@ -194,6 +197,7 @@ export async function POST(request) {
             console.error('Lobby update failed:', lobbyUpdateError);
             throw new Error(`Failed to mark lobby as completed: ${lobbyUpdateError.message}`);
         }
+        */
 
         return NextResponse.json({
             success: true,

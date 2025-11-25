@@ -20,8 +20,24 @@ export async function GET() {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
+        // Filter out completed/settled races - only show active ones
+        const activeRaces = races.filter(race => {
+            if (!race.data) return false;
+
+            // Check if race has finished (has results)
+            const sessions = race.data.SessionInfo?.Sessions || [];
+            const raceSession = sessions.find(s => s.SessionType === 'Race');
+
+            // If race session has results, it's completed
+            if (raceSession?.ResultsPositions && raceSession.ResultsPositions.length > 0) {
+                return false; // Race is finished, don't show it
+            }
+
+            return true; // Race is still active
+        });
+
         // Format for the frontend
-        const formattedRaces = races.map(race => ({
+        const formattedRaces = activeRaces.map(race => ({
             id: race.id,
             name: race.data?.WeekendInfo?.TrackDisplayName || 'Unknown Track',
             track: race.data?.WeekendInfo?.TrackDisplayShortName || 'Unknown',

@@ -79,4 +79,13 @@ def broadcast_data():
             time.sleep(5) # Wait before reconnecting
             
 if __name__ == "__main__":
-    broadcast_data()
+    try:
+        broadcast_data()
+    except Exception as e:
+        print(f"\n\n❌ FATAL ERROR: {e}")
+        print("\nIf you see 'No module named irsdk', please install Python and run:")
+        print("pip install irsdk requests")
+        print("\nThen use the Python script instead of this .exe")
+    finally:
+        print("\n\nPress Enter to exit...")
+        input()

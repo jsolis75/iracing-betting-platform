@@ -14,7 +14,7 @@ const FantasyHistory = () => {
 
         const fetchHistory = async () => {
             try {
-                const res = await fetch(`/api/multiplayer/my-contests?userId=${user.id}`);
+                const res = await fetch(`/api/multiplayer/my-contests?userId=${user.id}&history=true`);
                 if (res.ok) {
                     const data = await res.json();
                     // Only show completed contests

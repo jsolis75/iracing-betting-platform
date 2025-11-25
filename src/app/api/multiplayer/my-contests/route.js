@@ -7,6 +7,7 @@ export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('userId');
+        const history = searchParams.get('history'); // If true, fetch completed lobbies
 
         if (!userId) {
             return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
@@ -15,10 +16,7 @@ export async function GET(request) {
         const supabase = getSupabaseClient();
 
         // Fetch entries for this user, including lobby and race details
-        // Note: Supabase join syntax is specific. We need to join entries -> lobbies -> races (if possible)
-        // Since races are in a separate table, we might need two queries or a complex join.
-        // For now, let's get entries and lobbies.
-
+        // If history=true, fetch completed lobbies, otherwise fetch active ones
         const { data: entries, error } = await supabase
             .from('multiplayer_entries')
             .select(`
@@ -31,7 +29,7 @@ export async function GET(request) {
                 )
             `)
             .eq('user_id', userId)
-            .neq('lobby.status', 'completed')
+        [history === 'true' ? 'eq' : 'neq']('lobby.status', 'completed')
             .order('created_at', { ascending: false });
 
         if (error) throw error;

@@ -11,7 +11,7 @@ namespace iRacingBroadcaster
     class Program
     {
         // CHANGE THIS TO YOUR DEPLOYMENT URL AFTER TESTING
-        private const string API_URL = "http://localhost:3000/api/telemetry/ingest";
+        private const string API_URL = "https://iracing-betting-platform.vercel.app/api/telemetry/ingest";
         private const string API_KEY = "iracing-broadcast-key-123";
         private const string IRACING_MMF_NAME = "Local\\IRSDKMemMapFileName";
         

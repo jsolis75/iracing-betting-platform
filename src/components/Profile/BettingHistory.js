@@ -10,6 +10,7 @@ const seriesMapping = {
     164: "NASCAR Truck Series",
     165: "NASCAR Xfinity Series",
     166: "NASCAR Cup Series",
+    167: "Arca Series Fixed",
     312: "ARCA Menards Series",
     382: "Street Stock",
     // Add more as needed

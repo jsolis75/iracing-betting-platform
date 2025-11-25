@@ -149,9 +149,9 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
         // --- 3. Position Component ---
         let startingPositionFactor = Math.pow((fieldSize - startPos + 1) / fieldSize, 2.0);
 
+
         // HIGH IRATING BACKMARKER ADJUSTMENT (Last-to-First Challenge)
         // If a high iRating driver starts in the back, they are likely doing it for fun/content
-        // and are still extremely dangerous. Don't let the position penalty crush their odds.
         // and are still extremely dangerous. Don't let the position penalty crush their odds.
         if (iRating > 5000 && startPos > 10) {
             // Calculate how "back" they are (0.0 to 1.0)
@@ -177,24 +177,60 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
             }
         }
 
-        // STANDARD ODDS CALCULATION (Used for both Pre-Race and Live)
-        // Base calculation with INCREASED iRating weight (helps good drivers starting deep)
-        winProbability =
-            (iRatingFactor * 0.40) +  // Was 0.30 - higher weight helps talented drivers in back
-            (historicalFactor * 0.40) +
-            (startingPositionFactor * 0.20); // Was 0.30 - reduced generic position impact
+        // BRANCHING LOGIC: Live race uses current position, Pre-race uses starting position
+        if (useLiveOdds && raceProgress > 0) {
+            // LIVE ODDS: NASCAR-STYLE (Position > iRating as race progresses)
+            const cappedIRating = Math.min(iRating, 7000);
+            const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.7);
 
-        // FRONT RUNNER BONUS: Top 1/3 of field gets massive boost (makes them favorites)
-        const frontRunnerThreshold = Math.ceil(fieldSize / 3); // Top third
-        if (startPos <= frontRunnerThreshold) {
-            // Graduated bonus: P1 gets biggest boost, decreases as you go back
-            const frontRunnerBonus = 1.0 + ((frontRunnerThreshold - startPos + 1) / frontRunnerThreshold) * 0.8;
-            winProbability = winProbability * frontRunnerBonus;
+            const iRatingWeight = 0.15 * Math.pow(1 - raceProgress, 2.5);
+            const historicalWeight = 0.10 * Math.pow(1 - raceProgress, 2.0);
+            const positionWeight = 1 - (iRatingWeight + historicalWeight);
+
+            const dynamicExponent = 2.8 + (raceProgress * 15);
+            const dynamicPositionFactor = Math.pow(Math.max(0, (fieldSize - currentPos + 1) / fieldSize), dynamicExponent);
+
+            let gapPenalty = 1.0;
+            if (raceProgress > 0.5 && currentPos > 15) {
+                const gap = currentPos - 15;
+                gapPenalty = Math.pow(0.85, gap);
+            }
+
+            // POSITION DIFFERENTIAL BONUS: Drivers who've passed many cars are clearly fast
+            let positionDifferentialBonus = 1.0;
+            const positionsGained = startPos - currentPos; // Positive = gained positions
+            if (positionsGained > 3) {
+                // Give bonus for making up positions (shows current race speed)
+                positionDifferentialBonus = 1.0 + (positionsGained * 0.08); // 8% per position gained
+            }
+
+            winProbability =
+                (liveIRatingFactor * iRatingWeight) +
+                (historicalFactor * historicalWeight) +
+                (dynamicPositionFactor * positionWeight * gapPenalty);
+
+            // Apply position differential bonus
+            winProbability = winProbability * positionDifferentialBonus;
+        } else {
+            // PRE-RACE ODDS
+            // Base calculation with INCREASED iRating weight (helps good drivers starting deep)
+            winProbability =
+                (iRatingFactor * 0.40) +  // Was 0.30 - higher weight helps talented drivers in back
+                (historicalFactor * 0.40) +
+                (startingPositionFactor * 0.20); // Was 0.30 - reduced generic position impact
+
+            // FRONT RUNNER BONUS: Top 1/3 of field gets massive boost (makes them favorites)
+            const frontRunnerThreshold = Math.ceil(fieldSize / 3); // Top third
+            if (startPos <= frontRunnerThreshold) {
+                // Graduated bonus: P1 gets biggest boost, decreases as you go back
+                const frontRunnerBonus = 1.0 + ((frontRunnerThreshold - startPos + 1) / frontRunnerThreshold) * 0.8;
+                winProbability = winProbability * frontRunnerBonus;
+            }
+
+            // Apply qualifying bonus (for lower-rated drivers who qualified well)
+            winProbability = winProbability * qualifyingBonus;
+            winProbability = winProbability + qualifyingAdditiveBoost;
         }
-
-        // Apply qualifying bonus (for lower-rated drivers who qualified well)
-        winProbability = winProbability * qualifyingBonus;
-        winProbability = winProbability + qualifyingAdditiveBoost;
 
         // --- PRO/BLACK LICENSE BOOST ---
         // SIGNIFICANTLY INCREASED for DWC/Pro drivers

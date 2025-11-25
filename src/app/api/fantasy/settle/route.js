@@ -184,10 +184,19 @@ export async function POST(request) {
         console.log(`Balance updated successfully from ${currentUser.balance} to ${newBalance}`);
 
         // 7. Mark lobby as settled
-        await supabase
+        const { error: lobbyUpdateError } = await supabase
             .from('multiplayer_lobbies')
-            .update({ status: 'completed' })
+            .update({
+                status: 'completed',
+                winner_username: winner.username,
+                winner_user_id: winner.user_id
+            })
             .eq('id', lobbyId);
+
+        if (lobbyUpdateError) {
+            console.error('Lobby update failed:', lobbyUpdateError);
+            throw new Error(`Failed to mark lobby as completed: ${lobbyUpdateError.message}`);
+        }
 
         return NextResponse.json({
             success: true,

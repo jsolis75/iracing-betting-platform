@@ -132,11 +132,28 @@ function SidebarContent() {
 
                 <div className={styles.divider}></div>
 
-                <div className={styles.divider}></div>
-
                 <div className={styles.broadcastHelp}>
-                    <small style={{ color: '#666', display: 'block', marginBottom: '0.5rem' }}>To broadcast data:</small>
-                    <code style={{ background: '#222', padding: '4px', borderRadius: '4px', fontSize: '0.7rem', color: '#00ff00' }}>python broadcast_telemetry.py</code>
+                    <small style={{ color: '#666', display: 'block', marginBottom: '0.5rem' }}>Broadcast Your Race:</small>
+                    <a
+                        href="/broadcast/iracing-broadcast.exe"
+                        download="iracing-broadcast.exe"
+                        style={{
+                            display: 'block',
+                            background: '#2563eb',
+                            color: 'white',
+                            padding: '8px',
+                            borderRadius: '4px',
+                            fontSize: '0.8rem',
+                            textAlign: 'center',
+                            textDecoration: 'none',
+                            fontWeight: 'bold'
+                        }}
+                    >
+                        ⬇️ Download Broadcast App
+                    </a>
+                    <small style={{ color: '#444', display: 'block', marginTop: '4px', fontSize: '0.7rem' }}>
+                        No installation required. Just run it!
+                    </small>
                 </div>
             </nav>
 

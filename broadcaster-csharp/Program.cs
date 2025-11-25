@@ -64,19 +64,11 @@ namespace iRacingBroadcaster
                     accessor.ReadArray(sessionInfoOffset, yamlBytes, 0, sessionInfoLen);
                     string sessionYaml = Encoding.UTF8.GetString(yamlBytes).TrimEnd('\0');
 
-                    // Build payload - just send the session YAML
-                    var payload = new
-                    {
-                        SessionInfo = new { RawYAML = sessionYaml },
-                        Telemetry = new
-                        {
-                            SessionFlags = 0,  // We'll parse these later if needed
-                            SessionState = 0,
-                            SessionLapsRemain = 0,
-                            SessionTimeRemain = 0.0
-                        },
-                        BroadcastTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                    };
+                    // Parse YAML into simple structure
+                    var parsedData = ParseIRacingYaml(sessionYaml);
+
+                    // Build payload matching the Python broadcaster format
+                    var payload = parsedData;
 
                     // Send to API
                     var json = JsonSerializer.Serialize(payload);
@@ -120,6 +112,71 @@ namespace iRacingBroadcaster
                     await Task.Delay(5000);
                 }
             }
+        }
+
+        private static object ParseIRacingYaml(string yaml)
+        {
+            // Simple YAML parser for iRacing data
+            var result = new Dictionary<string, object>();
+
+            try
+            {
+                // Split into sections
+                var sections = yaml.Split(new[] { "\n---\n" }, StringSplitOptions.None);
+                
+                foreach (var section in sections)
+                {
+                    if (string.IsNullOrWhiteSpace(section)) continue;
+                    
+                    var lines = section.Split('\n');
+                    string? sectionName = null;
+                    Dictionary<string, string> sectionData = new();
+
+                    foreach (var line in lines)
+                    {
+                        var trimmed = line.Trim();
+                        if (string.IsNullOrEmpty(trimmed)) continue;
+
+                        if (trimmed.EndsWith(":") && !trimmed.Contains(" "))
+                        {
+                            sectionName = trimmed.TrimEnd(':');
+                        }
+                        else if (trimmed.Contains(":") && !string.IsNullOrEmpty(sectionName))
+                        {
+                            var parts = trimmed.Split(new[] { ':' }, 2);
+                            if (parts.Length == 2)
+                            {
+                                var key = parts[0].Trim();
+                                var value = parts[1].Trim();
+                                sectionData[key] = value;
+                            }
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(sectionName) && sectionData.Count > 0)
+                    {
+                        result[sectionName] = sectionData;
+                    }
+                }
+
+                // Add required fields
+                result["Telemetry"] = new
+                {
+                    SessionFlags = 0,
+                    SessionState = 0,
+                    SessionLapsRemain = 0,
+                    SessionTimeRemain = 0.0
+                };
+                result["BroadcastTime"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            }
+            catch
+            {
+                // If parsing fails, return minimal structure
+                result["WeekendInfo"] = new { RawYAML = yaml };
+                result["BroadcastTime"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+            }
+
+            return result;
         }
     }
 }

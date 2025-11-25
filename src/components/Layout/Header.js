@@ -34,6 +34,7 @@ const Header = () => {
             <Link href="/leaderboard" className={styles.navLink}>Leaderboard</Link>
             <Link href="/profile" className={styles.navLink}>History</Link>
             <Link href="/multiplayer" className={styles.navLink}>Fantasy</Link>
+            <Link href="/esports" className={styles.navLink}>Esports</Link>
           </nav>
         </div>
 

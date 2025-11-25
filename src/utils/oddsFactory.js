@@ -10,6 +10,7 @@
 /**
  * PRE-RACE MODEL: Simple iRating-based odds for qualifying and pre-race
  * Uses ONLY iRating to calculate odds - no position, no stats
+ * AGGRESSIVE MODEL: Creates strong favorites with steep odds differences
  */
 const calculatePreRaceOdds = (drivers) => {
     if (!drivers || drivers.length === 0) return [];
@@ -18,26 +19,28 @@ const calculatePreRaceOdds = (drivers) => {
     const iRatings = drivers.map(d => Math.max(d.iRating || 1500, 1000));
     const avgIRating = iRatings.reduce((a, b) => a + b, 0) / iRatings.length;
 
-    // Calculate win probability based ONLY on iRating with a flatter curve
+    // Calculate win probability based ONLY on iRating with AGGRESSIVE curve
     const driversWithProb = drivers.map(driver => {
         const iRating = Math.max(driver.iRating || 1500, 1000);
         const iRatingDiff = iRating - avgIRating;
 
-        // Base factor: Everyone has a chance
-        // Use a logistic-style function to flatten the extremes
-        // This prevents super-favorites even with high iRating gaps
+        // AGGRESSIVE SCALING: Create strong favorites
+        // Higher iRating = exponentially better odds
+        // 1000 iRating gap = ~5x strength (much steeper than before)
+        let strength = Math.pow(2.5, iRatingDiff / 1000);
 
-        // 1. Calculate raw strength relative to field
-        // 1000 iRating gap = ~2x strength (NASCAR style, not F1 style)
-        let strength = Math.pow(1.8, iRatingDiff / 1000);
+        // OUTLIER BOOST: Drivers significantly above average get massive favoritism
+        if (iRatingDiff > 1500) {
+            strength *= 3.0; // 3x multiplier for elite drivers
+        } else if (iRatingDiff > 1000) {
+            strength *= 2.2; // 2.2x multiplier for very strong drivers
+        } else if (iRatingDiff > 500) {
+            strength *= 1.6; // 1.6x multiplier for strong drivers
+        }
 
-        // 2. Cap the maximum strength advantage to keep field tight
-        // No driver should be more than 4x likely to win than average
-        strength = Math.min(strength, 4.0);
-
-        // 3. Floor the minimum strength
-        // No driver should be less than 0.25x likely to win
-        strength = Math.max(strength, 0.25);
+        // Remove caps - let the favorites be heavy favorites
+        // Only apply a floor to prevent absurdly low odds for backmarkers
+        strength = Math.max(strength, 0.15);
 
         return { ...driver, winProbability: strength };
     });
@@ -45,8 +48,8 @@ const calculatePreRaceOdds = (drivers) => {
     // Normalize probabilities
     const totalStrength = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
 
-    // HOUSE EDGE: Lower edge for pre-race to encourage betting
-    const HOUSE_EDGE = 1.25;
+    // INCREASED HOUSE EDGE: Lower payouts = more negative odds for favorites
+    const HOUSE_EDGE = 1.50; // Increased from 1.25
 
     const normalized = driversWithProb.map(d => ({
         ...d,

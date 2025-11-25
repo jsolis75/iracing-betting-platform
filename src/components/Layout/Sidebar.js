@@ -164,7 +164,7 @@ function SidebarContent() {
                     </div>
                     <div className={styles.userDetails}>
                         <div className={styles.userName}>{user.username || 'Guest'}</div>
-                        <div className={styles.userBalance}>${Number(user.balance).toFixed(2) || '0.00'}</div>
+                        <div className={styles.userBalance}>${(user.balance ?? 0).toFixed(2)}</div>
                     </div>
                 </div>
             )}

@@ -168,7 +168,18 @@ export async function POST(request) {
             throw new Error(`Failed to fetch user balance: ${userFetchError?.message || 'User not found'}`);
         }
 
-        const newBalance = (currentUser.balance || 0) + pot;
+        // CRITICAL: Ensure we never set balance to null/NaN/undefined
+        const currentBalance = Number(currentUser.balance) || 0;
+        const potAmount = Number(pot) || 0;
+        const newBalance = currentBalance + potAmount;
+
+        // Validation: Make sure newBalance is a valid positive number
+        if (!Number.isFinite(newBalance) || newBalance < 0) {
+            console.error('Invalid balance calculation:', { currentBalance, potAmount, newBalance });
+            throw new Error('Invalid balance calculation - refusing to update');
+        }
+
+        console.log(`Updating balance from ${currentBalance} to ${newBalance} (pot: ${potAmount})`);
 
         const { error: balanceError } = await supabase
             .from('users')
@@ -180,7 +191,7 @@ export async function POST(request) {
             throw new Error(`Failed to award payout: ${balanceError.message}`);
         }
 
-        console.log(`Balance updated successfully from ${currentUser.balance} to ${newBalance}`);
+        console.log(`Balance updated successfully from ${currentBalance} to ${newBalance}`);
 
         // 7. Mark lobby as settled
         // DISABLED: multiplayer_lobbies doesn't have the required columns

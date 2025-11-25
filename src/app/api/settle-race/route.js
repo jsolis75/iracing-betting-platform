@@ -76,10 +76,26 @@ export async function POST(request) {
 
                 const posMap = {};
                 const reasonOutMap = {};
+                const lapsCompleteMap = {}; // New: Track laps complete
+
                 resultsPositions.forEach(p => {
                     posMap[p.CarIdx] = p.Position;
                     reasonOutMap[p.CarIdx] = p.ReasonOutStr;
+                    lapsCompleteMap[p.CarIdx] = p.LapsComplete; // Extract laps
                 });
+
+                // CRITICAL: Check if the race has actually been run
+                // Find the winner (Position 1)
+                const winnerCarIdx = Object.keys(posMap).find(idx => posMap[idx] === 1);
+                if (winnerCarIdx) {
+                    const winnerLaps = lapsCompleteMap[winnerCarIdx] || 0;
+                    // If winner has 0 laps, the race hasn't really happened (it's just the grid)
+                    if (winnerLaps === 0) {
+                        return NextResponse.json({
+                            message: `Race finished but winner has 0 laps (False positive - Race Start/Grid)`
+                        });
+                    }
+                }
 
                 raceDrivers = rawDrivers.map(d => {
                     const reasonOut = reasonOutMap[d.CarIdx]?.toLowerCase().trim() || "running";

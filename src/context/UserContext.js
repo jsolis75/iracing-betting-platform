@@ -10,7 +10,11 @@ export const UserProvider = ({ children }) => {
 
     // Load user session on mount
     useEffect(() => {
-        const storedSession = localStorage.getItem('iracing_betting_session');
+        // Check localStorage first, then sessionStorage
+        const localSession = localStorage.getItem('iracing_betting_session');
+        const sessionSession = sessionStorage.getItem('iracing_betting_session');
+        const storedSession = localSession || sessionSession;
+
         if (storedSession) {
             try {
                 const sessionUser = JSON.parse(storedSession);
@@ -31,10 +35,17 @@ export const UserProvider = ({ children }) => {
             if (response.ok) {
                 const userData = await response.json();
                 setUser(userData);
-                localStorage.setItem('iracing_betting_session', JSON.stringify(userData));
+
+                // Update whichever storage was used
+                if (localStorage.getItem('iracing_betting_session')) {
+                    localStorage.setItem('iracing_betting_session', JSON.stringify(userData));
+                } else if (sessionStorage.getItem('iracing_betting_session')) {
+                    sessionStorage.setItem('iracing_betting_session', JSON.stringify(userData));
+                }
             } else {
                 // User not found in database, clear session
                 localStorage.removeItem('iracing_betting_session');
+                sessionStorage.removeItem('iracing_betting_session');
             }
         } catch (error) {
             console.error('Error fetching user data:', error);
@@ -43,7 +54,7 @@ export const UserProvider = ({ children }) => {
         }
     };
 
-    const login = async (username, password) => {
+    const login = async (username, password, remember = true) => {
         try {
             const response = await fetch('/api/users', {
                 method: 'POST',
@@ -55,7 +66,13 @@ export const UserProvider = ({ children }) => {
 
             if (response.ok && data.success) {
                 setUser(data.user);
-                localStorage.setItem('iracing_betting_session', JSON.stringify(data.user));
+                if (remember) {
+                    localStorage.setItem('iracing_betting_session', JSON.stringify(data.user));
+                    sessionStorage.removeItem('iracing_betting_session');
+                } else {
+                    sessionStorage.setItem('iracing_betting_session', JSON.stringify(data.user));
+                    localStorage.removeItem('iracing_betting_session');
+                }
                 return { success: true };
             } else {
                 return { success: false, error: data.error || 'Login failed' };
@@ -66,7 +83,7 @@ export const UserProvider = ({ children }) => {
         }
     };
 
-    const register = async (username, email, password) => {
+    const register = async (username, email, password, remember = true) => {
         try {
             const response = await fetch('/api/users', {
                 method: 'POST',
@@ -78,7 +95,13 @@ export const UserProvider = ({ children }) => {
 
             if (response.ok && data.success) {
                 setUser(data.user);
-                localStorage.setItem('iracing_betting_session', JSON.stringify(data.user));
+                if (remember) {
+                    localStorage.setItem('iracing_betting_session', JSON.stringify(data.user));
+                    sessionStorage.removeItem('iracing_betting_session');
+                } else {
+                    sessionStorage.setItem('iracing_betting_session', JSON.stringify(data.user));
+                    localStorage.removeItem('iracing_betting_session');
+                }
                 return { success: true };
             } else {
                 return { success: false, error: data.error || 'Registration failed' };

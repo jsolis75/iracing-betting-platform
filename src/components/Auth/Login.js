@@ -9,6 +9,7 @@ const Login = () => {
     const [isLogin, setIsLogin] = useState(true);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(true);
     const [error, setError] = useState('');
 
     const handleSubmit = async (e) => {
@@ -22,9 +23,9 @@ const Login = () => {
 
         let result;
         if (isLogin) {
-            result = await login(username, password);
+            result = await login(username, password, rememberMe);
         } else {
-            result = await register(username, '', password); // Email optional for now
+            result = await register(username, '', password, rememberMe); // Email optional for now
         }
 
         if (!result.success) {
@@ -56,6 +57,18 @@ const Login = () => {
                             onChange={(e) => setPassword(e.target.value)}
                         />
                     </div>
+
+                    <div className={styles.checkboxGroup} style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                        <input
+                            type="checkbox"
+                            id="rememberMe"
+                            checked={rememberMe}
+                            onChange={(e) => setRememberMe(e.target.checked)}
+                            style={{ marginRight: '0.5rem', width: 'auto' }}
+                        />
+                        <label htmlFor="rememberMe" style={{ fontSize: '0.9rem', cursor: 'pointer' }}>Stay Signed In</label>
+                    </div>
+
                     <button type="submit" className={styles.button}>
                         {isLogin ? 'Login' : 'Sign Up'}
                     </button>

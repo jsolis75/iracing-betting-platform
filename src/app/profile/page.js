@@ -10,15 +10,23 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
 const ProfilePage = () => {
-    const { user, logout } = useUser();
+    const { user, logout, loading } = useUser();
     const [activeTab, setActiveTab] = useState('betting');
     const router = useRouter();
 
     useEffect(() => {
-        if (!user) {
+        if (!loading && !user) {
             router.push('/');
         }
-    }, [user, router]);
+    }, [user, loading, router]);
+
+    if (loading) {
+        return (
+            <div className="container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                <div style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>Loading profile...</div>
+            </div>
+        );
+    }
 
     if (!user) return null;
 

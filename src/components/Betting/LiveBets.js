@@ -59,8 +59,14 @@ const LiveBets = ({ raceData }) => {
             }
         }
 
-        const driver = raceData.drivers.find(d => d.name === bet.driver);
-        if (!driver) return { status: 'Driver not found', isWinning: false };
+        // Normalize names for matching
+        const normalize = (name) => name?.toLowerCase().trim();
+        const driver = raceData.drivers.find(d => normalize(d.name) === normalize(bet.driver));
+
+        if (!driver) {
+            // Even if not found, show the bet but mark as unknown status
+            return { status: 'Waiting for driver...', isWinning: false };
+        }
 
         const pos = driver.currentPosition;
 
@@ -161,7 +167,11 @@ const LiveBets = ({ raceData }) => {
                     return (
                         <div
                             key={index}
-                            className={`${styles.betItem} ${isWinning ? styles.winning : styles.losing}`}
+                            className={`${styles.betItem} ${isWinning ? styles.winning : ''}`}
+                            style={isWinning ? {
+                                borderLeft: '4px solid #4ade80',
+                                background: 'rgba(74, 222, 128, 0.1)'
+                            } : {}}
                         >
                             <div className={styles.betInfo}>
                                 <span className={styles.driverName}>
@@ -184,7 +194,10 @@ const LiveBets = ({ raceData }) => {
                                 <span className={styles.potentialPayout}>
                                     To Win: ${bet.potential_payout}
                                 </span>
-                                <span className={styles.currentStatus}>
+                                <span className={styles.currentStatus} style={{
+                                    color: isWinning ? '#4ade80' : '#aaa',
+                                    fontWeight: isWinning ? 'bold' : 'normal'
+                                }}>
                                     {status}
                                 </span>
                             </div>

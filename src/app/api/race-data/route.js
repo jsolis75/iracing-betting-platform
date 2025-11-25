@@ -133,17 +133,52 @@ export async function GET(request) {
             }
         }
 
-        const response = NextResponse.json(responsePayload);
-        if (lastUpdated) {
-            response.headers.set('Last-Modified', lastUpdated.toUTCString());
-            // Add Cache-Control to prevent browser from caching too aggressively without validation
-            response.headers.set('Cache-Control', 'no-cache, must-revalidate');
+        // INJECT DRIVER STATS
+        try {
+            const fs = require('fs');
+            const path = require('path');
+            const statsPath = path.join(process.cwd(), 'src', 'data', 'driver_stats.json');
+
+            if (fs.existsSync(statsPath)) {
+                const statsContent = fs.readFileSync(statsPath, 'utf-8');
+                const statsMap = JSON.parse(statsContent);
+
+                responsePayload.DriverInfo.Drivers = responsePayload.DriverInfo.Drivers.map(driver => {
+                    // Match by UserID (CUSTID in stats)
+                    const driverStats = statsMap[driver.UserID];
+                    if (driverStats) {
+                        return {
+                            ...driver,
+                            stats: {
+                                starts: driverStats.starts,
+                                wins: driverStats.wins,
+                                avgPoints: driverStats.avgPoints,
+                                avgIncidents: driverStats.avgIncidents,
+                                avgFinish: driverStats.avgFinish,
+                                top25Percent: driverStats.top25Percent,
+                                winPercentage: driverStats.winPercentage
+                            }
+                        };
+                    }
+                    return driver;
+                });
+            }
+        } catch (statsError) {
+            console.error('Error injecting driver stats:', statsError);
+            // Continue without stats if error
         }
 
-        return response;
-
-    } catch (error) {
-        console.error('Error fetching race data:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        const response = NextResponse.json(responsePayload);
+    if (lastUpdated) {
+        response.headers.set('Last-Modified', lastUpdated.toUTCString());
+        // Add Cache-Control to prevent browser from caching too aggressively without validation
+        response.headers.set('Cache-Control', 'no-cache, must-revalidate');
     }
+
+    return response;
+
+} catch (error) {
+    console.error('Error fetching race data:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+}
 }

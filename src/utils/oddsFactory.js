@@ -182,35 +182,59 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
 
         // BRANCHING LOGIC: Live race uses current position, Pre-race uses starting position
         if (useLiveOdds && raceProgress > 0) {
-            // LIVE ODDS: NASCAR-STYLE (Position > iRating as race progresses)
+            // LIVE ODDS: BALANCED (Driver Quality + Position)
+            // Give significant weight to iRating/stats even late in race
             const cappedIRating = Math.min(iRating, 7000);
             const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.7);
 
-            const iRatingWeight = 0.15 * Math.pow(1 - raceProgress, 2.5);
-            const historicalWeight = 0.10 * Math.pow(1 - raceProgress, 2.0);
+            // REBALANCED WEIGHTS: Driver quality stays relevant throughout race
+            // Early race: iR=35%, Hist=20%, Pos=45%
+            // Late race: iR=20%, Hist=10%, Pos=70% (still balanced)
+            const iRatingWeight = 0.35 * Math.pow(1 - raceProgress, 1.5); // Decays slower
+            const historicalWeight = 0.20 * Math.pow(1 - raceProgress, 1.2);
             const positionWeight = 1 - (iRatingWeight + historicalWeight);
 
-            const dynamicExponent = 2.8 + (raceProgress * 15);
+            // Position factor with moderate exponent (not as extreme)
+            const dynamicExponent = 2.0 + (raceProgress * 8); // Max 10 instead of 17.8
             const dynamicPositionFactor = Math.pow(Math.max(0, (fieldSize - currentPos + 1) / fieldSize), dynamicExponent);
 
-            let gapPenalty = 1.0;
-            if (raceProgress > 0.5 && currentPos > 15) {
+            // SMART GAP ADJUSTMENT: Only penalize backmarkers if they're also low-rated
+            // High iRating drivers in the back are still dangerous
+            let gapAdjustment = 1.0;
+            if (currentPos > 15) {
                 const gap = currentPos - 15;
-                gapPenalty = Math.pow(0.85, gap);
+                const iRatingTrust = Math.min((iRating - 4000) / 3000, 1.0); // 0 at 4k, 1 at 7k
+
+                if (iRatingTrust > 0.5) {
+                    // High iRating: minimal penalty
+                    gapAdjustment = Math.pow(0.95, gap); // 5% per position
+                } else if (iRatingTrust > 0) {
+                    // Medium iRating: moderate penalty
+                    gapAdjustment = Math.pow(0.90, gap); // 10% per position
+                } else {
+                    // Low iRating: heavy penalty
+                    gapAdjustment = Math.pow(0.85, gap); // 15% per position
+                }
             }
 
-            // POSITION DIFFERENTIAL BONUS: Drivers who've passed many cars are clearly fast
+            // ENHANCED POSITION DIFFERENTIAL BONUS: Drivers who've passed many cars are clearly fast
             let positionDifferentialBonus = 1.0;
             const positionsGained = startPos - currentPos; // Positive = gained positions
-            if (positionsGained > 3) {
-                // Give bonus for making up positions (shows current race speed)
-                positionDifferentialBonus = 1.0 + (positionsGained * 0.08); // 8% per position gained
+            if (positionsGained > 5) {
+                // Major charge through field - big bonus
+                positionDifferentialBonus = 1.0 + (positionsGained * 0.12); // 12% per position
+            } else if (positionsGained > 2) {
+                // Moderate progress
+                positionDifferentialBonus = 1.0 + (positionsGained * 0.10); // 10% per position
+            } else if (positionsGained < -5) {
+                // Falling back significantly - penalty
+                positionDifferentialBonus = 1.0 / (1.0 + (Math.abs(positionsGained) * 0.08));
             }
 
             winProbability =
                 (liveIRatingFactor * iRatingWeight) +
                 (historicalFactor * historicalWeight) +
-                (dynamicPositionFactor * positionWeight * gapPenalty);
+                (dynamicPositionFactor * positionWeight * gapAdjustment);
 
             // Apply position differential bonus
             winProbability = winProbability * positionDifferentialBonus;

@@ -22,19 +22,35 @@ const RaceCard = ({ race }) => {
     const [viewMode, setViewMode] = useState("drivers"); // 'drivers' or 'specials'
     const [showResults, setShowResults] = useState(false);
 
-    // Fetch race data periodically (if needed, though we rely on props mostly)
+    const [betStats, setBetStats] = useState(null);
+
+    // Fetch race data and bet stats periodically
     useEffect(() => {
         const fetchRaceData = async () => {
-            // Placeholder for polling logic if this component was responsible for it.
-            // Since the user asked to reduce data transfer, we'll keep this minimal 
-            // or assume the parent handles the main data fetch.
-            // If we DO need to poll here, we should use a longer interval.
+            // Placeholder for race data polling if needed
         };
 
-        // Refresh every 5 seconds instead of 1 second to save bandwidth
-        const interval = setInterval(fetchRaceData, 5000);
+        const fetchBetStats = async () => {
+            if (!race.id) return;
+            try {
+                const res = await fetch(`/api/bet-stats?raceId=${race.id}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setBetStats(data.stats);
+                }
+            } catch (err) {
+                console.error("Error fetching bet stats:", err);
+            }
+        };
+
+        fetchBetStats();
+        // Refresh every 5 seconds
+        const interval = setInterval(() => {
+            fetchRaceData();
+            fetchBetStats();
+        }, 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [race.id]);
 
     // Determine if the race is finished
     const isFinished =
@@ -48,7 +64,8 @@ const RaceCard = ({ race }) => {
             : null;
 
     // Calculate odds for all drivers (live updates while race is in progress)
-    const driversWithOdds = calculateFieldOdds(drivers, raceState);
+    // Pass betStats to influence odds based on liability
+    const driversWithOdds = calculateFieldOdds(drivers, raceState, betStats);
 
     // Sort drivers based on selected method
     const sortedDrivers = [...driversWithOdds].sort((a, b) => {

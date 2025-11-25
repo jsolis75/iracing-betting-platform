@@ -152,7 +152,12 @@ export async function POST(request) {
         }
 
         const winner = scoredEntries[0];
-        const pot = lobby.entry_fee * entries.length;
+
+        // CRITICAL: Ensure entry_fee exists (default to 500 if missing)
+        const entryFee = Number(lobby.entry_fee) || 500;
+        const pot = entryFee * entries.length;
+
+        console.log(`Pot calculation: ${entryFee} x ${entries.length} = ${pot}`);
 
         console.log(`Awarding ${pot} to user ${winner.user_id} (${winner.username})`);
 

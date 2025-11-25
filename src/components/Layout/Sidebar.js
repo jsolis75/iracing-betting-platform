@@ -135,8 +135,8 @@ function SidebarContent() {
                 <div className={styles.broadcastHelp}>
                     <small style={{ color: '#666', display: 'block', marginBottom: '0.5rem' }}>Broadcast Your Race:</small>
                     <a
-                        href="/broadcast/iracing-broadcast.exe"
-                        download="iracing-broadcast.exe"
+                        href="/broadcast/iRacingBroadcaster.exe"
+                        download="iRacingBroadcaster.exe"
                         style={{
                             display: 'block',
                             background: '#2563eb',
@@ -149,10 +149,10 @@ function SidebarContent() {
                             fontWeight: 'bold'
                         }}
                     >
-                        ⬇️ Download Broadcast App
+                        Download Broadcaster
                     </a>
                     <small style={{ color: '#444', display: 'block', marginTop: '4px', fontSize: '0.7rem' }}>
-                        No installation required. Just run it!
+                        No installation needed!
                     </small>
                 </div>
             </nav>

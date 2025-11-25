@@ -1,0 +1,2 @@
+C:\Users\jsoli\.gemini\antigravity\scratch\iracing-betting-platform\broadcaster-csharp\bin\Release\net8.0\win-x64\publish\iRacingBroadcaster.pdb
+C:\Users\jsoli\.gemini\antigravity\scratch\iracing-betting-platform\broadcaster-csharp\bin\Release\net8.0\win-x64\publish\iRacingBroadcaster.exe

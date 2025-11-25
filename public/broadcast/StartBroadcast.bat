@@ -10,46 +10,50 @@ echo.
 :: Check for Python
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [ERROR] Python is not installed or not in your PATH.
-    echo Please install Python from https://www.python.org/downloads/
-    echo Make sure to check "Add Python to PATH" during installation.
+    echo [!] Python is not installed.
     echo.
-    pause
-    exit
-)
-
-echo [INFO] Python found. Checking dependencies...
-
-:: Install dependencies
-pip install irsdk requests >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [WARNING] Failed to install dependencies automatically.
-    echo Attempting to run anyway...
-) else (
-    echo [INFO] Dependencies installed.
-)
-
-:: Check for broadcast.py, download if missing
-if not exist broadcast.py (
-    echo [INFO] broadcast.py not found. Downloading latest version...
-    curl -s -o broadcast.py https://iracing-betting-platform.vercel.app/broadcast/broadcast.py
-    if %errorlevel% neq 0 (
-        echo [ERROR] Failed to download broadcast.py.
-        echo Please ensure you are connected to the internet.
+    echo Would you like to auto-install Python now? (Y/N)
+    set /p install_python=
+    if /i "%install_python%"=="Y" (
+        echo [INFO] Installing Python via winget...
+        winget install Python.Python.3.12
+        echo [INFO] Python installed! Please restart this script.
+        pause
+        exit
+    ) else (
+        echo [INFO] Please install Python manually from https://www.python.org/downloads/
+        echo Make sure to check "Add Python to PATH" during installation!
         pause
         exit
     )
-    echo [INFO] Download complete.
 )
 
+echo [OK] Python found!
 echo.
-echo [INFO] Starting Broadcaster...
+
+:: Download broadcast.py if missing
+if not exist broadcast.py (
+    echo [INFO] Downloading broadcaster script...
+    curl -s -o broadcast.py https://iracing-betting-platform.vercel.app/broadcast/broadcast.py
+    if %errorlevel% neq 0 (
+        echo [ERROR] Failed to download. Check your internet connection.
+        pause
+        exit
+    )
+)
+
+:: Install dependencies quietly
+echo [INFO] Installing dependencies (irsdk, requests)...
+pip install --quiet irsdk requests
+echo [OK] Dependencies ready!
+echo.
+echo ========================================================
+echo Starting broadcaster... (Keep this window open!)
+echo ========================================================
 echo.
 
 python broadcast.py
 
-if %errorlevel% neq 0 (
-    echo.
-    echo [ERROR] Script crashed or closed unexpectedly.
-    pause
-)
+echo.
+echo [INFO] Broadcaster stopped.
+pause

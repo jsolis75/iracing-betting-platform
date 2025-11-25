@@ -217,19 +217,52 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
                 }
             }
 
-            // ENHANCED POSITION DIFFERENTIAL BONUS: Drivers who've passed many cars are clearly fast
+
+            // POSITION-WEIGHTED DIFFERENTIAL BONUS
+            // Passing at the front is worth more than passing at the back
             let positionDifferentialBonus = 1.0;
             const positionsGained = startPos - currentPos; // Positive = gained positions
-            if (positionsGained > 5) {
-                // Major charge through field - big bonus
-                positionDifferentialBonus = 1.0 + (positionsGained * 0.12); // 12% per position
-            } else if (positionsGained > 2) {
-                // Moderate progress
-                positionDifferentialBonus = 1.0 + (positionsGained * 0.10); // 10% per position
+
+            if (positionsGained > 0) {
+                // Calculate the "quality" of positions overtaken
+                // Average position where the passing happened
+                const avgPassingPosition = (startPos + currentPos) / 2;
+
+                // Position value multiplier: Front = high value, Back = lower value
+                // P1-P5: 1.8x to 2.0x (elite passing)
+                // P6-P10: 1.3x to 1.7x (strong passing)
+                // P11-P15: 1.0x to 1.2x (average passing)
+                // P16+: 0.6x to 0.9x (backmarker passing)
+                let positionValueMultiplier;
+                if (avgPassingPosition <= 5) {
+                    positionValueMultiplier = 1.8 + ((5 - avgPassingPosition) / 5) * 0.2; // 1.8 to 2.0
+                } else if (avgPassingPosition <= 10) {
+                    positionValueMultiplier = 1.3 + ((10 - avgPassingPosition) / 5) * 0.5; // 1.3 to 1.8
+                } else if (avgPassingPosition <= 15) {
+                    positionValueMultiplier = 1.0 + ((15 - avgPassingPosition) / 5) * 0.3; // 1.0 to 1.3
+                } else {
+                    positionValueMultiplier = 0.6 + Math.min((25 - avgPassingPosition) / 10, 0.3); // 0.6 to 0.9
+                }
+
+                // Base bonus rate depends on magnitude of gain
+                let baseBonusRate;
+                if (positionsGained > 5) {
+                    baseBonusRate = 0.12; // Major charge through field
+                } else if (positionsGained > 2) {
+                    baseBonusRate = 0.10; // Moderate progress
+                } else {
+                    baseBonusRate = 0.08; // Small gains
+                }
+
+                // Apply position-weighted bonus
+                const effectiveBonusRate = baseBonusRate * positionValueMultiplier;
+                positionDifferentialBonus = 1.0 + (positionsGained * effectiveBonusRate);
+
             } else if (positionsGained < -5) {
                 // Falling back significantly - penalty
                 positionDifferentialBonus = 1.0 / (1.0 + (Math.abs(positionsGained) * 0.08));
             }
+
 
             winProbability =
                 (liveIRatingFactor * iRatingWeight) +

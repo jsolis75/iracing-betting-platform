@@ -62,10 +62,12 @@ export async function GET(request) {
             raceId: entry.lobby.race_id,
             status: entry.lobby.status,
             prizePool: entry.lobby.prize_pool,
+            entry_fee: entry.lobby.entry_fee || 500,
             raceName: raceMap[entry.lobby.race_id]?.name || 'Unknown Race',
             trackName: raceMap[entry.lobby.race_id]?.track || '',
-            score: entry.score,
-            position: 0 // Placeholder, would need full leaderboard calc
+            score: entry.score || 0,
+            position: entry.rank || 0,
+            winnings: entry.winnings || 0
         }));
 
         return NextResponse.json({ contests });

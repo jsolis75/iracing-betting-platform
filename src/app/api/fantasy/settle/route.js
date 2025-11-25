@@ -212,6 +212,26 @@ export async function POST(request) {
             console.warn('Settlement succeeded but lobby status update failed - this is non-critical');
         }
 
+        // 8. Save final scores and rankings to entries
+        console.log('Saving final scores and rankings to entries...');
+        for (let i = 0; i < scoredEntries.length; i++) {
+            const entry = scoredEntries[i];
+            const isWinner = i === 0;
+            const winnings = isWinner ? pot : 0;
+
+            await supabase
+                .from('multiplayer_entries')
+                .update({
+                    score: entry.scoreData.total,
+                    rank: i + 1,
+                    winnings: winnings,
+                    status: 'completed'
+                })
+                .eq('id', entry.id);
+        }
+
+        console.log('Scores and rankings saved successfully');
+
         return NextResponse.json({
             success: true,
             winner: winner.username,

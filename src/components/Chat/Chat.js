@@ -26,9 +26,12 @@ const Chat = () => {
         fetchUser();
     }, []);
 
-    // Fetch messages on mount and poll every 2 seconds
+    // Fetch messages on mount and poll every 5 seconds (only when visible)
     useEffect(() => {
         const fetchMessages = async () => {
+            // Only fetch if tab is visible to save bandwidth
+            if (document.visibilityState !== 'visible') return;
+
             try {
                 const res = await fetch('/api/chat');
                 if (res.ok) {
@@ -41,7 +44,7 @@ const Chat = () => {
         };
 
         fetchMessages();
-        const interval = setInterval(fetchMessages, 2000);
+        const interval = setInterval(fetchMessages, 5000); // Increased from 2s to 5s
         return () => clearInterval(interval);
     }, []);
 

@@ -49,8 +49,22 @@ const Chat = () => {
     }, []);
 
     const messagesContainerRef = useRef(null);
+    const [shouldScrollToBottom, setShouldScrollToBottom] = useState(true);
 
-    // Auto-scroll to bottom only if user is near bottom
+    // Scroll to bottom helper
+    const scrollToBottom = (behavior = 'smooth') => {
+        messagesEndRef.current?.scrollIntoView({ behavior });
+    };
+
+    // Handle scroll on open
+    useEffect(() => {
+        if (!isMinimized) {
+            // Instant scroll when opening
+            scrollToBottom('auto');
+        }
+    }, [isMinimized]);
+
+    // Handle new messages
     useEffect(() => {
         const container = messagesContainerRef.current;
         if (!container) return;
@@ -59,7 +73,7 @@ const Chat = () => {
         const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
 
         if (isNearBottom) {
-            messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+            scrollToBottom('smooth');
         }
     }, [messages]);
 
@@ -128,7 +142,7 @@ const Chat = () => {
                                         {msg.username}:
                                     </span>
                                     <span className={styles.messageText}>{msg.message}</span>
-                                    <span className={styles.messageTime}>
+                                    <span className={styles.messageTime} suppressHydrationWarning>
                                         {new Date(msg.timestamp).toLocaleTimeString([], {
                                             hour: '2-digit',
                                             minute: '2-digit'

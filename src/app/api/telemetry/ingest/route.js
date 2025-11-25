@@ -13,11 +13,26 @@ export async function POST(request) {
         }
 
         const data = await request.json();
+
+        // Handle raw YAML from C# broadcaster
+        let weekendInfo = data.WeekendInfo;
+        if (weekendInfo?.RawYAML) {
+            // Parse YAML to extract SessionID
+            const yaml = weekendInfo.RawYAML;
+            const sessionIdMatch = yaml.match(/SubSessionID:\s*(\d+)/);
+            const sessionMatch = yaml.match(/SessionID:\s*(\d+)/);
+
+            weekendInfo = {
+                SubSessionID: sessionIdMatch ? sessionIdMatch[1] : '0',
+                SessionID: sessionMatch ? sessionMatch[1] : '0'
+            };
+        }
+
         // 2. Identify the race
-        const subSessionID = data.WeekendInfo?.SubSessionID;
-        const sessionID = data.WeekendInfo?.SessionID;
+        const subSessionID = weekendInfo?.SubSessionID;
+        const sessionID = weekendInfo?.SessionID;
         const uniqueID = subSessionID && subSessionID !== '0' ? subSessionID : sessionID;
-        const trackName = data.WeekendInfo?.TrackDisplayName || 'Unknown Track';
+        const trackName = weekendInfo?.TrackDisplayName || data.SessionInfo?.TrackDisplayName || 'Unknown Track';
 
         if (!uniqueID) {
             return NextResponse.json({ error: 'Invalid data: No SessionID' }, { status: 400 });

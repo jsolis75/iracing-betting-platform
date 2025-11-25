@@ -10,7 +10,8 @@ namespace iRacingBroadcaster
 {
     class Program
     {
-        private const string API_URL = "https://iracing-betting-platform.vercel.app/api/telemetry/ingest";
+        // CHANGE THIS TO YOUR DEPLOYMENT URL AFTER TESTING
+        private const string API_URL = "http://localhost:3000/api/telemetry/ingest";
         private const string API_KEY = "iracing-broadcast-key-123";
         private const string IRACING_MMF_NAME = "Local\\IRSDKMemMapFileName";
         
@@ -80,13 +81,14 @@ namespace iRacingBroadcaster
                     if (response.IsSuccessStatusCode)
                     {
                         var time = DateTime.Now.ToString("HH:mm:ss");
-                        Console.Write($"\rSent update: {time} - OK              ");
+                        Console.Write($"\r✅ Sent update: {time} - OK              ");
                     }
                     else
                     {
+                        var responseBody = await response.Content.ReadAsStringAsync();
                         Console.WriteLine();
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"API Error {(int)response.StatusCode}");
+                        Console.WriteLine($"⚠️ API Error {(int)response.StatusCode}: {responseBody}");
                         Console.ResetColor();
                     }
 
@@ -98,7 +100,7 @@ namespace iRacingBroadcaster
                     attemptCount++;
                     if (attemptCount % 5 == 0)
                     {
-                        Console.Write($"\rWaiting for iRacing... ({attemptCount}s)    ");
+                        Console.Write($"\r⏳ Waiting for iRacing... ({attemptCount}s)    ");
                     }
                     wasConnected = false;
                     await Task.Delay(1000);
@@ -107,7 +109,7 @@ namespace iRacingBroadcaster
                 {
                     Console.WriteLine();
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Error: {ex.Message}");
+                    Console.WriteLine($"❌ Error: {ex.Message}");
                     Console.ResetColor();
                     await Task.Delay(5000);
                 }
@@ -116,68 +118,22 @@ namespace iRacingBroadcaster
 
         private static object ParseIRacingYaml(string yaml)
         {
-            // Simple YAML parser for iRacing data
-            var result = new Dictionary<string, object>();
-
-            try
+            // For now, send the raw YAML and let the API parse it
+            // This matches what the Python broadcaster does
+            return new
             {
-                // Split into sections
-                var sections = yaml.Split(new[] { "\n---\n" }, StringSplitOptions.None);
-                
-                foreach (var section in sections)
-                {
-                    if (string.IsNullOrWhiteSpace(section)) continue;
-                    
-                    var lines = section.Split('\n');
-                    string? sectionName = null;
-                    Dictionary<string, string> sectionData = new();
-
-                    foreach (var line in lines)
-                    {
-                        var trimmed = line.Trim();
-                        if (string.IsNullOrEmpty(trimmed)) continue;
-
-                        if (trimmed.EndsWith(":") && !trimmed.Contains(" "))
-                        {
-                            sectionName = trimmed.TrimEnd(':');
-                        }
-                        else if (trimmed.Contains(":") && !string.IsNullOrEmpty(sectionName))
-                        {
-                            var parts = trimmed.Split(new[] { ':' }, 2);
-                            if (parts.Length == 2)
-                            {
-                                var key = parts[0].Trim();
-                                var value = parts[1].Trim();
-                                sectionData[key] = value;
-                            }
-                        }
-                    }
-
-                    if (!string.IsNullOrEmpty(sectionName) && sectionData.Count > 0)
-                    {
-                        result[sectionName] = sectionData;
-                    }
-                }
-
-                // Add required fields
-                result["Telemetry"] = new
+                WeekendInfo = new { RawYAML = yaml },
+                SessionInfo = new { RawYAML = yaml },
+                DriverInfo = new { RawYAML = yaml },
+                Telemetry = new
                 {
                     SessionFlags = 0,
                     SessionState = 0,
                     SessionLapsRemain = 0,
                     SessionTimeRemain = 0.0
-                };
-                result["BroadcastTime"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            }
-            catch
-            {
-                // If parsing fails, return minimal structure
-                result["WeekendInfo"] = new { RawYAML = yaml };
-                result["BroadcastTime"] = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            }
-
-            return result;
+                },
+                BroadcastTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            };
         }
     }
 }
-

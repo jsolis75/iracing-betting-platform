@@ -189,7 +189,6 @@ export async function POST(request) {
             .update({
                 status: 'completed',
                 winner_username: winner.username,
-                winner_user_id: winner.user_id
             })
             .eq('id', lobbyId);
 

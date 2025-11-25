@@ -4,7 +4,6 @@ using System.Net.Http;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace iRacingBroadcaster
@@ -53,31 +52,28 @@ namespace iRacingBroadcaster
                         wasConnected = true;
                     }
 
-                    // Read iRacing header
-                    IRacingHeader header = new();
-                    accessor.Read(0, out header);
+                    // Read header manually (first 144 bytes)
+                    byte[] headerBytes = new byte[144];
+                    accessor.ReadArray(0, headerBytes, 0, 144);
+
+                    int sessionInfoLen = BitConverter.ToInt32(headerBytes, 16);
+                    int sessionInfoOffset = BitConverter.ToInt32(headerBytes, 20);
 
                     // Read YAML data (session info)
-                    byte[] yamlBytes = new byte[header.SessionInfoLen];
-                    accessor.ReadArray(header.SessionInfoOffset, yamlBytes, 0, yamlBytes.Length);
+                    byte[] yamlBytes = new byte[sessionInfoLen];
+                    accessor.ReadArray(sessionInfoOffset, yamlBytes, 0, sessionInfoLen);
                     string sessionYaml = Encoding.UTF8.GetString(yamlBytes).TrimEnd('\0');
 
-                    // Read some telemetry values
-                    int sessionFlags = ReadTelemetryInt(accessor, header, "SessionFlags");
-                    int sessionState = ReadTelemetryInt(accessor, header, "SessionState");
-                    int sessionLapsRemain = ReadTelemetryInt(accessor, header, "SessionLapsRemain");
-                    double sessionTimeRemain = ReadTelemetryDouble(accessor, header, "SessionTimeRemain");
-
-                    // Build payload
+                    // Build payload - just send the session YAML
                     var payload = new
                     {
-                        SessionInfo = ParseYamlSection(sessionYaml),
+                        SessionInfo = new { RawYAML = sessionYaml },
                         Telemetry = new
                         {
-                            SessionFlags = sessionFlags,
-                            SessionState = sessionState,
-                            SessionLapsRemain = sessionLapsRemain,
-                            SessionTimeRemain = sessionTimeRemain
+                            SessionFlags = 0,  // We'll parse these later if needed
+                            SessionState = 0,
+                            SessionLapsRemain = 0,
+                            SessionTimeRemain = 0.0
                         },
                         BroadcastTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                     };
@@ -92,7 +88,7 @@ namespace iRacingBroadcaster
                     if (response.IsSuccessStatusCode)
                     {
                         var time = DateTime.Now.ToString("HH:mm:ss");
-                        Console.Write($"\rSent update: {time} | Flags: {sessionFlags}        ");
+                        Console.Write($"\rSent update: {time} - OK              ");
                     }
                     else
                     {
@@ -125,87 +121,6 @@ namespace iRacingBroadcaster
                 }
             }
         }
-
-        private static int ReadTelemetryInt(MemoryMappedViewAccessor accessor, IRacingHeader header, string varName)
-        {
-            // Find variable in var headers
-            for (int i = 0; i < header.NumVars; i++)
-            {
-                VarHeader varHeader = new();
-                accessor.Read(header.VarHeaderOffset + i * Marshal.SizeOf<VarHeader>(), out varHeader);
-                
-                string name = Encoding.ASCII.GetString(varHeader.Name).TrimEnd('\0');
-                if (name == varName && varHeader.Type == 1) // Type 1 = int
-                {
-                    int value = 0;
-                    accessor.Read(header.VarBuf[0].BufOffset + varHeader.Offset, out value);
-                    return value;
-                }
-            }
-            return 0;
-        }
-
-        private static double ReadTelemetryDouble(MemoryMappedViewAccessor accessor, IRacingHeader header, string varName)
-        {
-            for (int i = 0; i < header.NumVars; i++)
-            {
-                VarHeader varHeader = new();
-                accessor.Read(header.VarHeaderOffset + i * Marshal.SizeOf<VarHeader>(), out varHeader);
-                
-                string name = Encoding.ASCII.GetString(varHeader.Name).TrimEnd('\0');
-                if (name == varName && varHeader.Type == 2) // Type 2 = double
-                {
-                    double value = 0;
-                    accessor.Read(header.VarBuf[0].BufOffset + varHeader.Offset, out value);
-                    return value;
-                }
-            }
-            return 0.0;
-        }
-
-        private static object ParseYamlSection(string yaml)
-        {
-            // Simple YAML parsing - just return as a string for now
-            // The Python version sends the full YAML, so we'll do the same
-            return new { RawYAML = yaml };
-        }
-    }
-
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    struct IRacingHeader
-    {
-        public int Ver;
-        public int Status;
-        public int TickRate;
-        public int SessionInfoUpdate;
-        public int SessionInfoLen;
-        public int SessionInfoOffset;
-        public int NumVars;
-        public int VarHeaderOffset;
-        public int NumBuf;
-        public int BufLen;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 4)]
-        public VarBuf[] VarBuf;
-    }
-
-    [StructLayout(LayoutKind.Sequential, Pack = 1)]
-    struct VarBuf
-    {
-        public int TickCount;
-        public int BufOffset;
-    }
-
-    [StructLayout(LayoutKind.Sequential, Pack = 1, CharSet = CharSet.Ansi)]
-    struct VarHeader
-    {
-        public int Type;
-        public int Offset;
-        public int Count;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-        public byte[] Name;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-        public byte[] Desc;
-        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 32)]
-        public byte[] Unit;
     }
 }
+

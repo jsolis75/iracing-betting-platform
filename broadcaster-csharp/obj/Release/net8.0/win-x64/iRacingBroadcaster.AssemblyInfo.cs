@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("iRacingBroadcaster")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+59f028484dd21ae497372a3ff7afe63fd2c5bfad")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+66b23e40c62dd0e3466bcab0fd2dcb4cb22660a8")]
 [assembly: System.Reflection.AssemblyProductAttribute("iRacingBroadcaster")]
 [assembly: System.Reflection.AssemblyTitleAttribute("iRacingBroadcaster")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

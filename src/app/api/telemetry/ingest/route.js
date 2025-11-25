@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
 export async function POST(request) {
     try {
         // 1. Check API Key (Simple security)

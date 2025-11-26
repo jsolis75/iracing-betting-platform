@@ -7,18 +7,39 @@ import styles from './ManualSettlement.module.css';
 
 const ManualSettlement = () => {
     const { user, refreshUser } = useUser();
-    const { placedBets } = useBetting();
     const [settling, setSettling] = useState(false);
+    const [manualBets, setManualBets] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     // Only show for user "dumindu"
     if (!user || user.username !== 'dumindu') return null;
 
-    // Filter for pending manual bets
-    const manualBets = placedBets.filter(bet =>
-        bet.status === 'pending' &&
-        ['slurmeister', 'fatality', 'kingkong'].includes(bet.bet_type)
-    );
+    // Fetch ALL pending manual settlement bets (not just current user's)
+    React.useEffect(() => {
+        const fetchManualBets = async () => {
+            try {
+                const response = await fetch('/api/bets?status=pending&manual=true');
+                if (response.ok) {
+                    const data = await response.json();
+                    const pending = data.filter(bet =>
+                        bet.status === 'pending' &&
+                        ['slurmeister', 'fatality', 'kingkong'].includes(bet.bet_type)
+                    );
+                    setManualBets(pending);
+                }
+            } catch (error) {
+                console.error('Error fetching manual bets:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
+        fetchManualBets();
+        const interval = setInterval(fetchManualBets, 5000); // Refresh every 5s
+        return () => clearInterval(interval);
+    }, []);
+
+    if (loading) return <div style={{ padding: '1rem', color: '#666' }}>Loading manual bets...</div>;
     if (manualBets.length === 0) return null;
 
     const handleSettle = async (betId, result) => {

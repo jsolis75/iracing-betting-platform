@@ -1,17 +1,44 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/supabase';
 
-// GET - Fetch user's bets
+// GET - Fetch user's bets (or all manual settlement bets if manual=true)
 export async function GET(request) {
     try {
         const { searchParams } = new URL(request.url);
         const userId = searchParams.get('userId');
+        const manual = searchParams.get('manual');
+        const status = searchParams.get('status');
 
+        const supabase = getSupabaseClient();
+
+        // Special case: Fetch ALL pending manual settlement bets (for admins)
+        if (manual === 'true') {
+            let query = supabase
+                .from('bets')
+                .select('*')
+                .in('bet_type', ['slurmeister', 'fatality', 'kingkong']);
+
+            if (status) {
+                query = query.eq('status', status);
+            }
+
+            query = query.order('created_at', { ascending: false });
+
+            const { data, error } = await query;
+
+            if (error) {
+                console.error('Error fetching manual bets:', error);
+                return NextResponse.json({ error: error.message }, { status: 500 });
+            }
+
+            return NextResponse.json(data || []);
+        }
+
+        // Normal case: Fetch user's bets
         if (!userId) {
             return NextResponse.json({ error: 'User ID required' }, { status: 400 });
         }
 
-        const supabase = getSupabaseClient();
         const { data, error } = await supabase
             .from('bets')
             .select('*')

@@ -111,13 +111,6 @@
             <label style="margin-left: 20px;">Field Size:</label>
             <input type="number" id="fieldSize" value="20" style="width: 100px;">
         </div>
-        <div style="margin: 10px 0;">
-            <label>Model:</label>
-            <button id="modelBtn2" onclick="setModel('model2')"
-                style="background: #555; font-size: 0.8em; padding: 5px 10px;">Model 2 (Old)</button>
-            <button id="modelBtn3" onclick="setModel('model3')"
-                style="background: #4CAF50; font-size: 0.8em; padding: 5px 10px;">Model 3 (New)</button>
-        </div>
         <button onclick="calculate()">Calculate Odds</button>
         <button onclick="addDriver()" style="background: #2196F3;">+ Add Driver</button>
         <button onclick="document.getElementById('jsonImport').click()" style="background: #FF9800;">📥 Import
@@ -139,79 +132,169 @@
                 <th>Calc T3</th>
                 <th>Your T3</th>
                 <th>Calc T10</th>
-                <!DOCTYPE html>
-                <html lang="en">
+                <th>Your T10</th>
+            </tr>
+        </thead>
+        <tbody id="drivers"></tbody>
+    </table>
 
-                <head>
-                    <meta charset="UTF-8">
-                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>iRacing Odds Simulator</title>
-                    <style>
-                        * {
-                            box-sizing: border-box;
-                        }
+    <script>
+        let drivers = [];
 
-                        body {
-                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                            background: #0a0e27;
-                            color: #e0e0e0;
-                            padding: 20px;
-                            max-width: 1800px;
-                            margin: 0 auto;
-                        }
+        document.getElementById('jsonImport').addEventListener('change', function (e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                try {
+                    const json = JSON.parse(event.target.result);
+                    drivers = [];
 
-                        h1 {
-                            color: #4CAF50;
-                            margin-bottom: 10px;
-                        }
+                    const qualResults = json.SessionInfo?.RawYAML || json.WeekendInfo?.RawYAML || '';
+                    const qualMap = {};
+                    const qualRegex = /Position: (\d+)\s+ClassPosition: \d+\s+CarIdx: (\d+)/g;
+                    let match;
+                    while ((match = qualRegex.exec(qualResults)) !== null) {
+                        qualMap[match[2]] = parseInt(match[1]) + 1;
+                    }
 
-                        table {
-                            width: 100%;
-                            border-collapse: collapse;
-                            background: #1a1f3a;
-                            border-radius: 8px;
-                            overflow: hidden;
-                            font-size: 0.85em;
-                        }
+                    const raceResults = json.SessionInfo?.RawYAML || '';
+                    const raceRegex = /- Position: (\d+)[\s\S]*?CarIdx: (\d+)/g;
+                    const raceMap = {};
+                    while ((match = raceRegex.exec(raceResults)) !== null) {
+                        raceMap[match[2]] = parseInt(match[1]);
+                    }
 
-                        th,
-                        td {
-                            padding: 10px 8px;
-                            text-align: left;
-                            border-bottom: 1px solid #2a3f5f;
-                        }
+                    const driverRegex = /- CarIdx: (\d+)\s+UserName: ([^\n]+)\s+.*?\s+IRating: (\d+)/g;
+                    while ((match = driverRegex.exec(qualResults)) !== null) {
+                        const carIdx = match[1];
+                        if (carIdx === '0' || carIdx === '63') continue;
 
-                        th {
-                            background: #13182e;
-                            color: #4CAF50;
-                            font-weight: bold;
-                            position: sticky;
-                            top: 0;
-                        }
+                        drivers.push({
+                            name: match[2].trim(),
+                            iRating: parseInt(match[3]),
+                            startPos: qualMap[carIdx] || drivers.length + 1,
+                            currentPos: raceMap[carIdx] || drivers.length + 1
+                        });
+                    }
 
-                        input[type="number"],
-                        input[type="text"] {
-                            background: #0a0e27;
-                            border: 1px solid #2a3f5f;
-                            color: #e0e0e0;
-                            padding: 6px;
-                            margin-right: 10px;
-                            min-width: 120px;
-                        }
-                    </style>
-                </head>
+                    alert(`Loaded ${drivers.length} drivers`);
+                    render();
+                } catch (err) {
+                    alert('Error parsing JSON: ' + err.message);
+                }
+            };
+            reader.readAsText(file);
+        });
 
-                <body>
-                    <h1>🏎️ iRacing Odds Simulator</h1>
-                    <p style="color: #888;">Import race JSON from broadcaster, enter your own odds, and compare!</p>
+        function render() {
+            const html = drivers.map((d, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td><input type="text" value="${d.name}" onchange="drivers[${i}].name=this.value"></td>
+                    <td><input type="number" value="${d.iRating}" onchange="drivers[${i}].iRating=+this.value" style="width:70px"></td>
+                    <td><input type="number" value="${d.startPos}" onchange="drivers[${i}].startPos=+this.value" style="width:50px"></td>
+                    <td><input type="number" value="${d.currentPos}" onchange="drivers[${i}].currentPos=+this.value" style="width:50px"></td>
+                    <td class="odds-calc" id="calc-win-${i}">-</td>
+                    <td><input type="text" id="your-win-${i}" placeholder="+150" style="width:70px"></td>
+                    <td class="odds-calc" id="calc-top3-${i}">-</td>
+                    <td><input type="text" id="your-top3-${i}" placeholder="-200" style="width:70px"></td>
+                    <td class="odds-calc" id="calc-top10-${i}">-</td>
+                    <td><input type="text" id="your-top10-${i}" placeholder="-500" style="width:70px"></td>
+                </tr>
+            `).join('');
+            document.getElementById('drivers').innerHTML = html;
+        }
 
-                    <div class="race-controls">
-                        <div>
-                            <label>Race Progress:</label>
-                            <input type="number" id="raceProgress" value="0.85" step="0.1" min="0" max="1"
-                                style="width: 100px;">
-                            <span style="color: #888; margin-left: 10px;">(0.0 = start, 1.0 = finish)</span>
-                        </div>
-                        <div style="margin-top: 10px;">
+        function addDriver() {
+            drivers.push({ name: 'New Driver', iRating: 3000, startPos: drivers.length + 1, currentPos: drivers.length + 1 });
+            render();
+        }
 
-                </html>
+        function clearAll() {
+            if (confirm('Clear all drivers?')) { drivers = []; render(); }
+        }
+
+        function probToOdds(prob) {
+            if (prob >= 0.99) return -10000;
+            if (prob <= 0.01) return 10000;
+            if (prob > 0.5) return Math.round(-(prob / (1 - prob)) * 100 / 10) * 10;
+            return Math.round(((1 - prob) / prob) * 100 / 10) * 10;
+        }
+
+        function calculate() {
+            const raceProgress = parseFloat(document.getElementById('raceProgress').value);
+            const fieldSize = parseInt(document.getElementById('fieldSize').value);
+
+            const probs = drivers.map((driver) => {
+                const { iRating, currentPos, startPos } = driver;
+                const cappedIRating = Math.min(iRating, 7000);
+                const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.7);
+                const iRatingWeight = 0.35 * Math.pow(1 - raceProgress, 1.5);
+                const positionWeight = 1 - iRatingWeight - 0.1;
+                const dynamicExponent = 2.0 + (raceProgress * 8);
+                const safeCurrentPos = Math.max(1, Math.min(currentPos, fieldSize));
+                const dynamicPositionFactor = Math.pow((fieldSize - safeCurrentPos + 1) / fieldSize, dynamicExponent);
+
+                let winProbability = (liveIRatingFactor * iRatingWeight) + (dynamicPositionFactor * positionWeight);
+
+                if (safeCurrentPos === 1 && raceProgress > 0.7) {
+                    winProbability *= 1.0 + (raceProgress - 0.7) * 5.0;
+                }
+
+                const positionsGained = startPos - currentPos;
+                if (positionsGained > 0) {
+                    const avgPassingPosition = (startPos + currentPos) / 2;
+                    const positionValueMultiplier = avgPassingPosition <= 5 ? 1.9 : 1.5;
+                    const baseBonusRate = positionsGained > 5 ? 0.12 : 0.10;
+                    winProbability *= 1.0 + (positionsGained * baseBonusRate * positionValueMultiplier);
+                }
+
+                return {
+                    pos: safeCurrentPos,
+                    winProb: Math.min(winProbability, 0.95)
+                };
+            });
+
+            const totalWinProb = probs.reduce((sum, p) => sum + p.winProb, 0);
+            probs.forEach(p => p.winProb /= totalWinProb);
+
+            drivers.forEach((driver, i) => {
+                const winProb = probs[i].winProb;
+                const currentPos = probs[i].pos;
+
+                let top3Prob;
+                if (currentPos <= 3) {
+                    top3Prob = 0.80 + (winProb * 0.20);
+                } else if (currentPos <= 10) {
+                    top3Prob = 0.30 + (winProb * 2.0);
+                } else {
+                    top3Prob = winProb * 3.0;
+                }
+                top3Prob = Math.min(top3Prob, 0.99);
+
+                let top10Prob;
+                if (currentPos <= 10) {
+                    top10Prob = 0.85 + (winProb * 0.15);
+                } else if (currentPos <= 15) {
+                    top10Prob = 0.40 + (winProb * 5.0);
+                } else {
+                    top10Prob = winProb * 10.0;
+                }
+                top10Prob = Math.min(top10Prob, 0.99);
+
+                const winOdds = probToOdds(winProb);
+                const top3Odds = probToOdds(top3Prob);
+                const top10Odds = probToOdds(top10Prob);
+
+                document.getElementById('calc-win-' + i).textContent = (winOdds > 0 ? '+' : '') + winOdds;
+                document.getElementById('calc-top3-' + i).textContent = (top3Odds > 0 ? '+' : '') + top3Odds;
+                document.getElementById('calc-top10-' + i).textContent = (top10Odds > 0 ? '+' : '') + top10Odds;
+            });
+        }
+
+        render();
+    </script>
+</body>
+
+</html>

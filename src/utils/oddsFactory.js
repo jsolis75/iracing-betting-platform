@@ -92,56 +92,91 @@ const calculatePreRaceOdds = (drivers, betStats = null) => {
 
 /**
  * SOPHISTICATED MODEL: Advanced odds calculation
+ * Calculate odds for all drivers in a race field
+ * @param {Array} drivers - Array of driver objects with iRating, startingPosition, currentPosition, etc.
+ * @param {Object} raceState - Optional race state (lapsRemaining, totalLaps, etc.)
+ * @param {Object} betStats - Optional betting volume stats
+ * @returns {Array} - Array of drivers with calculated odds
  */
-export const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) => {
+const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) => {
     if (!drivers || drivers.length === 0) return [];
 
+    // Determine if we should use live odds (race in progress)
     const useLiveOdds = raceState && raceState.lapsRemaining !== undefined && raceState.totalLaps !== undefined;
+
+    // Calculate race progress (0 = start, 1 = finish)
     let raceProgress = 0;
     if (useLiveOdds && raceState.totalLaps !== "∞") {
         const lapsCompleted = parseInt(raceState.totalLaps) - raceState.lapsRemaining;
         raceProgress = Math.max(0, Math.min(1, lapsCompleted / parseInt(raceState.totalLaps)));
     }
-    const fieldSize = drivers.length;
-    const avgFieldIRating = drivers.reduce((sum, d) => sum + (d.iRating || 1500), 0) / fieldSize;
 
-    // Sort drivers by iRating to determine expected position
-    const sortedByIRating = [...drivers].sort((a, b) => (b.iRating || 1500) - (a.iRating || 1500));
-
+    // Calculate win probability for each driver
     const driversWithProb = drivers.map(driver => {
         const iRating = Math.max(driver.iRating || 1500, 1000);
         const startPos = driver.startingPosition || 99;
         const currentPos = driver.currentPosition || startPos;
-        const iRatingDiff = iRating - avgFieldIRating;
+        const fieldSize = drivers.length;
+        const stats = driver.Stats || { starts: 0, wins: 0, avgPoints: 0, avgIncidents: 0, avgFinish: 0, top25Percent: 0, winPercentage: 0 };
 
-        // Expected position (1-based)
-        const expectedPosition = sortedByIRating.findIndex(d => d.name === driver.name) + 1;
-        const actualPosition = startPos;
+        // --- 1. iRating Component (Skill) --- STEEPENED FOR AGGRESSIVE FAVORITES
+        let winProbability = 0;
+        let iRatingFactor;
+        if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 4.0);
+        else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 3.0);
+        else iRatingFactor = Math.pow(iRating / 1000, 2.0);
 
-        // Factors
-        const iRatingFactor = Math.pow(iRating / 5000, 0.7); // Base skill
-        let historicalFactor = 1.0;
-        if (driver.Stats) {
-            const winPct = driver.Stats.winPercentage || 0;
-            const top5Pct = (driver.Stats.top5 || 0) / (driver.Stats.starts || 1);
-            historicalFactor = 1.0 + (winPct * 2.0) + (top5Pct * 1.0);
+        // OUTLIER BONUS: Detect and boost drivers significantly better than field
+        const avgIRating = drivers.reduce((sum, d) => sum + (d.iRating || 1500), 0) / drivers.length;
+        const iRatingDiff = iRating - avgIRating;
+        let outlierBonus = 1.0;
+        if (iRatingDiff > 1500) {
+            // 1500+ above average: MASSIVE boost (e.g., 7k iR in 4.5k iR field)
+            outlierBonus = 3.5; // Was 2.2, increased significantly
+        } else if (iRatingDiff > 1000) {
+            // 1000-1500 above average: Large boost
+            outlierBonus = 2.5; // Was 1.8
+        } else if (iRatingDiff > 500) {
+            // 500-1000 above average: Medium boost
+            outlierBonus = 1.8; // Was 1.4
         }
 
+        iRatingFactor = iRatingFactor * outlierBonus;
+
+        // --- 2. Historical Performance Component ---
+        const winPctFactor = Math.pow((stats.winPercentage || 0) / 10, 1.3);
+        const avgPointsFactor = Math.pow((stats.avgPoints || 50) / 50, 1.6);
+        const historicalFactor = (winPctFactor * 0.6) + (avgPointsFactor * 0.4);
+
+        // --- QUALIFYING PERFORMANCE FACTOR (for lower-rated drivers) ---
         let qualifyingBonus = 1.0;
-        let qualifyingAdditiveBoost = 0.0;
+        let qualifyingAdditiveBoost = 0;
 
-        const qualDelta = actualPosition - expectedPosition;
+        if (iRating < 4000) {
+            const avgIRating = drivers.reduce((sum, d) => sum + (d.iRating || 1500), 0) / drivers.length;
+            const iRatingPercentile = (iRating - 1000) / (avgIRating - 1000);
+            const expectedPosition = fieldSize * (1 - Math.pow(iRatingPercentile, 1.5));
+            const actualPosition = startPos;
 
-        if (qualDelta < 0) {
-            const spotsAhead = Math.abs(qualDelta);
-            qualifyingBonus = 1.0 + (spotsAhead * 0.50);
-        } else if (qualDelta > 5) {
-            const spotsBehind = qualDelta - 5;
-            qualifyingBonus = 1.0 / (1.0 + (spotsBehind * 0.20));
+            // SPECIAL HANDLING FOR POLE/FRONT ROW (P1-P3)
+            if (actualPosition <= 3) {
+                if (actualPosition === 1) qualifyingAdditiveBoost = 0.25;
+                else if (actualPosition === 2) qualifyingAdditiveBoost = 0.18;
+                else if (actualPosition === 3) qualifyingAdditiveBoost = 0.12;
+            }
+
+            const qualDelta = actualPosition - expectedPosition;
+
+            if (qualDelta < 0) {
+                const spotsAhead = Math.abs(qualDelta);
+                qualifyingBonus = 1.0 + (spotsAhead * 0.50);
+            } else if (qualDelta > 5) {
+                const spotsBehind = qualDelta - 5;
+                qualifyingBonus = 1.0 / (1.0 + (spotsBehind * 0.20));
+            }
+
+            qualifyingBonus = Math.max(0.2, Math.min(5.0, qualifyingBonus));
         }
-
-        qualifyingBonus = Math.max(0.2, Math.min(5.0, qualifyingBonus));
-
 
         // --- 3. Position Component ---
         let startingPositionFactor = Math.pow((fieldSize - startPos + 1) / fieldSize, 2.0);
@@ -346,6 +381,11 @@ export const calculateSophisticatedOdds = (drivers, raceState = null, betStats =
     });
 };
 
+/**
+ * MAIN EXPORT: Determines which model to use
+ * Uses PRE-RACE model during qualifying and before lap 1 completion
+ * Switches to SOPHISTICATED model after leader completes lap 1
+ */
 export const calculateFieldOdds = (drivers, raceState = null, betStats = null) => {
     if (!drivers || drivers.length === 0) return [];
 
@@ -431,14 +471,12 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     const threatImpact = threatsFromBehind * (0.08 * (1 - raceProgress));
 
     // RACE PROGRESS MULTIPLIER: As race goes on, current position becomes MORE important
-    // Top 10 gets full benefit, P11-15 gets graduated benefit
+    // Top 10 gets full benefit, P11-14 gets partial benefit
     let raceProgressMultiplier = 1.0;
     if (currentPos <= 10) {
         raceProgressMultiplier = 1.0 + (raceProgress * 0.6); // 1.0x early, up to 1.6x late
-    } else if (currentPos <= 15) {
-        // Smooth falloff for P11-P15
-        const factor = 0.6 - ((currentPos - 10) * 0.1); // 0.5, 0.4, 0.3, 0.2, 0.1
-        raceProgressMultiplier = 1.0 + (raceProgress * Math.max(0.1, factor));
+    } else if (currentPos <= 14) {
+        raceProgressMultiplier = 1.0 + (raceProgress * 0.3); // 1.0x early, up to 1.3x late (half benefit)
     }
 
     // PROGRESSIVE FAVORITISM - AGGRESSIVE FOR TOP 10
@@ -454,21 +492,21 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     } else if (currentPos <= 10) {
         top10Prob = Math.min(top10Prob * 3.0 * raceProgressMultiplier, 0.90); // P9-P10: Solid
     } else if (currentPos <= 11) {
-        top10Prob = Math.min(top10Prob * 2.6 * raceProgressMultiplier, 0.82); // P11 (Smoothed from 1.9)
+        top10Prob = Math.min(top10Prob * 1.9 * raceProgressMultiplier, 0.78); // P11 (Smoothed)
     } else if (currentPos <= 12) {
-        top10Prob = Math.min(top10Prob * 2.3 * raceProgressMultiplier, 0.79); // P12 (Smoothed from 1.8)
+        top10Prob = Math.min(top10Prob * 1.8 * raceProgressMultiplier, 0.76); // P12 (Smoothed)
     } else if (currentPos <= 13) {
-        top10Prob = Math.min(top10Prob * 2.0 * raceProgressMultiplier, 0.76); // P13 (Smoothed from 1.7)
+        top10Prob = Math.min(top10Prob * 1.7 * raceProgressMultiplier, 0.74); // P13 (Smoothed)
     } else if (currentPos <= 14) {
-        top10Prob = Math.min(top10Prob * 1.7 * raceProgressMultiplier, 0.73); // P14 (Smoothed from 1.6)
+        top10Prob = Math.min(top10Prob * 1.6 * raceProgressMultiplier, 0.72); // P14 (Smoothed)
     } else if (currentPos <= 15) {
         top10Prob = Math.min(top10Prob * 1.5 * raceProgressMultiplier, 0.70); // P15 (Smoothed)
     } else if (currentPos <= 16) {
-        top10Prob = Math.min(top10Prob * 1.3 * raceProgressMultiplier, 0.65); // P16
+        top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.65); // P16
     } else if (currentPos <= 18) {
-        top10Prob = Math.min(top10Prob * 1.1 * raceProgressMultiplier, 0.55); // P17-P18
+        top10Prob = Math.min(top10Prob * 1.2 * raceProgressMultiplier, 0.55); // P17-P18
     } else if (currentPos <= 20) {
-        top10Prob = Math.min(top10Prob * 1.0 * raceProgressMultiplier, 0.45); // P19-P20
+        top10Prob = Math.min(top10Prob * 1.1 * raceProgressMultiplier, 0.45); // P19-P20
     } else {
         if (thisDriverIRating > highIRThreshold) {
             top10Prob = Math.min(top10Prob * 1.05, 0.40);

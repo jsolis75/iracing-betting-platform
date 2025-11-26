@@ -346,6 +346,25 @@ export const calculateSophisticatedOdds = (drivers, raceState = null, betStats =
     });
 };
 
+export const calculateFieldOdds = (drivers, raceState = null, betStats = null) => {
+    if (!drivers || drivers.length === 0) return [];
+
+    // Check if race has started and leader has completed at least 1 lap
+    const raceStarted = raceState && raceState.lapsRemaining !== undefined;
+    const leaderCompletedLap1 = raceStarted && raceState.totalLaps !== "∞" &&
+        (parseInt(raceState.totalLaps) - raceState.lapsRemaining) >= 1;
+
+    // Use PRE-RACE model if race hasn't started or leader hasn't completed lap 1
+    if (!leaderCompletedLap1) {
+        console.log('Using PRE-RACE MODEL (iRating-only)');
+        return calculatePreRaceOdds(drivers, betStats);
+    }
+
+    // Use SOPHISTICATED model after lap 1
+    console.log('Using SOPHISTICATED MODEL (position + stats + iRating)');
+    return calculateSophisticatedOdds(drivers, raceState, betStats);
+};
+
 export const calculateOdds = (driver, allDrivers = [driver]) => {
     const { winProbability } = driver;
     const stats = driver.Stats || { starts: 0, wins: 0, avgPoints: 0, avgIncidents: 0, avgFinish: 0, top25Percent: 0, winPercentage: 0 };

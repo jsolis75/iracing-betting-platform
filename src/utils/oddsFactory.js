@@ -336,14 +336,26 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
 
         winProbability = winProbability * proBoost;
 
-        // LEADER FAVORITISM: Ensure P1 is favored, with boost increasing as race progresses
-        // MUST BE APPLIED BEFORE P4+ PENALTY to avoid stale penalties from previous positions
-        if (currentPos === 1 && useLiveOdds && raceProgress > 0.1) {
-            // Give leader a boost that scales with race progress
-            // Early race: 1.3x (leader but race is long)
-            // Late race: 1.8x (leader with few laps to go)
-            const leaderBoost = 1.3 + (raceProgress * 0.5); // 1.3x early, up to 1.8x late
-            winProbability = Math.min(winProbability * leaderBoost, 0.75); // Cap at 75% to prevent extreme odds
+        // GRADUATED PODIUM POSITION BOOSTS: Ensure P1 > P2 > P3 in terms of win probability
+        // Apply progressive boosts based on current running position during live race
+        if (useLiveOdds && currentPos <= 3) {
+            let positionBoost = 1.0;
+
+            if (currentPos === 1) {
+                // P1: Largest boost, scales with race progress
+                // Early race: 1.5x, Late race: 2.2x
+                positionBoost = 1.5 + (raceProgress * 0.7);
+            } else if (currentPos === 2) {
+                // P2: Medium boost, less than P1
+                // Early race: 1.3x, Late race: 1.7x
+                positionBoost = 1.3 + (raceProgress * 0.4);
+            } else if (currentPos === 3) {
+                // P3: Small boost, less than P2
+                // Early race: 1.15x, Late race: 1.4x
+                positionBoost = 1.15 + (raceProgress * 0.25);
+            }
+
+            winProbability = winProbability * positionBoost;
         }
 
         // WIN ODDS PENALTY FOR P4+: Anything can happen in racing, reduce win odds for non-podium runners

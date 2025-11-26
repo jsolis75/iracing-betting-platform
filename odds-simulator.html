@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iRacing Odds Simulator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0a0e27;
+            color: #e0e0e0;
+            padding: 20px;
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #1a1f3a;
+            border-radius: 8px;
+            overflow: hidden;
+            font-size: 0.85em;
+        }
+
+        th,
+        td {
+            padding: 10px 8px;
+            text-align: left;
+            border-bottom: 1px solid #2a3f5f;
+        }
+
+        th {
+            background: #13182e;
+            color: #4CAF50;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            background: #0a0e27;
+            border: 1px solid #2a3f5f;
+            color: #e0e0e0;
+            padding: 6px;
+            border-radius: 4px;
+            width: 100%;
+            font-size: 0.9em;
+        }
+
+        button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        .odds-calc {
+            font-weight: bold;
+            color: #4CAF50;
+            font-size: 0.95em;
+        }
+
+        .race-controls {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #1a1f3a;
+            border-radius: 8px;
+        }
+
+        label {
+            display: inline-block;
+            margin-right: 10px;
+            min-width: 120px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🏎️ iRacing Odds Simulator</h1>
+    <p style="color: #888;">Import race JSON from broadcaster, enter your own odds, and compare!</p>
+
+    <div class="race-controls">
+        <div>
+            <label>Race Progress:</label>
+            <input type="number" id="raceProgress" value="0.85" step="0.1" min="0" max="1" style="width: 100px;">
+            <span style="color: #888; margin-left: 10px;">(0.0 = start, 1.0 = finish)</span>
+        </div>
+        <div style="margin-top: 10px;">
+            <label>Total Laps:</label>
+            <input type="number" id="totalLaps" value="40" style="width: 100px;">
+            <label style="margin-left: 20px;">Field Size:</label>
+            <input type="number" id="fieldSize" value="20" style="width: 100px;">
+        </div>
+        <div style="margin: 10px 0;">
+            <label>Model:</label>
+            <button id="modelBtn2" onclick="setModel('model2')"
+                style="background: #555; font-size: 0.8em; padding: 5px 10px;">Model 2 (Old)</button>
+            <button id="modelBtn3" onclick="setModel('model3')"
+                style="background: #4CAF50; font-size: 0.8em; padding: 5px 10px;">Model 3 (New)</button>
+        </div>
+        <button onclick="calculate()">Calculate Odds</button>
+        <button onclick="addDriver()" style="background: #2196F3;">+ Add Driver</button>
+        <button onclick="document.getElementById('jsonImport').click()" style="background: #FF9800;">📥 Import
+            JSON</button>
+        <button onclick="clearAll()" style="background: #f44336;">Clear All</button>
+        <input type="file" id="jsonImport" accept=".json" style="display: none;">
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Driver</th>
+                <th>iRating</th>
+                <th>Start</th>
+                <th>Curr</th>
+                <th>Calc Win</th>
+                <th>Your Win</th>
+                <th>Calc T3</th>
+                <th>Your T3</th>
+                <th>Calc T10</th>
+                <!DOCTYPE html>
+                <html lang="en">
+
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>iRacing Odds Simulator</title>
+                    <style>
+                        * {
+                            box-sizing: border-box;
+                        }
+
+                        body {
+                            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                            background: #0a0e27;
+                            color: #e0e0e0;
+                            padding: 20px;
+                            max-width: 1800px;
+                            margin: 0 auto;
+                        }
+
+                        h1 {
+                            color: #4CAF50;
+                            margin-bottom: 10px;
+                        }
+
+                        table {
+                            width: 100%;
+                            border-collapse: collapse;
+                            background: #1a1f3a;
+                            border-radius: 8px;
+                            overflow: hidden;
+                            font-size: 0.85em;
+                        }
+
+                        th,
+                        td {
+                            padding: 10px 8px;
+                            text-align: left;
+                            border-bottom: 1px solid #2a3f5f;
+                        }
+
+                        th {
+                            background: #13182e;
+                            color: #4CAF50;
+                            font-weight: bold;
+                            position: sticky;
+                            top: 0;
+                        }
+
+                        input[type="number"],
+                        input[type="text"] {
+                            background: #0a0e27;
+                            border: 1px solid #2a3f5f;
+                            color: #e0e0e0;
+                            padding: 6px;
+                            margin-right: 10px;
+                            min-width: 120px;
+                        }
+                    </style>
+                </head>
+
+                <body>
+                    <h1>🏎️ iRacing Odds Simulator</h1>
+                    <p style="color: #888;">Import race JSON from broadcaster, enter your own odds, and compare!</p>
+
+                    <div class="race-controls">
+                        <div>
+                            <label>Race Progress:</label>
+                            <input type="number" id="raceProgress" value="0.85" step="0.1" min="0" max="1"
+                                style="width: 100px;">
+                            <span style="color: #888; margin-left: 10px;">(0.0 = start, 1.0 = finish)</span>
+                        </div>
+                        <div style="margin-top: 10px;">
+
+                </html>

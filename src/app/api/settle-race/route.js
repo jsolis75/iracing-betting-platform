@@ -100,7 +100,7 @@ export async function POST(request) {
                 raceDrivers = rawDrivers.map(d => {
                     const reasonOut = reasonOutMap[d.CarIdx]?.toLowerCase().trim() || "running";
                     let isDNF = false;
-                    const dnfReasons = ["accident", "engine", "suspension", "handling", "brakes"];
+                    const dnfReasons = ["accident", "engine", "suspension", "handling", "brakes", "damaged", "crash"];
                     if (dnfReasons.some(r => reasonOut.includes(r))) isDNF = true;
                     else if ((reasonOut.includes("disconnected") || reasonOut.includes("disco"))) isDNF = true;
 
@@ -145,10 +145,16 @@ export async function POST(request) {
             // Handle special bets
             if (betType === 'terrorist' || betType === 'alqaeda') {
                 const terroristCount = drivers.filter(d => d.incidents >= 17).length;
+                const highIncidentDrivers = drivers.filter(d => d.incidents >= 17).map(d => `${d.name}(${d.incidents}x)`);
+
+                console.log(`${betType} bet check: Found ${terroristCount} drivers with 17+x`);
+                console.log(`High incident drivers: ${highIncidentDrivers.join(', ')}`);
+                console.log(`All drivers:`, drivers.map(d => `${d.name}:${d.incidents}x`));
 
                 if (betType === 'terrorist') {
                     // The Terrorist: 1+ driver with 17+ incidents
                     const hasTerrorist = terroristCount >= 1;
+                    console.log(`Terrorist result: hasTerrorist=${hasTerrorist}, selection=${selection}`);
                     return (selection === 'Yes' && hasTerrorist) || (selection === 'No' && !hasTerrorist) ? 'won' : 'lost';
                 } else if (betType === 'alqaeda') {
                     // Al Qaeda: 3+ drivers with 17+ incidents

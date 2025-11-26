@@ -258,18 +258,21 @@ function HomeContent() {
         if ((raceData.flagStatus === "Checkered" || raceData.lapsRemaining <= 0) && !hasSettled) {
           setHasSettled(true); // Mark as settled immediately
 
-          // Call the settlement API
-          fetch('/api/settle-race', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              raceId: raceData.id,
-              drivers: raceData.drivers
-            })
-          }).catch(err => {
-            console.error("Error triggering settlement:", err);
-            setHasSettled(false); // Retry on error? Or maybe not to be safe.
-          });
+          // Wait 60 seconds before settling to allow incident counts to finalize
+          setTimeout(() => {
+            // Call the settlement API
+            fetch('/api/settle-race', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                raceId: raceData.id,
+                drivers: raceData.drivers
+              })
+            }).catch(err => {
+              console.error("Error triggering settlement:", err);
+              setHasSettled(false); // Retry on error? Or maybe not to be safe.
+            });
+          }, 60000); // 60 second delay
         }
       } catch (err) {
         if (err.name !== 'AbortError') {

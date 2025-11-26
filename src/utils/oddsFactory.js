@@ -336,6 +336,11 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
 
         winProbability = winProbability * proBoost;
 
+        // DEBUG: Track P1 probability before position boosts
+        if (currentPos === 1) {
+            console.log(`[P1 DEBUG - ${driver.name}] Before position boost: ${winProbability.toFixed(4)}`);
+        }
+
         // GRADUATED PODIUM POSITION BOOSTS: Ensure P1 > P2 > P3 in terms of win probability
         // Apply progressive boosts based on current running position during live race
         if (useLiveOdds && currentPos <= 3) {
@@ -345,6 +350,7 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
                 // P1: Largest boost, scales with race progress
                 // Early race: 1.5x, Late race: 2.2x
                 positionBoost = 1.5 + (raceProgress * 0.7);
+                console.log(`[P1 DEBUG - ${driver.name}] Position boost: ${positionBoost.toFixed(4)}, raceProgress: ${raceProgress.toFixed(4)}`);
             } else if (currentPos === 2) {
                 // P2: Medium boost, less than P1
                 // Early race: 1.3x, Late race: 1.7x
@@ -356,6 +362,10 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
             }
 
             winProbability = winProbability * positionBoost;
+
+            if (currentPos === 1) {
+                console.log(`[P1 DEBUG - ${driver.name}] After position boost: ${winProbability.toFixed(4)}`);
+            }
         }
 
         // WIN ODDS PENALTY FOR P4+: Anything can happen in racing, reduce win odds for non-podium runners
@@ -364,6 +374,11 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
             // Progressive penalty: P4 gets small penalty, P15+ gets massive penalty
             const positionPenalty = Math.pow(0.92, currentPos - 3); // 8% reduction per position after P3
             winProbability = winProbability * positionPenalty;
+        }
+
+        // DEBUG: Track P1 probability after all adjustments
+        if (currentPos === 1) {
+            console.log(`[P1 DEBUG - ${driver.name}] Final winProbability (before normalization): ${winProbability.toFixed(4)}`);
         }
 
         return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress, qualifyingBonus };

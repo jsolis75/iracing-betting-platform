@@ -304,9 +304,37 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
 
         winProbability = winProbability * proBoost;
 
+        // --- LAP DOWN PENALTY ---
+        // Determine the leader's laps (most laps completed in the field)
+        const leaderLaps = Math.max(...drivers.map(d => d.lapsComplete || 0));
+        const driverLaps = driver.lapsComplete || 0;
+        const lapsDown = leaderLaps - driverLaps;
+
+        if (lapsDown > 0) {
+            // Car is lapped - apply severe penalties
+            let lapDownPenalty = 1.0;
+
+            if (lapsDown === 1) {
+                // 1 lap down: Very hard to finish well, 70% penalty
+                lapDownPenalty = 0.30;
+            } else if (lapsDown === 2) {
+                // 2 laps down: Nearly impossible, 90% penalty
+                lapDownPenalty = 0.10;
+            } else {
+                // 3+ laps down: Extremely rare to recover, 95% penalty
+                lapDownPenalty = 0.05;
+            }
+
+            winProbability = winProbability * lapDownPenalty;
+
+            if (currentPos <= 10) {
+                console.log(`[P${currentPos} ${driver.name}] LAP DOWN PENALTY: ${lapsDown} laps down, penalty: ${(lapDownPenalty * 100).toFixed(0)}%, new prob: ${winProbability.toFixed(4)}`);
+            }
+        }
+
         // DEBUG LOGGING FOR TOP 3
         if (currentPos <= 3) {
-            console.log(`[P${currentPos} ${driver.name}] After pro boost: ${winProbability.toFixed(4)}, raceProgress: ${raceProgress.toFixed(4)}`);
+            console.log(`[P${currentPos} ${driver.name}] After lap-down check: ${winProbability.toFixed(4)}, lapsDown: ${lapsDown}`);
         }
 
         // WIN ODDS PENALTY FOR P4+: Anything can happen in racing, reduce win odds for non-podium runners
@@ -334,6 +362,24 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
 
         return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress, qualifyingBonus };
     });
+
+    // HARD-CODE P1 FAVORITISM: Ensure P1 always has the best odds
+    // Find P1 and the second-best probability
+    const p1Driver = driversWithProb.find(d => d.currentPosition === 1);
+    const otherDrivers = driversWithProb.filter(d => d.currentPosition !== 1);
+
+    if (p1Driver && useLiveOdds) {
+        // Find the highest probability among non-P1 drivers
+        const maxOtherProb = Math.max(...otherDrivers.map(d => d.winProbability));
+
+        // Force P1 to be at least 1.5x better than the second-best driver
+        const minP1Prob = maxOtherProb * 1.5;
+
+        if (p1Driver.winProbability < minP1Prob) {
+            console.log(`[P1 HARD FIX] Boosting P1 ${p1Driver.name} from ${p1Driver.winProbability.toFixed(4)} to ${minP1Prob.toFixed(4)} (1.5x second best ${maxOtherProb.toFixed(4)})`);
+            p1Driver.winProbability = minP1Prob;
+        }
+    }
 
     // Normalize probabilities to sum to 1.0
     const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);

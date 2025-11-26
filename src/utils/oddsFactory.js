@@ -10,47 +10,50 @@
 /**
  * PRE-RACE MODEL: Simple iRating-based odds for qualifying and pre-race
  * Uses ONLY iRating to calculate odds - no position, no stats
+ * AGGRESSIVE MODEL: Creates strong favorites with steep odds differences
  */
 const calculatePreRaceOdds = (drivers) => {
     if (!drivers || drivers.length === 0) return [];
 
-    // Calculate field average iRating to detect outliers
-    const avgIRating = drivers.reduce((sum, d) => sum + (d.iRating || 1500), 0) / drivers.length;
+    // Calculate field statistics
+    const iRatings = drivers.map(d => Math.max(d.iRating || 1500, 1000));
+    const avgIRating = iRatings.reduce((a, b) => a + b, 0) / iRatings.length;
 
-    // Calculate win probability based ONLY on iRating
+    // Calculate win probability based ONLY on iRating with AGGRESSIVE curve
     const driversWithProb = drivers.map(driver => {
         const iRating = Math.max(driver.iRating || 1500, 1000);
-
-        // Simple exponential scaling based on iRating
-        let iRatingFactor;
-        if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 4.5); // Very steep for top drivers
-        else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 3.5);
-        else iRatingFactor = Math.pow(iRating / 1000, 2.5);
-
-        // OUTLIER BONUS: If driver is significantly better than field, boost them
         const iRatingDiff = iRating - avgIRating;
-        let outlierBonus = 1.0;
+
+        // AGGRESSIVE SCALING: Create strong favorites
+        // Higher iRating = exponentially better odds
+        // 1000 iRating gap = ~5x strength (much steeper than before)
+        let strength = Math.pow(2.5, iRatingDiff / 1000);
+
+        // OUTLIER BOOST: Drivers significantly above average get massive favoritism
         if (iRatingDiff > 1500) {
-            // 1500+ above average: MASSIVE boost (e.g., 7k iR in 4.5k iR field)
-            outlierBonus = 4.0; // Was 2.5, increased for more favoritism
+            strength *= 3.0; // 3x multiplier for elite drivers
         } else if (iRatingDiff > 1000) {
-            // 1000-1500 above average: Large boost
-            outlierBonus = 3.0; // Was 2.0
+            strength *= 2.2; // 2.2x multiplier for very strong drivers
         } else if (iRatingDiff > 500) {
-            // 500-1000 above average: Medium boost
-            outlierBonus = 2.0; // Was 1.5
+            strength *= 1.6; // 1.6x multiplier for strong drivers
         }
 
-        return { ...driver, winProbability: iRatingFactor * outlierBonus };
+        // Remove caps - let the favorites be heavy favorites
+        // Only apply a floor to prevent absurdly low odds for backmarkers
+        strength = Math.max(strength, 0.15);
+
+        return { ...driver, winProbability: strength };
     });
 
     // Normalize probabilities
-    const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
-    const HOUSE_EDGE = 1.40; // Slightly less aggressive for pre-race
+    const totalStrength = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
+
+    // INCREASED HOUSE EDGE: Lower payouts = more negative odds for favorites
+    const HOUSE_EDGE = 1.50; // Increased from 1.25
 
     const normalized = driversWithProb.map(d => ({
         ...d,
-        winProbability: (d.winProbability / totalProb) * HOUSE_EDGE
+        winProbability: (d.winProbability / totalStrength) * HOUSE_EDGE
     }));
 
     return normalized.map(driver => {
@@ -88,6 +91,7 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
         const stats = driver.Stats || { starts: 0, wins: 0, avgPoints: 0, avgIncidents: 0, avgFinish: 0, top25Percent: 0, winPercentage: 0 };
 
         // --- 1. iRating Component (Skill) --- STEEPENED FOR AGGRESSIVE FAVORITES
+        let winProbability = 0;
         let iRatingFactor;
         if (iRating >= 6000) iRatingFactor = Math.pow(iRating / 1000, 4.0);
         else if (iRating >= 4000) iRatingFactor = Math.pow(iRating / 1000, 3.0);
@@ -145,48 +149,125 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
             qualifyingBonus = Math.max(0.2, Math.min(5.0, qualifyingBonus));
         }
 
-        // --- PRO/BLACK LICENSE BOOST ---
-        const licString = driver.licenseClass || driver.LicString || '';
-        const isPro = licString.includes('P') || licString.includes('Pro');
-        const licLevel = driver.LicSubLevel ? Math.floor(driver.LicSubLevel / 100) : 0;
-        const isBlack = licLevel >= 6;
-        const proBoost = (isPro || isBlack) ? 1.35 : 1.0;
-
         // --- 3. Position Component ---
-        const startingPositionFactor = Math.pow((fieldSize - startPos + 1) / fieldSize, 2.0);
+        let startingPositionFactor = Math.pow((fieldSize - startPos + 1) / fieldSize, 2.0);
 
-        // --- 4. Final Probability Calculation ---
-        let winProbability;
+
+        // HIGH IRATING BACKMARKER ADJUSTMENT (Last-to-First Challenge)
+        // If a high iRating driver starts in the back, they are likely doing it for fun/content
+        // and are still extremely dangerous. Don't let the position penalty crush their odds.
+        if (iRating > 5000 && startPos > 10) {
+            // Calculate how "back" they are (0.0 to 1.0)
+            const backness = (startPos - 10) / (fieldSize - 10);
+
+            // The higher the iRating, the more we ignore the starting position
+            const iRatingTrust = Math.min((iRating - 5000) / 4000, 1.0); // 0.0 at 5k, 1.0 at 9k+
+
+            // Boost factor: Recover up to 70% of the lost position value
+            const recoveryFactor = 0.3 + (iRatingTrust * 0.5);
+
+            // Apply boost
+            startingPositionFactor = Math.max(startingPositionFactor, 0.4 * recoveryFactor);
+
+            // FORCE TOP 5 PROBABILITY RULE
+            // If iRating is significantly high (>6000 or >2000 above avg) and starting back,
+            // FORCE their starting position factor to be equivalent to a Top 5 starter.
+            if (iRating > 6000 || iRatingDiff > 2000) {
+                // P5 starting factor is approx (fieldSize - 5 / fieldSize)^2 ~= 0.8
+                // We'll give them a factor of 0.75 to 0.90 depending on just HOW good they are
+                const superBoost = 0.75 + (Math.min(iRating - 6000, 4000) / 4000) * 0.15;
+                startingPositionFactor = Math.max(startingPositionFactor, superBoost);
+            }
+        }
+
+        // BRANCHING LOGIC: Live race uses current position, Pre-race uses starting position
         if (useLiveOdds && raceProgress > 0) {
-            // LIVE ODDS: NASCAR-STYLE
+            // LIVE ODDS: BALANCED (Driver Quality + Position)
+            // Give significant weight to iRating/stats even late in race
             const cappedIRating = Math.min(iRating, 7000);
             const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.7);
 
-            const iRatingWeight = 0.15 * Math.pow(1 - raceProgress, 2.5);
-            const historicalWeight = 0.10 * Math.pow(1 - raceProgress, 2.0);
+            // REBALANCED WEIGHTS: Driver quality stays relevant throughout race
+            // Early race: iR=35%, Hist=20%, Pos=45%
+            // Late race: iR=20%, Hist=10%, Pos=70% (still balanced)
+            const iRatingWeight = 0.35 * Math.pow(1 - raceProgress, 1.5); // Decays slower
+            const historicalWeight = 0.20 * Math.pow(1 - raceProgress, 1.2);
             const positionWeight = 1 - (iRatingWeight + historicalWeight);
 
-            const dynamicExponent = 2.8 + (raceProgress * 15);
-            const dynamicPositionFactor = Math.pow((fieldSize - currentPos + 1) / fieldSize, dynamicExponent);
+            // Position factor with moderate exponent (not as extreme)
+            const dynamicExponent = 2.0 + (raceProgress * 8); // Max 10 instead of 17.8
+            const dynamicPositionFactor = Math.pow(Math.max(0, (fieldSize - currentPos + 1) / fieldSize), dynamicExponent);
 
-            let gapPenalty = 1.0;
-            if (raceProgress > 0.5 && currentPos > 15) {
+            // SMART GAP ADJUSTMENT: Only penalize backmarkers if they're also low-rated
+            // High iRating drivers in the back are still dangerous
+            let gapAdjustment = 1.0;
+            if (currentPos > 15) {
                 const gap = currentPos - 15;
-                gapPenalty = Math.pow(0.85, gap);
+                const iRatingTrust = Math.min((iRating - 4000) / 3000, 1.0); // 0 at 4k, 1 at 7k
+
+                if (iRatingTrust > 0.5) {
+                    // High iRating: minimal penalty
+                    gapAdjustment = Math.pow(0.95, gap); // 5% per position
+                } else if (iRatingTrust > 0) {
+                    // Medium iRating: moderate penalty
+                    gapAdjustment = Math.pow(0.90, gap); // 10% per position
+                } else {
+                    // Low iRating: heavy penalty
+                    gapAdjustment = Math.pow(0.85, gap); // 15% per position
+                }
             }
 
-            // POSITION DIFFERENTIAL BONUS: Drivers who've passed many cars are clearly fast
+
+            // POSITION-WEIGHTED DIFFERENTIAL BONUS
+            // Passing at the front is worth more than passing at the back
             let positionDifferentialBonus = 1.0;
             const positionsGained = startPos - currentPos; // Positive = gained positions
-            if (positionsGained > 3) {
-                // Give bonus for making up positions (shows current race speed)
-                positionDifferentialBonus = 1.0 + (positionsGained * 0.08); // 8% per position gained
+
+            if (positionsGained > 0) {
+                // Calculate the "quality" of positions overtaken
+                // Average position where the passing happened
+                const avgPassingPosition = (startPos + currentPos) / 2;
+
+                // Position value multiplier: Front = high value, Back = lower value
+                // P1-P5: 1.8x to 2.0x (elite passing)
+                // P6-P10: 1.3x to 1.7x (strong passing)
+                // P11-P15: 1.0x to 1.2x (average passing)
+                // P16+: 0.6x to 0.9x (backmarker passing)
+                let positionValueMultiplier;
+                if (avgPassingPosition <= 5) {
+                    positionValueMultiplier = 1.8 + ((5 - avgPassingPosition) / 5) * 0.2; // 1.8 to 2.0
+                } else if (avgPassingPosition <= 10) {
+                    positionValueMultiplier = 1.3 + ((10 - avgPassingPosition) / 5) * 0.5; // 1.3 to 1.8
+                } else if (avgPassingPosition <= 15) {
+                    positionValueMultiplier = 1.0 + ((15 - avgPassingPosition) / 5) * 0.3; // 1.0 to 1.3
+                } else {
+                    positionValueMultiplier = 0.6 + Math.min((25 - avgPassingPosition) / 10, 0.3); // 0.6 to 0.9
+                }
+
+                // Base bonus rate depends on magnitude of gain
+                let baseBonusRate;
+                if (positionsGained > 5) {
+                    baseBonusRate = 0.12; // Major charge through field
+                } else if (positionsGained > 2) {
+                    baseBonusRate = 0.10; // Moderate progress
+                } else {
+                    baseBonusRate = 0.08; // Small gains
+                }
+
+                // Apply position-weighted bonus
+                const effectiveBonusRate = baseBonusRate * positionValueMultiplier;
+                positionDifferentialBonus = 1.0 + (positionsGained * effectiveBonusRate);
+
+            } else if (positionsGained < -5) {
+                // Falling back significantly - penalty
+                positionDifferentialBonus = 1.0 / (1.0 + (Math.abs(positionsGained) * 0.08));
             }
+
 
             winProbability =
                 (liveIRatingFactor * iRatingWeight) +
                 (historicalFactor * historicalWeight) +
-                (dynamicPositionFactor * positionWeight * gapPenalty);
+                (dynamicPositionFactor * positionWeight * gapAdjustment);
 
             // Apply position differential bonus
             winProbability = winProbability * positionDifferentialBonus;
@@ -211,7 +292,16 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
             winProbability = winProbability + qualifyingAdditiveBoost;
         }
 
-        // Apply Pro/Black license boost
+        // --- PRO/BLACK LICENSE BOOST ---
+        // SIGNIFICANTLY INCREASED for DWC/Pro drivers
+        const licString = driver.licenseClass || driver.LicString || '';
+        const isPro = licString.includes('P') || licString.includes('Pro') || licString.includes('WC');
+        const licLevel = driver.LicSubLevel ? Math.floor(driver.LicSubLevel / 100) : 0;
+        const isBlack = licLevel >= 6;
+
+        // Pro drivers get massive boost (2.5x), Black stripe gets large boost (1.5x)
+        const proBoost = isPro ? 2.5 : (isBlack ? 1.5 : 1.0);
+
         winProbability = winProbability * proBoost;
 
         // WIN ODDS PENALTY FOR P4+: Anything can happen in racing, reduce win odds for non-podium runners
@@ -345,7 +435,8 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
         raceProgressMultiplier = 1.0 + (raceProgress * 0.3); // 1.0x early, up to 1.3x late (half benefit)
     }
 
-    // PROGRESSIVE FAVORITISM - More gradual drop
+    // PROGRESSIVE FAVORITISM - SMOOTHED DROPOFF
+    // Smooth transition from P10 to P11+
     if (currentPos <= 2) {
         top10Prob = Math.min(top10Prob * 4.5 * raceProgressMultiplier, 0.93); // P1-P2
     } else if (currentPos <= 4) {
@@ -356,18 +447,25 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
         top10Prob = Math.min(top10Prob * 2.6 * raceProgressMultiplier, 0.84); // P7-P8
     } else if (currentPos <= 10) {
         top10Prob = Math.min(top10Prob * 2.0 * raceProgressMultiplier, 0.80); // P9-P10
+    } else if (currentPos <= 11) {
+        top10Prob = Math.min(top10Prob * 1.9 * raceProgressMultiplier, 0.78); // P11 (Smoothed)
     } else if (currentPos <= 12) {
-        top10Prob = Math.min(top10Prob * 1.5 * raceProgressMultiplier, 0.65); // P11-P12 (gets race progress but smaller)
+        top10Prob = Math.min(top10Prob * 1.8 * raceProgressMultiplier, 0.76); // P12 (Smoothed)
+    } else if (currentPos <= 13) {
+        top10Prob = Math.min(top10Prob * 1.7 * raceProgressMultiplier, 0.74); // P13 (Smoothed)
     } else if (currentPos <= 14) {
-        top10Prob = Math.min(top10Prob * 1.3 * raceProgressMultiplier, 0.60); // P13-P14 (gets race progress but smaller)
+        top10Prob = Math.min(top10Prob * 1.6 * raceProgressMultiplier, 0.72); // P14 (Smoothed)
     } else if (currentPos <= 15) {
-        const fieldSizeMultiplier = fieldSize <= 25 ? 1.2 : 1.1;
-        top10Prob = Math.min(top10Prob * fieldSizeMultiplier, 0.52);
+        top10Prob = Math.min(top10Prob * 1.5 * raceProgressMultiplier, 0.70); // P15 (Smoothed)
+    } else if (currentPos <= 16) {
+        top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.65); // P16
+    } else if (currentPos <= 18) {
+        top10Prob = Math.min(top10Prob * 1.2 * raceProgressMultiplier, 0.55); // P17-P18
     } else if (currentPos <= 20) {
-        top10Prob = Math.min(top10Prob * 1.05, 0.42);
+        top10Prob = Math.min(top10Prob * 1.1 * raceProgressMultiplier, 0.45); // P19-P20
     } else {
         if (thisDriverIRating > highIRThreshold) {
-            top10Prob = Math.min(top10Prob * 1.02, 0.35);
+            top10Prob = Math.min(top10Prob * 1.05, 0.40);
         } else {
             top10Prob = Math.min(top10Prob, 0.30);
         }

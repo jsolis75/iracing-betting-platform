@@ -309,18 +309,38 @@ const calculatePreRaceOdds = (drivers, betStats = null) => {
     });
 };
 
-/**
- * MODEL 3: NEW SOPHISTICATED MODEL (Experimental)
- * Factors:
- * 1. iRating
- * 2. iRating Delta (vs Field Avg)
- * 3. Time Remaining
- * 4. Qualifying Performance
- * 5. Last-to-First Challenge (High iRating starting back)
-                // Running P3-P10 means very likely to finish Top 3 - give them HUGE probability boost (terrible odds)
-                const positionPenalty = 1.35 + ((10 - currentPos) * 0.08); // P3 gets 1.91x, P10 gets 1.35x
-                top3Prob = Math.min(top3Prob * positionPenalty, 0.97);
-            }
+export const calculateOdds = (driver, allDrivers = [driver]) => {
+    const { winProbability } = driver;
+    const stats = driver.Stats || { starts: 0, wins: 0, avgPoints: 0, avgIncidents: 0, avgFinish: 0, top25Percent: 0, winPercentage: 0 };
+
+    const probToOdds = (p) => {
+        const prob = Math.min(p, 0.99);
+        if (prob >= 0.5) return Math.round(-100 / (1 - prob));
+        return Math.round(100 * ((1 / prob) - 1));
+    };
+
+    // Win Odds
+    let winOdds = probToOdds(winProbability);
+    winOdds = Math.max(-10000, Math.min(10000, winOdds));
+    if (Math.abs(winOdds) < 200) winOdds = Math.round(winOdds / 5) * 5;
+    else winOdds = Math.round(winOdds / 10) * 10;
+    const winOddsStr = winOdds > 0 ? `+${winOdds}` : `${winOdds}`;
+
+    // Top 3 Odds - LESS GENEROUS + POSITION PENALTY
+    const topFinishAbility = (stats.top25Percent || 0) / (stats.starts || 1);
+    let top3Prob = Math.min(winProbability * 1.5 + (topFinishAbility * 0.12), 0.92);
+
+    if (driver.qualifyingBonus && driver.qualifyingBonus > 1.0) {
+        top3Prob = top3Prob * Math.min(driver.qualifyingBonus, 1.8);
+    }
+
+    // POSITION PENALTY for Top 3: If already running P3-P10, reduce odds (they're in position!)
+    const currentPos = driver.currentPosition || driver.startingPosition || 99;
+    if (currentPos >= 3 && currentPos <= 10) {
+        // Running P3-P10 means very likely to finish Top 3 - give them HUGE probability boost (terrible odds)
+        const positionPenalty = 1.35 + ((10 - currentPos) * 0.08); // P3 gets 1.91x, P10 gets 1.35x
+        top3Prob = Math.min(top3Prob * positionPenalty, 0.97);
+    }
 
             let top3Odds = probToOdds(top3Prob);
             top3Odds = Math.max(-2000, Math.min(1500, top3Odds));

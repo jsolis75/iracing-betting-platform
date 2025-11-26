@@ -303,12 +303,6 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
 
             // Apply position differential bonus
             winProbability = winProbability * positionDifferentialBonus;
-
-            // P1 LATE RACE LOCK: If you're P1 with >70% race complete, MASSIVE boost
-            if (safeCurrentPos === 1 && raceProgress > 0.7) {
-                const p1LateBonus = 1.0 + (raceProgress - 0.7) * 5.0; // Up to 2.5x at 100%
-                winProbability = winProbability * p1LateBonus;
-            }
         } else {
             // PRE-RACE ODDS
             // Base calculation with INCREASED iRating weight (helps good drivers starting deep)
@@ -342,12 +336,14 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
 
         winProbability = winProbability * proBoost;
 
-        // LEADER FAVORITISM: Ensure P1 is always a heavy favorite regardless of iRating
+        // LEADER FAVORITISM: Ensure P1 is favored, with boost increasing as race progresses
         // MUST BE APPLIED BEFORE P4+ PENALTY to avoid stale penalties from previous positions
         if (currentPos === 1 && useLiveOdds && raceProgress > 0.1) {
-            // Give leader a massive boost (they're controlling the race)
-            const leaderBoost = 1.5 + (raceProgress * 0.8); // 1.5x early, up to 2.3x late
-            winProbability = Math.min(winProbability * leaderBoost, 0.85); // Cap at 85% to avoid -10000 odds
+            // Give leader a boost that scales with race progress
+            // Early race: 1.3x (leader but race is long)
+            // Late race: 1.8x (leader with few laps to go)
+            const leaderBoost = 1.3 + (raceProgress * 0.5); // 1.3x early, up to 1.8x late
+            winProbability = Math.min(winProbability * leaderBoost, 0.75); // Cap at 75% to prevent extreme odds
         }
 
         // WIN ODDS PENALTY FOR P4+: Anything can happen in racing, reduce win odds for non-podium runners

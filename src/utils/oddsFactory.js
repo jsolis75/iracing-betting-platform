@@ -223,15 +223,18 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
             const historicalWeight = 0.20 * Math.pow(1 - raceProgress, 1.2);
             const positionWeight = 1 - (iRatingWeight + historicalWeight);
 
+            // FIX: Ensure currentPos is valid (1-based, not 0)
+            const safeCurrentPos = Math.max(1, Math.min(currentPos || startPos, fieldSize));
+
             // Position factor with moderate exponent (not as extreme)
             const dynamicExponent = 2.0 + (raceProgress * 8); // Max 10 instead of 17.8
-            const dynamicPositionFactor = Math.pow(Math.max(0, (fieldSize - currentPos + 1) / fieldSize), dynamicExponent);
+            const dynamicPositionFactor = Math.pow(Math.max(0.01, (fieldSize - safeCurrentPos + 1) / fieldSize), dynamicExponent);
 
             // SMART GAP ADJUSTMENT: Only penalize backmarkers if they're also low-rated
             // High iRating drivers in the back are still dangerous
             let gapAdjustment = 1.0;
-            if (currentPos > 15) {
-                const gap = currentPos - 15;
+            if (safeCurrentPos > 15) {
+                const gap = safeCurrentPos - 15;
                 const iRatingTrust = Math.min((iRating - 4000) / 3000, 1.0); // 0 at 4k, 1 at 7k
 
                 if (iRatingTrust > 0.5) {
@@ -250,12 +253,12 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
             // POSITION-WEIGHTED DIFFERENTIAL BONUS
             // Passing at the front is worth more than passing at the back
             let positionDifferentialBonus = 1.0;
-            const positionsGained = startPos - currentPos; // Positive = gained positions
+            const positionsGained = startPos - safeCurrentPos; // Positive = gained positions
 
             if (positionsGained > 0) {
                 // Calculate the "quality" of positions overtaken
                 // Average position where the passing happened
-                const avgPassingPosition = (startPos + currentPos) / 2;
+                const avgPassingPosition = (startPos + safeCurrentPos) / 2;
 
                 // Position value multiplier: Front = high value, Back = lower value
                 // P1-P5: 1.8x to 2.0x (elite passing)

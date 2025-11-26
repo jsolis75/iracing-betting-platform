@@ -45,3 +45,5 @@ next-env.d.ts
 iracerdata/*.json
 src/data/*.json
 src/data/live_race_data.json
+
+.vercel

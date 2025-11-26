@@ -366,20 +366,33 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
     // HARD-CODE P1 FAVORITISM: Ensure P1 always has the best odds
     // Find P1 and the second-best probability
     const p1Driver = driversWithProb.find(d => d.currentPosition === 1);
+    const p2Driver = driversWithProb.find(d => d.currentPosition === 2);
     const otherDrivers = driversWithProb.filter(d => d.currentPosition !== 1);
+
+    console.log('=== P1 BOOST LOGIC DEBUG ===');
+    console.log(`P1 found: ${p1Driver ? p1Driver.name : 'NOT FOUND'}, pos: ${p1Driver?.currentPosition}, prob: ${p1Driver?.winProbability.toFixed(4)}`);
+    console.log(`P2 found: ${p2Driver ? p2Driver.name : 'NOT FOUND'}, pos: ${p2Driver?.currentPosition}, prob: ${p2Driver?.winProbability.toFixed(4)}`);
 
     if (p1Driver && useLiveOdds) {
         // Find the highest probability among non-P1 drivers
         const maxOtherProb = Math.max(...otherDrivers.map(d => d.winProbability));
+        const maxOtherDriver = otherDrivers.find(d => d.winProbability === maxOtherProb);
+
+        console.log(`Max other prob: ${maxOtherProb.toFixed(4)} from ${maxOtherDriver?.name} (P${maxOtherDriver?.currentPosition})`);
 
         // Force P1 to be at least 1.5x better than the second-best driver
         const minP1Prob = maxOtherProb * 1.5;
 
+        console.log(`P1 current prob: ${p1Driver.winProbability.toFixed(4)}, minimum required: ${minP1Prob.toFixed(4)}`);
+
         if (p1Driver.winProbability < minP1Prob) {
             console.log(`[P1 HARD FIX] Boosting P1 ${p1Driver.name} from ${p1Driver.winProbability.toFixed(4)} to ${minP1Prob.toFixed(4)} (1.5x second best ${maxOtherProb.toFixed(4)})`);
             p1Driver.winProbability = minP1Prob;
+        } else {
+            console.log(`[P1 OK] P1 already has better probability than required minimum`);
         }
     }
+    console.log('=== END P1 BOOST DEBUG ===');
 
     // Normalize probabilities to sum to 1.0
     const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);

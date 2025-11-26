@@ -303,6 +303,12 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
 
             // Apply position differential bonus
             winProbability = winProbability * positionDifferentialBonus;
+
+            // P1 LATE RACE LOCK: If you're P1 with >70% race complete, MASSIVE boost
+            if (safeCurrentPos === 1 && raceProgress > 0.7) {
+                const p1LateBonus = 1.0 + (raceProgress - 0.7) * 5.0; // Up to 2.5x at 100%
+                winProbability = winProbability * p1LateBonus;
+            }
         } else {
             // PRE-RACE ODDS
             // Base calculation with INCREASED iRating weight (helps good drivers starting deep)
@@ -473,18 +479,18 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
         raceProgressMultiplier = 1.0 + (raceProgress * 0.3); // 1.0x early, up to 1.3x late (half benefit)
     }
 
-    // PROGRESSIVE FAVORITISM - SMOOTHED DROPOFF
-    // Smooth transition from P10 to P11+
+    // PROGRESSIVE FAVORITISM - AGGRESSIVE FOR TOP 10
+    // If you're in the top 10, especially late race, you should be heavily favored
     if (currentPos <= 2) {
-        top10Prob = Math.min(top10Prob * 4.5 * raceProgressMultiplier, 0.93); // P1-P2
+        top10Prob = Math.min(top10Prob * 5.5 * raceProgressMultiplier, 0.98); // P1-P2: Near lock
     } else if (currentPos <= 4) {
-        top10Prob = Math.min(top10Prob * 3.8 * raceProgressMultiplier, 0.90); // P3-P4
+        top10Prob = Math.min(top10Prob * 4.8 * raceProgressMultiplier, 0.96); // P3-P4: Very strong
     } else if (currentPos <= 6) {
-        top10Prob = Math.min(top10Prob * 3.2 * raceProgressMultiplier, 0.87); // P5-P6
+        top10Prob = Math.min(top10Prob * 4.2 * raceProgressMultiplier, 0.94); // P5-P6: Strong
     } else if (currentPos <= 8) {
-        top10Prob = Math.min(top10Prob * 2.6 * raceProgressMultiplier, 0.84); // P7-P8
+        top10Prob = Math.min(top10Prob * 3.6 * raceProgressMultiplier, 0.92); // P7-P8: Good
     } else if (currentPos <= 10) {
-        top10Prob = Math.min(top10Prob * 2.0 * raceProgressMultiplier, 0.80); // P9-P10
+        top10Prob = Math.min(top10Prob * 3.0 * raceProgressMultiplier, 0.90); // P9-P10: Solid
     } else if (currentPos <= 11) {
         top10Prob = Math.min(top10Prob * 1.9 * raceProgressMultiplier, 0.78); // P11 (Smoothed)
     } else if (currentPos <= 12) {

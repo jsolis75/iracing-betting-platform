@@ -59,8 +59,10 @@ function SidebarContent() {
 
         fetchRaceInfo();
         fetchRaces();
-        const interval = setInterval(fetchRaceInfo, 5000);
-        const racesInterval = setInterval(fetchRaces, 3000);
+        // Reduced from 5s to 10s to lower server load
+        const interval = setInterval(fetchRaceInfo, 10000);
+        // Reduced from 3s to 15s to lower server load
+        const racesInterval = setInterval(fetchRaces, 15000);
         return () => {
             clearInterval(interval);
             clearInterval(racesInterval);

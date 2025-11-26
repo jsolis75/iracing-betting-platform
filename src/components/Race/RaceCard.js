@@ -44,11 +44,11 @@ const RaceCard = ({ race }) => {
         };
 
         fetchBetStats();
-        // Refresh every 5 seconds
+        // Reduced from 5s to 10s to lower server load
         const interval = setInterval(() => {
             fetchRaceData();
             fetchBetStats();
-        }, 5000);
+        }, 10000);
         return () => clearInterval(interval);
     }, [race.id]);
 

@@ -287,10 +287,10 @@ function HomeContent() {
     const controller = new AbortController();
     fetchRaceData(controller.signal);
 
-    // Poll every 5 seconds for live updates
+    // Reduced from 5s to 8s to lower server load
     const interval = setInterval(() => {
       fetchRaceData(controller.signal);
-    }, 5000);
+    }, 8000);
 
     // Cleanup interval on unmount
     return () => {

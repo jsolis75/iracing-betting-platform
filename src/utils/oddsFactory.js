@@ -8,33 +8,11 @@
  */
 
 /**
- * LIABILITY ADJUSTMENT:
- * Adjust win probability based on betting volume to manage risk.
- * If a driver has high liability (lots of bets), we increase their win probability
- * which effectively SHORTENS their odds (e.g., +500 -> +300).
- * 
- * Sensitivity: $5000 in bets = 2x probability (significant odds drop)
- */
-const applyLiabilityAdjustment = (driver, betStats) => {
-    if (!betStats || !betStats[driver.name]) return driver.winProbability;
-
-    const stake = betStats[driver.name];
-    const SENSITIVITY_THRESHOLD = 5000; // $5000 volume doubles the probability weight
-
-    // Multiplier = 1.0 + (Stake / 5000)
-    // $1000 stake -> 1.2x prob
-    // $5000 stake -> 2.0x prob
-    const liabilityMultiplier = 1.0 + (stake / SENSITIVITY_THRESHOLD);
-
-    return driver.winProbability * liabilityMultiplier;
-};
-
-/**
  * PRE-RACE MODEL: Simple iRating-based odds for qualifying and pre-race
  * Uses ONLY iRating to calculate odds - no position, no stats
  * AGGRESSIVE MODEL: Creates strong favorites with steep odds differences
  */
-const calculatePreRaceOdds = (drivers, betStats = null) => {
+const calculatePreRaceOdds = (drivers) => {
     if (!drivers || drivers.length === 0) return [];
 
     // Calculate field statistics
@@ -67,19 +45,13 @@ const calculatePreRaceOdds = (drivers, betStats = null) => {
         return { ...driver, winProbability: strength };
     });
 
-    // APPLY LIABILITY ADJUSTMENT (Line Movement)
-    const driversWithLiability = driversWithProb.map(d => ({
-        ...d,
-        winProbability: applyLiabilityAdjustment(d, betStats)
-    }));
-
     // Normalize probabilities
-    const totalStrength = driversWithLiability.reduce((sum, d) => sum + d.winProbability, 0);
+    const totalStrength = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
 
     // INCREASED HOUSE EDGE: Lower payouts = more negative odds for favorites
     const HOUSE_EDGE = 1.50; // Increased from 1.25
 
-    const normalized = driversWithLiability.map(d => ({
+    const normalized = driversWithProb.map(d => ({
         ...d,
         winProbability: (d.winProbability / totalStrength) * HOUSE_EDGE
     }));
@@ -95,10 +67,9 @@ const calculatePreRaceOdds = (drivers, betStats = null) => {
  * Calculate odds for all drivers in a race field
  * @param {Array} drivers - Array of driver objects with iRating, startingPosition, currentPosition, etc.
  * @param {Object} raceState - Optional race state (lapsRemaining, totalLaps, etc.)
- * @param {Object} betStats - Optional betting volume stats
  * @returns {Array} - Array of drivers with calculated odds
  */
-const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) => {
+const calculateSophisticatedOdds = (drivers, raceState = null) => {
     if (!drivers || drivers.length === 0) return [];
 
     // Determine if we should use live odds (race in progress)
@@ -333,6 +304,11 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
 
         winProbability = winProbability * proBoost;
 
+        // DEBUG LOGGING FOR TOP 3
+        if (currentPos <= 3) {
+            console.log(`[P${currentPos} ${driver.name}] After pro boost: ${winProbability.toFixed(4)}, raceProgress: ${raceProgress.toFixed(4)}`);
+        }
+
         // WIN ODDS PENALTY FOR P4+: Anything can happen in racing, reduce win odds for non-podium runners
         if (currentPos > 3) {
             // Progressive penalty: P4 gets small penalty, P15+ gets massive penalty
@@ -340,28 +316,31 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
             winProbability = winProbability * positionPenalty;
         }
 
+        // DEBUG: Check if P1-P3 got penalized (they shouldn't)
+        if (currentPos <= 3) {
+            console.log(`[P${currentPos} ${driver.name}] After P4+ check (should be unchanged): ${winProbability.toFixed(4)}`);
+        }
+
         // LEADER FAVORITISM: Ensure P1 is always a heavy favorite regardless of iRating
         if (currentPos === 1 && useLiveOdds && raceProgress > 0.1) {
+            const beforeBoost = winProbability;
             // Give leader a massive boost (they're controlling the race)
             const leaderBoost = 1.5 + (raceProgress * 0.8); // 1.5x early, up to 2.3x late
             winProbability = Math.min(winProbability * leaderBoost, 0.85); // Cap at 85% to avoid -10000 odds
+            console.log(`[P1 ${driver.name}] Leader boost: ${leaderBoost.toFixed(2)}x, before: ${beforeBoost.toFixed(4)}, after: ${winProbability.toFixed(4)}`);
+        } else if (currentPos === 1) {
+            console.log(`[P1 ${driver.name}] NO LEADER BOOST - useLiveOdds=${useLiveOdds}, raceProgress=${raceProgress.toFixed(4)}`);
         }
 
         return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress, qualifyingBonus };
     });
 
-    // APPLY LIABILITY ADJUSTMENT (Line Movement)
-    const driversWithLiability = driversWithProb.map(d => ({
-        ...d,
-        winProbability: applyLiabilityAdjustment(d, betStats)
-    }));
-
     // Normalize probabilities to sum to 1.0
-    const totalProb = driversWithLiability.reduce((sum, d) => sum + d.winProbability, 0);
+    const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
 
     const HOUSE_EDGE = 1.45; // Increased from 1.30 to drastically lower payouts
 
-    const driversWithNormalizedProb = driversWithLiability.map(d => ({
+    const driversWithNormalizedProb = driversWithProb.map(d => ({
         ...d,
         winProbability: (d.winProbability / totalProb) * HOUSE_EDGE
     }));
@@ -377,7 +356,7 @@ const calculateSophisticatedOdds = (drivers, raceState = null, betStats = null) 
  * Uses PRE-RACE model during qualifying and before lap 1 completion
  * Switches to SOPHISTICATED model after leader completes lap 1
  */
-export const calculateFieldOdds = (drivers, raceState = null, betStats = null) => {
+export const calculateFieldOdds = (drivers, raceState = null) => {
     if (!drivers || drivers.length === 0) return [];
 
     // Check if race has started and leader has completed at least 1 lap
@@ -388,12 +367,12 @@ export const calculateFieldOdds = (drivers, raceState = null, betStats = null) =
     // Use PRE-RACE model if race hasn't started or leader hasn't completed lap 1
     if (!leaderCompletedLap1) {
         console.log('Using PRE-RACE MODEL (iRating-only)');
-        return calculatePreRaceOdds(drivers, betStats);
+        return calculatePreRaceOdds(drivers);
     }
 
     // Use SOPHISTICATED model after lap 1
     console.log('Using SOPHISTICATED MODEL (position + stats + iRating)');
-    return calculateSophisticatedOdds(drivers, raceState, betStats);
+    return calculateSophisticatedOdds(drivers, raceState);
 };
 
 export const calculateOdds = (driver, allDrivers = [driver]) => {

@@ -196,10 +196,11 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
             const cappedIRating = Math.min(iRating, 7000);
             const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.7);
 
-            // REBALANCED WEIGHTS: Driver quality stays relevant throughout race
-            // Early race: iR=35%, Hist=20%, Pos=45%
-            // Late race: iR=20%, Hist=10%, Pos=70% (still balanced)
-            const iRatingWeight = 0.35 * Math.pow(1 - raceProgress, 1.5); // Decays slower
+            // REBALANCED WEIGHTS: Driver quality stays relevant until past halfway
+            // Early race (0-25%): iR=35%, Hist=20%, Pos=45%
+            // Mid race (50%): iR=17.5%, Hist=10%, Pos=72.5%
+            // Late race (75%+): iR=8.75%, Hist=5%, Pos=86.25%
+            const iRatingWeight = 0.35 * (1 - raceProgress); // Linear decay (was exponential 1.5)
             const historicalWeight = 0.20 * Math.pow(1 - raceProgress, 1.2);
             const positionWeight = 1 - (iRatingWeight + historicalWeight);
 

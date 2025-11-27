@@ -476,6 +476,18 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false) 
     } else {
         top10Prob = Math.min(winProbability * 3.5 + (topFinishAbility * 0.3), 0.90);
 
+        // DECOUPLED TOP 10 PROBABILITY
+        // If driver is currently in Top 10, their base probability should be high regardless of win odds
+        if (currentPos <= 10) {
+            // Base probability purely based on being in position
+            // P1 = 0.95, P10 = 0.50
+            const positionBaseProb = 1.0 - (currentPos * 0.05);
+
+            // Use the higher of the two: derived from win odds OR position base
+            // This ensures P7 late in race doesn't get 0% just because win odds are 0%
+            top10Prob = Math.max(top10Prob, positionBaseProb);
+        }
+
         // LAPS LED FACTOR
         const lapsLed = driver.lapsLed || 0;
         let lapsLedBonus = 1.0;
@@ -525,15 +537,15 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false) 
         // PROGRESSIVE FAVORITISM - SMOOTHED DROPOFF
         // Smooth transition from P10 to P11+
         if (currentPos <= 2) {
-            top10Prob = Math.min(top10Prob * 4.5 * raceProgressMultiplier, 0.98); // P1-P2 (increased cap from 0.93)
+            top10Prob = Math.min(top10Prob * 4.5 * raceProgressMultiplier, 0.98); // P1-P2
         } else if (currentPos <= 4) {
-            top10Prob = Math.min(top10Prob * 3.8 * raceProgressMultiplier, 0.97); // P3-P4 (increased cap)
+            top10Prob = Math.min(top10Prob * 3.8 * raceProgressMultiplier, 0.97); // P3-P4
         } else if (currentPos <= 6) {
-            top10Prob = Math.min(top10Prob * 3.2 * raceProgressMultiplier, 0.96); // P5-P6 (increased cap)
+            top10Prob = Math.min(top10Prob * 3.2 * raceProgressMultiplier, 0.96); // P5-P6
         } else if (currentPos <= 8) {
-            top10Prob = Math.min(top10Prob * 2.6 * raceProgressMultiplier, 0.95); // P7-P8 (increased cap)
+            top10Prob = Math.min(top10Prob * 2.8 * raceProgressMultiplier, 0.95); // P7-P8 (Increased from 2.6)
         } else if (currentPos <= 10) {
-            top10Prob = Math.min(top10Prob * 2.0 * raceProgressMultiplier, 0.94); // P9-P10 (increased cap)
+            top10Prob = Math.min(top10Prob * 2.4 * raceProgressMultiplier, 0.94); // P9-P10 (Increased from 2.0)
         } else if (currentPos <= 11) {
             // P11: Just outside top 10, moderate chance with crashes
             top10Prob = Math.min(top10Prob * 2.2 * raceProgressMultiplier, 0.80); // Increased from 1.9

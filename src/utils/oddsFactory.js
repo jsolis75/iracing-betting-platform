@@ -315,10 +315,11 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
             console.log(`[P${currentPos} ${driver.name}] After lap-down check: ${winProbability.toFixed(4)}, lapsDown: ${lapsDown}`);
         }
 
-        // WIN ODDS PENALTY FOR P4+: Anything can happen in racing, reduce win odds for non-podium runners
-        if (currentPos > 3) {
-            // Progressive penalty: P4 gets small penalty, P15+ gets massive penalty
-            const positionPenalty = Math.pow(0.92, currentPos - 3); // 8% reduction per position after P3
+        // WIN ODDS PENALTY FOR P11+: Drivers outside top 10 have lower win probability
+        // P4-P10 are exempt because they're still in strong contention for top finishes
+        if (currentPos > 10) {
+            // Progressive penalty: P11 gets small penalty, P20+ gets massive penalty
+            const positionPenalty = Math.pow(0.92, currentPos - 10); // 8% reduction per position after P10
             winProbability = winProbability * positionPenalty;
         }
 

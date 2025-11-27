@@ -57,8 +57,16 @@ const calculatePreRaceOdds = (drivers) => {
         winProbability: (d.winProbability / totalStrength) * HOUSE_EDGE
     }));
 
+    // Apply probability floors to cap maximum odds for underdogs
+    // This prevents absurdly bad odds for low-rated drivers
     return normalized.map(driver => {
-        const odds = calculateOdds(driver, normalized);
+        let { winProbability } = driver;
+
+        // MIN WIN PROBABILITY: 4.5% (caps at +2000 odds)
+        // No driver should be worse than +2000 to win, no matter how bad
+        winProbability = Math.max(winProbability, 0.045);
+
+        const odds = calculateOdds({ ...driver, winProbability }, normalized, true); // Pass isPreRace flag
         return { ...driver, odds };
     });
 };
@@ -444,7 +452,7 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
     return calculateSophisticatedOdds(drivers, raceState);
 };
 
-export const calculateOdds = (driver, allDrivers = [driver]) => {
+export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false) => {
     const { winProbability } = driver;
     const stats = driver.Stats || { starts: 0, wins: 0, avgPoints: 0, avgIncidents: 0, avgFinish: 0, top25Percent: 0, winPercentage: 0 };
 
@@ -475,6 +483,11 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
         // Running P3-P10 means very likely to finish Top 3 - give them HUGE probability boost (terrible odds)
         const positionPenalty = 1.35 + ((10 - currentPos) * 0.08); // P3 gets 1.91x, P10 gets 1.35x
         top3Prob = Math.min(top3Prob * positionPenalty, 0.97);
+    }
+
+    // PRE-RACE FLOOR: Min 16.7% probability (caps at +500 odds)
+    if (isPreRace) {
+        top3Prob = Math.max(top3Prob, 0.167);
     }
 
     let top3Odds = probToOdds(top3Prob);
@@ -576,6 +589,11 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     // Apply threat impact and laps led bonus
     top10Prob = Math.max(top10Prob - threatImpact, 0.15);
     top10Prob = Math.min(top10Prob * lapsLedBonus, 0.99); // Increased cap from 0.97
+
+    // PRE-RACE FLOOR: Min 33.3% probability (caps at +200 odds)
+    if (isPreRace) {
+        top10Prob = Math.max(top10Prob, 0.333);
+    }
 
     let top10Odds = probToOdds(top10Prob);
     top10Odds = Math.max(-2000, Math.min(1200, top10Odds)); // Cap at -2000 instead of -3000

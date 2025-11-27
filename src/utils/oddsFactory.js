@@ -259,6 +259,15 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
                 const effectiveBonusRate = baseBonusRate * positionValueMultiplier;
                 positionDifferentialBonus = 1.0 + (positionsGained * effectiveBonusRate);
 
+                // CRITICAL FIX: Cap bonus for drivers who just passed the leader
+                // If you're in P1-P3 and gained positions, you likely just passed the leader
+                // Don't let this bonus push you ABOVE the leader's probability
+                // P1 hard-fix will handle this later, but we should cap it here too
+                if (currentPos <= 3 && positionDifferentialBonus > 1.3) {
+                    console.log(`[POSITION BONUS CAP] P${currentPos} ${driver.name} bonus capped: ${positionDifferentialBonus.toFixed(2)}x → 1.30x (prevent overtaking P1 odds)`);
+                    positionDifferentialBonus = Math.min(positionDifferentialBonus, 1.3);
+                }
+
             } else if (positionsGained < -5) {
                 // Falling back significantly - penalty
                 positionDifferentialBonus = 1.0 / (1.0 + (Math.abs(positionsGained) * 0.08));
@@ -381,8 +390,8 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
 
         console.log(`Max other prob: ${maxOtherProb.toFixed(4)} from ${maxOtherDriver?.name} (P${maxOtherDriver?.currentPosition})`);
 
-        // Force P1 to be at least 1.5x better than the second-best driver
-        const minP1Prob = maxOtherProb * 1.5;
+        // Force P1 to be at least 2.0x better than the second-best driver (increased from 1.5x)
+        const minP1Prob = maxOtherProb * 2.0;
 
         console.log(`P1 current prob: ${p1Driver.winProbability.toFixed(4)}, minimum required: ${minP1Prob.toFixed(4)}`);
 
@@ -536,15 +545,20 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
     } else if (currentPos <= 10) {
         top10Prob = Math.min(top10Prob * 2.0 * raceProgressMultiplier, 0.94); // P9-P10 (increased cap)
     } else if (currentPos <= 11) {
-        top10Prob = Math.min(top10Prob * 1.9 * raceProgressMultiplier, 0.78); // P11 (Smoothed)
+        // P11: Just outside top 10, moderate chance with crashes
+        top10Prob = Math.min(top10Prob * 2.2 * raceProgressMultiplier, 0.80); // Increased from 1.9
     } else if (currentPos <= 12) {
-        top10Prob = Math.min(top10Prob * 1.8 * raceProgressMultiplier, 0.76); // P12 (Smoothed)
+        // P12: Still reasonable chance with 1-2 crashes
+        top10Prob = Math.min(top10Prob * 2.0 * raceProgressMultiplier, 0.75); // Increased from 1.8
     } else if (currentPos <= 13) {
-        top10Prob = Math.min(top10Prob * 1.7 * raceProgressMultiplier, 0.74); // P13 (Smoothed)
+        // P13: Needs a few incidents but possible
+        top10Prob = Math.min(top10Prob * 1.8 * raceProgressMultiplier, 0.70); // Increased from 1.7
     } else if (currentPos <= 14) {
-        top10Prob = Math.min(top10Prob * 1.6 * raceProgressMultiplier, 0.72); // P14 (Smoothed)
+        // P14: Long shot but crashes happen
+        top10Prob = Math.min(top10Prob * 1.6 * raceProgressMultiplier, 0.65); // Kept same
     } else if (currentPos <= 15) {
-        top10Prob = Math.min(top10Prob * 1.5 * raceProgressMultiplier, 0.70); // P15 (Smoothed)
+        // P15: Very unlikely but not impossible
+        top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.55); // Reduced cap from 0.70
     } else if (currentPos <= 16) {
         top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.65); // P16
     } else if (currentPos <= 18) {

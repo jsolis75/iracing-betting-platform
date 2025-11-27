@@ -500,27 +500,41 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
 
     const threatImpact = threatsFromBehind * (0.08 * (1 - raceProgress));
 
-    // RACE PROGRESS MULTIPLIER: As race goes on, current position becomes MORE important
-    // Top 10 gets full benefit, P11-14 gets partial benefit
+    // RACE PROGRESS MULTIPLIER: As race goes on, current position becomes EXPONENTIALLY more important
+    // Late race (>70% progress): Drivers in top 10 are almost guaranteed to finish there barring crashes
     let raceProgressMultiplier = 1.0;
+
     if (currentPos <= 10) {
-        raceProgressMultiplier = 1.0 + (raceProgress * 0.6); // 1.0x early, up to 1.6x late
+        // EXPONENTIAL SCALING for top 10 drivers
+        // Early race (0%): 1.0x multiplier
+        // Mid race (50%): 2.5x multiplier
+        // Late race (75%): 6.0x multiplier
+        // Final laps (90%+): 12.0x multiplier
+        const exponentialFactor = Math.pow(raceProgress, 2); // Square for exponential growth
+        raceProgressMultiplier = 1.0 + (exponentialFactor * 11.0); // 1.0x to 12.0x range
+
+        console.log(`[TOP 10 ODDS] P${currentPos} at ${(raceProgress * 100).toFixed(1)}% progress: multiplier ${raceProgressMultiplier.toFixed(2)}x`);
     } else if (currentPos <= 14) {
-        raceProgressMultiplier = 1.0 + (raceProgress * 0.3); // 1.0x early, up to 1.3x late (half benefit)
+        // P11-14 gets partial benefit (they might sneak in)
+        const exponentialFactor = Math.pow(raceProgress, 2.5); // Steeper curve for bubble positions
+        raceProgressMultiplier = 1.0 + (exponentialFactor * 3.0); // 1.0x to 4.0x range
+    } else {
+        // P15+ gets minimal benefit (unlikely to crack top 10 late)
+        raceProgressMultiplier = 1.0 + (raceProgress * 0.5); // 1.0x to 1.5x range
     }
 
     // PROGRESSIVE FAVORITISM - SMOOTHED DROPOFF
     // Smooth transition from P10 to P11+
     if (currentPos <= 2) {
-        top10Prob = Math.min(top10Prob * 4.5 * raceProgressMultiplier, 0.93); // P1-P2
+        top10Prob = Math.min(top10Prob * 4.5 * raceProgressMultiplier, 0.98); // P1-P2 (increased cap from 0.93)
     } else if (currentPos <= 4) {
-        top10Prob = Math.min(top10Prob * 3.8 * raceProgressMultiplier, 0.90); // P3-P4
+        top10Prob = Math.min(top10Prob * 3.8 * raceProgressMultiplier, 0.97); // P3-P4 (increased cap)
     } else if (currentPos <= 6) {
-        top10Prob = Math.min(top10Prob * 3.2 * raceProgressMultiplier, 0.87); // P5-P6
+        top10Prob = Math.min(top10Prob * 3.2 * raceProgressMultiplier, 0.96); // P5-P6 (increased cap)
     } else if (currentPos <= 8) {
-        top10Prob = Math.min(top10Prob * 2.6 * raceProgressMultiplier, 0.84); // P7-P8
+        top10Prob = Math.min(top10Prob * 2.6 * raceProgressMultiplier, 0.95); // P7-P8 (increased cap)
     } else if (currentPos <= 10) {
-        top10Prob = Math.min(top10Prob * 2.0 * raceProgressMultiplier, 0.80); // P9-P10
+        top10Prob = Math.min(top10Prob * 2.0 * raceProgressMultiplier, 0.94); // P9-P10 (increased cap)
     } else if (currentPos <= 11) {
         top10Prob = Math.min(top10Prob * 1.9 * raceProgressMultiplier, 0.78); // P11 (Smoothed)
     } else if (currentPos <= 12) {
@@ -547,7 +561,7 @@ export const calculateOdds = (driver, allDrivers = [driver]) => {
 
     // Apply threat impact and laps led bonus
     top10Prob = Math.max(top10Prob - threatImpact, 0.15);
-    top10Prob = Math.min(top10Prob * lapsLedBonus, 0.97);
+    top10Prob = Math.min(top10Prob * lapsLedBonus, 0.99); // Increased cap from 0.97
 
     let top10Odds = probToOdds(top10Prob);
     top10Odds = Math.max(-2000, Math.min(1200, top10Odds)); // Cap at -2000 instead of -3000

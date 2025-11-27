@@ -477,7 +477,25 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false) 
         top10Prob = Math.min(winProbability * 3.5 + (topFinishAbility * 0.3), 0.90);
 
         // DECOUPLED TOP 10 PROBABILITY
-        lapsLedBonus = Math.min(1.0 + (lapsLed * 0.03), 2.0);
+        // If driver is currently in Top 10, their base probability should be high regardless of win odds
+        if (currentPos <= 10) {
+            // Base probability purely based on being in position
+            // P1 = 0.95, P10 = 0.50
+            const positionBaseProb = 1.0 - (currentPos * 0.05);
+            top10Prob = Math.max(top10Prob, positionBaseProb);
+        } else if (currentPos <= 15) {
+            // P11-P15: Still have a fighting chance for Top 10, but less aggressive
+            // P11 = 0.25, P15 = 0.05
+            const positionBaseProb = 0.25 - ((currentPos - 11) * 0.05);
+            top10Prob = Math.max(top10Prob, positionBaseProb);
+        }
+
+        // LAPS LED FACTOR
+        const lapsLed = driver.lapsLed || 0;
+        let lapsLedBonus = 1.0;
+        if (lapsLed > 0) {
+            lapsLedBonus = Math.min(1.0 + (lapsLed * 0.03), 2.0);
+        }
     }
 
     // HIGH IRATING THREAT FACTOR

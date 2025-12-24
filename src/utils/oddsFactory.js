@@ -1,4 +1,4 @@
-// Odds Factory - Updated P1 Logic and Lap Down Penalties - Production Deploy
+// Odds Factory - Updated P1 Logic and Lap Down Penalties - Production Deploy (Re-deploying for Fantasy/OU)
 /**
  * Odds Factory
  * TWO MODELS:

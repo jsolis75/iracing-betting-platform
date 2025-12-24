@@ -1,0 +1,156 @@
+.container {
+    padding: 1rem;
+    background: rgba(20, 20, 25, 0.5);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.intro {
+    margin-bottom: 1.5rem;
+    text-align: center;
+}
+
+.title {
+    font-size: 1.25rem;
+    color: #fff;
+    margin-bottom: 0.25rem;
+}
+
+.subtitle {
+    font-size: 0.9rem;
+    color: #aaa;
+}
+
+.tableHeader {
+    display: grid;
+    grid-template-columns: 1fr 80px 100px 100px;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.driverList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.driverRow {
+    display: grid;
+    grid-template-columns: 1fr 80px 100px 100px;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    transition: background 0.2s;
+}
+
+.driverRow:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.colDriver {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.number {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    color: var(--primary-blue);
+    font-size: 1rem;
+    min-width: 40px;
+}
+
+.driverInfo {
+    display: flex;
+    flex-direction: column;
+}
+
+.name {
+    font-weight: 600;
+    color: #fff;
+}
+
+.stats {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.colLine {
+    text-align: center;
+    font-weight: 700;
+    color: #fff;
+    font-size: 1rem;
+}
+
+.colBet {
+    display: flex;
+    justify-content: center;
+}
+
+.betButton {
+    width: 80px;
+    padding: 0.5rem;
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 6px;
+    color: var(--primary-blue);
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.betButton:hover:not(:disabled) {
+    background: var(--primary-blue);
+    color: #fff;
+    transform: translateY(-1px);
+}
+
+.betButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    filter: grayscale(1);
+}
+
+.footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    text-align: center;
+}
+
+.footerText {
+    font-size: 0.85rem;
+    color: #666;
+    font-style: italic;
+}
+
+@media (max-width: 600px) {
+    .tableHeader {
+        grid-template-columns: 1fr 60px 70px 70px;
+        font-size: 0.7rem;
+    }
+
+    .driverRow {
+        grid-template-columns: 1fr 60px 70px 70px;
+        padding: 0.5rem;
+    }
+
+    .betButton {
+        width: 60px;
+        font-size: 0.8rem;
+    }
+
+    .number {
+        min-width: 30px;
+        font-size: 0.9rem;
+    }
+}

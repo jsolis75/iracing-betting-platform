@@ -12,106 +12,95 @@ function getStateName(state) {
 
 export async function POST(request) {
     try {
-        const { raceId, drivers } = await request.json();
-
-        if (!raceId && !drivers) {
-            return NextResponse.json({ error: 'Missing race data' }, { status: 400 });
-        }
-
         const supabase = getSupabaseClient();
 
-        let raceDrivers = drivers;
+        let raceDrivers = null;
         let targetSessionId = raceId;
 
         // Check if raceId looks like a UUID
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raceId);
 
-        // If drivers data is not provided, try to fetch it from the 'races' table
-        if (!raceDrivers || isUUID) {
-            let query = supabase.from('races').select('*');
+        // ALWAYS fetch from database to ensure consistency (ignore client-provided drivers)
+        console.log(`Settling race ${raceId}. Fetching fresh data from DB...`);
+        let query = supabase.from('races').select('*');
 
-            if (isUUID) {
-                query = query.eq('id', raceId);
-            } else {
-                query = query.eq('iracing_session_id', raceId);
+        if (isUUID) {
+            query = query.eq('id', raceId);
+        } else {
+            query = query.eq('iracing_session_id', raceId);
+        }
+
+        const { data: raceData, error: raceError } = await query.single();
+
+        if (raceError || !raceData) {
+            console.error(`Race lookup failed for ID ${raceId}:`, raceError);
+            return NextResponse.json({ error: `Race not found in database with ID: ${raceId}` }, { status: 404 });
+        }
+
+        // Update targetSessionId to the correct integer from DB
+        targetSessionId = raceData.iracing_session_id;
+
+        if (!raceData.data) {
+            return NextResponse.json({ error: 'Race found but has no data' }, { status: 400 });
+        }
+
+        if (raceData.data.SessionInfo && raceData.data.SessionInfo.Sessions) {
+            const sessions = raceData.data.SessionInfo.Sessions;
+            // Get the current active session based on SessionNum if available, otherwise last
+            const currentSessionIndex = raceData.data.SessionNum || (sessions.length - 1);
+            const session = sessions[currentSessionIndex] || sessions[sessions.length - 1];
+
+            // CRITICAL: Only settle if it's a RACE session
+            if (session.SessionType !== 'Race') {
+                return NextResponse.json({ message: 'Race not yet finished (Current session: ' + session.SessionType + ')' });
             }
 
-            const { data: raceData, error: raceError } = await query.single();
-
-            if (raceError || !raceData) {
-                console.error(`Race lookup failed for ID ${raceId}:`, raceError);
-                return NextResponse.json({ error: `Race not found in database with ID: ${raceId}` }, { status: 404 });
+            // CRITICAL: Check SessionState to ensure race is actually over
+            const sessionState = raceData.data.SessionState;
+            if (sessionState < 5) {
+                return NextResponse.json({
+                    message: `Race not yet finished (State: ${sessionState} - ${getStateName(sessionState)})`
+                });
             }
 
-            // Update targetSessionId to the correct integer from DB
-            targetSessionId = raceData.iracing_session_id;
+            const rawDrivers = raceData.data.DriverInfo.Drivers;
+            const resultsPositions = session.ResultsPositions || [];
 
-            if (!raceData.data) {
-                return NextResponse.json({ error: 'Race found but has no data' }, { status: 400 });
-            }
+            const posMap = {};
+            const reasonOutMap = {};
+            const lapsCompleteMap = {};
 
-            if (raceData.data.SessionInfo && raceData.data.SessionInfo.Sessions) {
-                const sessions = raceData.data.SessionInfo.Sessions;
-                // Get the current active session based on SessionNum if available, otherwise last
-                const currentSessionIndex = raceData.data.SessionNum || (sessions.length - 1);
-                const session = sessions[currentSessionIndex] || sessions[sessions.length - 1];
+            resultsPositions.forEach(p => {
+                posMap[p.CarIdx] = p.Position;
+                reasonOutMap[p.CarIdx] = p.ReasonOutStr;
+                lapsCompleteMap[p.CarIdx] = p.LapsComplete;
+            });
 
-                // CRITICAL: Only settle if it's a RACE session
-                if (session.SessionType !== 'Race') {
-                    return NextResponse.json({ message: 'Race not yet finished (Current session: ' + session.SessionType + ')' });
-                }
-
-                // CRITICAL: Check SessionState to ensure race is actually over
-                // State 4 = Racing, 5 = Checkered, 6 = CoolDown, 7 = Finalized
-                // Allow settlement at checkered (5) or later
-                const sessionState = raceData.data.SessionState;
-                if (sessionState < 5) {
+            // Find the winner (Position 1)
+            const winnerCarIdx = Object.keys(posMap).find(idx => posMap[idx] === 1);
+            if (winnerCarIdx) {
+                const winnerLaps = lapsCompleteMap[winnerCarIdx] || 0;
+                if (winnerLaps === 0) {
                     return NextResponse.json({
-                        message: `Race not yet finished (State: ${sessionState} - ${getStateName(sessionState)})`
+                        message: `Race finished but winner has 0 laps (False positive - Race Start/Grid)`
                     });
                 }
-
-                const rawDrivers = raceData.data.DriverInfo.Drivers;
-                const resultsPositions = session.ResultsPositions || [];
-
-                const posMap = {};
-                const reasonOutMap = {};
-                const lapsCompleteMap = {}; // New: Track laps complete
-
-                resultsPositions.forEach(p => {
-                    posMap[p.CarIdx] = p.Position;
-                    reasonOutMap[p.CarIdx] = p.ReasonOutStr;
-                    lapsCompleteMap[p.CarIdx] = p.LapsComplete; // Extract laps
-                });
-
-                // CRITICAL: Check if the race has actually been run
-                // Find the winner (Position 1)
-                const winnerCarIdx = Object.keys(posMap).find(idx => posMap[idx] === 1);
-                if (winnerCarIdx) {
-                    const winnerLaps = lapsCompleteMap[winnerCarIdx] || 0;
-                    // If winner has 0 laps, the race hasn't really happened (it's just the grid)
-                    if (winnerLaps === 0) {
-                        return NextResponse.json({
-                            message: `Race finished but winner has 0 laps (False positive - Race Start/Grid)`
-                        });
-                    }
-                }
-
-                raceDrivers = rawDrivers.map(d => {
-                    const reasonOut = reasonOutMap[d.CarIdx]?.toLowerCase().trim() || "running";
-                    let isDNF = false;
-                    const dnfReasons = ["accident", "engine", "suspension", "handling", "brakes", "damaged", "crash"];
-                    if (dnfReasons.some(r => reasonOut.includes(r))) isDNF = true;
-                    else if ((reasonOut.includes("disconnected") || reasonOut.includes("disco"))) isDNF = true;
-
-                    return {
-                        name: d.UserName,
-                        currentPosition: posMap[d.CarIdx] || 999,
-                        isDNF: isDNF,
-                        incidents: d.CurDriverIncidentCount || 0
-                    };
-                });
             }
+
+            raceDrivers = rawDrivers.map(d => {
+                const reasonOut = reasonOutMap[d.CarIdx]?.toLowerCase().trim() || "running";
+                let isDNF = false;
+                const dnfReasons = ["accident", "engine", "suspension", "handling", "brakes", "damaged", "crash", "retired"];
+                if (dnfReasons.some(r => reasonOut.includes(r))) isDNF = true;
+                else if ((reasonOut.includes("disconnected") || reasonOut.includes("disco"))) isDNF = true;
+
+                return {
+                    name: d.UserName,
+                    currentPosition: posMap[d.CarIdx] || 999,
+                    isDNF: isDNF,
+                    incidents: d.CurDriverIncidentCount || 0
+                };
+            });
         }
 
         if (!raceDrivers) {
@@ -139,32 +128,33 @@ export async function POST(request) {
         const checkLeg = (driverName, betType, drivers, selection = null) => {
             // Skip manual settlement bets
             if (['slurmeister', 'fatality', 'kingkong'].includes(betType)) {
-                return 'unknown'; // Leave as pending for manual settlement
+                return 'unknown';
             }
 
             // Handle special bets
             if (betType === 'terrorist' || betType === 'alqaeda') {
                 const terroristCount = drivers.filter(d => d.incidents >= 17).length;
-                const highIncidentDrivers = drivers.filter(d => d.incidents >= 17).map(d => `${d.name}(${d.incidents}x)`);
-
-                console.log(`${betType} bet check: Found ${terroristCount} drivers with 17+x`);
-                console.log(`High incident drivers: ${highIncidentDrivers.join(', ')}`);
-                console.log(`All drivers:`, drivers.map(d => `${d.name}:${d.incidents}x`));
-
                 if (betType === 'terrorist') {
-                    // The Terrorist: 1+ driver with 17+ incidents
                     const hasTerrorist = terroristCount >= 1;
-                    console.log(`Terrorist result: hasTerrorist=${hasTerrorist}, selection=${selection}`);
                     return (selection === 'Yes' && hasTerrorist) || (selection === 'No' && !hasTerrorist) ? 'won' : 'lost';
                 } else if (betType === 'alqaeda') {
-                    // Al Qaeda: 3+ drivers with 17+ incidents
                     const hasAlQaeda = terroristCount >= 3;
                     return (selection === 'Yes' && hasAlQaeda) || (selection === 'No' && !hasAlQaeda) ? 'won' : 'lost';
                 }
             }
 
+            // Handle Over/Under Incident Points
+            if (betType === 'over_under') {
+                const driver = drivers.find(d => d.name.trim() === driverName.trim());
+                if (!driver) return 'unknown';
+                const incidents = driver.incidents || 0;
+                const line = 8.5;
+                if (selection === 'Over') return incidents > line ? 'won' : 'lost';
+                if (selection === 'Under') return incidents < line ? 'won' : 'lost';
+            }
+
             // Handle regular driver bets
-            const driver = drivers.find(d => d.name === driverName);
+            const driver = drivers.find(d => d.name.trim() === driverName.trim());
             if (!driver) return 'unknown';
 
             const pos = driver.currentPosition;
@@ -235,16 +225,23 @@ export async function POST(request) {
             } else {
                 // Single Bet
                 const betType = bet.bet_type;
+                // Get selection from details if available, otherwise fallback to driver_name parsing (for legacy)
+                let selection = bet.details?.selection;
+                if (!selection && (betType === 'terrorist' || betType === 'alqaeda')) {
+                    selection = bet.driver_name?.includes('Yes') ? 'Yes' : 'No';
+                }
+                if (!selection && betType === 'over_under') {
+                    // This shouldn't happen for new bets, but just in case
+                    selection = 'Over';
+                }
 
-                // Check if it's a special bet
-                if (betType === 'terrorist' || betType === 'alqaeda') {
-                    // Extract selection from driver_name (e.g., "terrorist - Yes" or "alqaeda - No")
-                    const selection = bet.driver_name?.includes('Yes') ? 'Yes' : 'No';
-                    const singleResult = checkLeg(null, betType, raceDrivers, selection);
+                // Check if it's a special bet or over/under
+                if (betType === 'terrorist' || betType === 'alqaeda' || betType === 'over_under') {
+                    const singleResult = checkLeg(bet.driver_name, betType, raceDrivers, selection);
                     if (singleResult !== 'unknown') {
                         result = singleResult;
                     } else {
-                        debugLogs.push(`Bet ${bet.id} special bet grading failed`);
+                        debugLogs.push(`Bet ${bet.id} grading failed (Type: ${betType}, Selection: ${selection})`);
                     }
                 } else {
                     // Regular driver bet

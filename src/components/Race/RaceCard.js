@@ -6,6 +6,7 @@ import { calculateFieldOdds } from "@/utils/oddsFactory";
 import { useBetting } from "@/context/BettingContext";
 import ResultsModal from "./ResultsModal";
 import SpecialsView from "./SpecialsView";
+import OverUnderView from "./OverUnderView";
 
 const RaceCard = ({ race }) => {
     const {
@@ -19,7 +20,7 @@ const RaceCard = ({ race }) => {
     } = race;
     const { addToBetSlip } = useBetting();
     const [sortMethod, setSortMethod] = useState("position");
-    const [viewMode, setViewMode] = useState("drivers"); // 'drivers' or 'specials'
+    const [viewMode, setViewMode] = useState("drivers"); // 'drivers', 'specials', or 'overunder'
     const [showResults, setShowResults] = useState(false);
 
     const [betStats, setBetStats] = useState(null);
@@ -166,10 +167,18 @@ const RaceCard = ({ race }) => {
 
                 <button
                     className={`${styles.specialsBtn} ${viewMode === 'specials' ? styles.specialsActive : ''}`}
-                    onClick={() => setViewMode(viewMode === 'drivers' ? 'specials' : 'drivers')}
+                    onClick={() => setViewMode(viewMode === 'specials' ? 'drivers' : 'specials')}
                     style={{ marginLeft: viewMode === 'drivers' ? '1rem' : '0' }}
                 >
-                    🎲 {viewMode === 'specials' ? '← Back to Drivers' : 'Specials'}
+                    🎲 {viewMode === 'specials' ? '← Back' : 'Specials'}
+                </button>
+
+                <button
+                    className={`${styles.specialsBtn} ${viewMode === 'overunder' ? styles.specialsActive : ''}`}
+                    onClick={() => setViewMode(viewMode === 'overunder' ? 'drivers' : 'overunder')}
+                    style={{ marginLeft: '0.5rem' }}
+                >
+                    📊 {viewMode === 'overunder' ? '← Back' : 'Over/Under'}
                 </button>
 
                 <a
@@ -177,8 +186,9 @@ const RaceCard = ({ race }) => {
                     className={styles.fantasyBtn}
                     target="_blank"
                     rel="noopener noreferrer"
+                    style={{ marginLeft: '0.5rem' }}
                 >
-                    🏆 Fantasy Lobby
+                    🏆 Fantasy
                 </a>
             </div>
 
@@ -297,8 +307,10 @@ const RaceCard = ({ race }) => {
                         })}
                     </div>
                 </>
-            ) : (
+            ) : viewMode === 'specials' ? (
                 <SpecialsView race={race} isFinished={isFinished} />
+            ) : (
+                <OverUnderView race={race} isFinished={isFinished} />
             )}
 
             {/* Post-Race Banner */}

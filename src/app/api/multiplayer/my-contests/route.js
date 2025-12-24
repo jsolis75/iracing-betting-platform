@@ -15,8 +15,78 @@ export async function GET(request) {
 
         const supabase = getSupabaseClient();
 
-        // Fetch entries for this user, including lobby and race details
-        // If history=true, fetch completed lobbies, otherwise fetch active ones
+        // Check if user is admin 'dumindu'
+        const { data: user } = await supabase
+            .from('users')
+            .select('username')
+            .eq('id', userId)
+            .single();
+
+        const isAdmin = user?.username === 'dumindu';
+
+        let query = supabase
+            .from('multiplayer_entries')
+            .select(`
+                *,
+                lobby:multiplayer_lobbies!inner (
+                    id,
+                    status,
+                    prize_pool,
+                    race_id
+                )
+            `);
+
+        if (isAdmin && history !== 'true') {
+            // Admin sees ALL active lobbies, not just their entries
+            // We need to fetch lobbies directly instead of entries for admin
+            const { data: lobbies, error: lobbyError } = await supabase
+                .from('multiplayer_lobbies')
+                .select('*')
+                .neq('status', 'completed')
+                .order('created_at', { ascending: false });
+
+            if (lobbyError) throw lobbyError;
+
+            // Mock entries for these lobbies so the rest of the logic works
+            const adminContests = lobbies.map(lobby => ({
+                id: `admin-${lobby.id}`,
+                lobbyId: lobby.id,
+                raceId: lobby.race_id,
+                status: lobby.status,
+                prizePool: lobby.prize_pool,
+                entry_fee: lobby.entry_fee || 500,
+                score: 0,
+                position: 0,
+                winnings: 0
+            }));
+
+            // We still need race names, so let's proceed to the race fetch part
+            const raceIds = lobbies.map(l => l.race_id);
+            const { data: races } = await supabase
+                .from('races')
+                .select('id, data')
+                .in('id', raceIds);
+
+            const raceMap = {};
+            if (races) {
+                races.forEach(r => {
+                    raceMap[r.id] = {
+                        name: r.data?.WeekendInfo?.TrackDisplayName || 'Unknown Track',
+                        track: r.data?.WeekendInfo?.TrackDisplayShortName || 'Unknown'
+                    };
+                });
+            }
+
+            const contests = adminContests.map(c => ({
+                ...c,
+                raceName: raceMap[c.raceId]?.name || 'Unknown Race',
+                trackName: raceMap[c.raceId]?.track || ''
+            }));
+
+            return NextResponse.json({ contests });
+        }
+
+        // Normal user logic (or admin history)
         const { data: entries, error } = await supabase
             .from('multiplayer_entries')
             .select(`

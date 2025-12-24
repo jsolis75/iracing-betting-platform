@@ -142,7 +142,8 @@ export const BettingProvider = ({ children }) => {
                         betType: bet.type,
                         stake: parseFloat(bet.stake),
                         odds: parseFloat(bet.odds),
-                        potentialPayout: calculatePotentialPayout(bet.stake, bet.odds)
+                        potentialPayout: calculatePotentialPayout(bet.stake, bet.odds),
+                        details: bet.selection ? { selection: bet.selection } : null
                     });
                 });
             }

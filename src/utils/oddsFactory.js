@@ -13,7 +13,7 @@
  * Uses ONLY iRating to calculate odds - no position, no stats
  * AGGRESSIVE MODEL: Creates strong favorites with steep odds differences
  */
-const calculatePreRaceOdds = (drivers) => {
+const calculatePreRaceOdds = (drivers, track = "") => {
     if (!drivers || drivers.length === 0) return [];
 
     // Calculate field statistics
@@ -66,7 +66,7 @@ const calculatePreRaceOdds = (drivers) => {
         // No driver should be worse than +2000 to win, no matter how bad
         winProbability = Math.max(winProbability, 0.045);
 
-        const odds = calculateOdds({ ...driver, winProbability }, normalized, true); // Pass isPreRace flag
+        const odds = calculateOdds({ ...driver, winProbability }, normalized, true, track); // Pass isPreRace flag and track
         return { ...driver, odds };
     });
 };
@@ -406,7 +406,7 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
     // Use PRE-RACE model if race hasn't started or leader hasn't completed lap 1
     if (!leaderCompletedLap1) {
         console.log('Using PRE-RACE MODEL (iRating-only)');
-        return calculatePreRaceOdds(drivers);
+        return calculatePreRaceOdds(drivers, raceState?.track || "");
     }
 
     // Use SOPHISTICATED model after lap 1
@@ -414,7 +414,7 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
     return calculateSophisticatedOdds(drivers, raceState);
 };
 
-export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false) => {
+export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false, track = "") => {
     const { winProbability } = driver;
     const stats = driver.Stats || { starts: 0, wins: 0, avgPoints: 0, avgIncidents: 0, avgFinish: 0, top25Percent: 0, winPercentage: 0 };
 
@@ -427,6 +427,13 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false) 
     // Win Odds
     let winOdds = probToOdds(winProbability);
     winOdds = Math.max(-10000, Math.min(10000, winOdds));
+
+    // SUPERSPEEDWAY CAP: Win max +2000
+    const isSuperspeedway = track.toLowerCase().includes("talladega") || track.toLowerCase().includes("daytona");
+    if (isPreRace && isSuperspeedway) {
+        if (winOdds > 2000) winOdds = 2000;
+    }
+
     if (Math.abs(winOdds) < 200) winOdds = Math.round(winOdds / 5) * 5;
     else winOdds = Math.round(winOdds / 10) * 10;
     const winOddsStr = winOdds > 0 ? `+${winOdds}` : `${winOdds}`;
@@ -462,6 +469,12 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false) 
 
     let top3Odds = probToOdds(top3Prob);
     top3Odds = Math.max(-2000, Math.min(1500, top3Odds));
+
+    // SUPERSPEEDWAY CAP: Top 3 max +500
+    if (isPreRace && isSuperspeedway) {
+        if (top3Odds > 500) top3Odds = 500;
+    }
+
     top3Odds = Math.round(top3Odds / 10) * 10;
     const top3OddsStr = top3Odds > 0 ? `+${top3Odds}` : `${top3Odds}`;
 
@@ -589,6 +602,12 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false) 
 
     let top10Odds = probToOdds(top10Prob);
     top10Odds = Math.max(-2000, Math.min(1200, top10Odds)); // Cap at -2000 instead of -3000
+
+    // SUPERSPEEDWAY CAP: Top 10 max +300
+    if (isPreRace && isSuperspeedway) {
+        if (top10Odds > 300) top10Odds = 300;
+    }
+
     top10Odds = Math.round(top10Odds / 10) * 10;
     const top10OddsStr = top10Odds > 0 ? `+${top10Odds}` : `${top10Odds}`;
 

@@ -61,7 +61,7 @@ const RaceCard = ({ race }) => {
     // Build race state for live odds calculation
     const raceState =
         lapsRemaining !== undefined && totalLaps !== undefined
-            ? { lapsRemaining, totalLaps }
+            ? { lapsRemaining, totalLaps, track }
             : null;
 
     // Calculate odds for all drivers (live updates while race is in progress)

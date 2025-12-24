@@ -306,15 +306,10 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
 
             winProbability = winProbability * lapDownPenalty;
 
-            if (currentPos <= 10) {
-                console.log(`[P${currentPos} ${driver.name}] LAP DOWN PENALTY: ${lapsDown} laps down, penalty: ${(lapDownPenalty * 100).toFixed(0)}%, new prob: ${winProbability.toFixed(4)}`);
-            }
+
         }
 
-        // DEBUG LOGGING FOR TOP 3
-        if (currentPos <= 3) {
-            console.log(`[P${currentPos} ${driver.name}] After lap-down check: ${winProbability.toFixed(4)}, lapsDown: ${lapsDown}`);
-        }
+
 
         // WIN ODDS PENALTY FOR P11+: Drivers outside top 10 have lower win probability
         // P4-P10 are exempt because they're still in strong contention for top finishes
@@ -324,20 +319,14 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
             winProbability = winProbability * positionPenalty;
         }
 
-        // DEBUG: Check if P1-P3 got penalized (they shouldn't)
-        if (currentPos <= 3) {
-            console.log(`[P${currentPos} ${driver.name}] After P4+ check (should be unchanged): ${winProbability.toFixed(4)}`);
-        }
+
 
         // LEADER FAVORITISM: Ensure P1 is always a heavy favorite regardless of iRating
         if (currentPos === 1 && useLiveOdds && raceProgress > 0.1) {
             const beforeBoost = winProbability;
             // Give leader a massive boost (they're controlling the race)
             const leaderBoost = 1.5 + (raceProgress * 0.8); // 1.5x early, up to 2.3x late
-            winProbability = Math.min(winProbability * leaderBoost, 0.85); // Cap at 85% to avoid -10000 odds
-            console.log(`[P1 ${driver.name}] Leader boost: ${leaderBoost.toFixed(2)}x, before: ${beforeBoost.toFixed(4)}, after: ${winProbability.toFixed(4)}`);
-        } else if (currentPos === 1) {
-            console.log(`[P1 ${driver.name}] NO LEADER BOOST - useLiveOdds=${useLiveOdds}, raceProgress=${raceProgress.toFixed(4)}`);
+            winProbability = winProbability * leaderBoost;
         }
 
         return { ...driver, winProbability, iRatingFactor, historicalFactor, raceProgress, qualifyingBonus };
@@ -349,30 +338,14 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
     const p2Driver = driversWithProb.find(d => d.currentPosition === 2);
     const otherDrivers = driversWithProb.filter(d => d.currentPosition !== 1);
 
-    console.log('=== P1 BOOST LOGIC DEBUG ===');
-    console.log(`P1 found: ${p1Driver ? p1Driver.name : 'NOT FOUND'}, pos: ${p1Driver?.currentPosition}, prob: ${p1Driver?.winProbability.toFixed(4)}`);
-    console.log(`P2 found: ${p2Driver ? p2Driver.name : 'NOT FOUND'}, pos: ${p2Driver?.currentPosition}, prob: ${p2Driver?.winProbability.toFixed(4)}`);
-
     if (p1Driver && useLiveOdds) {
-        // Find the highest probability among non-P1 drivers
         const maxOtherProb = Math.max(...otherDrivers.map(d => d.winProbability));
-        const maxOtherDriver = otherDrivers.find(d => d.winProbability === maxOtherProb);
-
-        console.log(`Max other prob: ${maxOtherProb.toFixed(4)} from ${maxOtherDriver?.name} (P${maxOtherDriver?.currentPosition})`);
-
-        // Force P1 to be at least 2.0x better than the second-best driver (increased from 1.5x)
         const minP1Prob = maxOtherProb * 2.0;
 
-        console.log(`P1 current prob: ${p1Driver.winProbability.toFixed(4)}, minimum required: ${minP1Prob.toFixed(4)}`);
-
         if (p1Driver.winProbability < minP1Prob) {
-            console.log(`[P1 HARD FIX] Boosting P1 ${p1Driver.name} from ${p1Driver.winProbability.toFixed(4)} to ${minP1Prob.toFixed(4)} (1.5x second best ${maxOtherProb.toFixed(4)})`);
             p1Driver.winProbability = minP1Prob;
-        } else {
-            console.log(`[P1 OK] P1 already has better probability than required minimum`);
         }
     }
-    console.log('=== END P1 BOOST DEBUG ===');
 
     // Normalize probabilities to sum to 1.0
     const totalProb = driversWithProb.reduce((sum, d) => sum + d.winProbability, 0);
@@ -385,7 +358,7 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
     }));
 
     return driversWithNormalizedProb.map(driver => {
-        const odds = calculateOdds(driver, driversWithNormalizedProb);
+        const odds = calculateOdds(driver, driversWithNormalizedProb, false, raceState?.track || "");
         return { ...driver, odds };
     });
 };
@@ -405,12 +378,12 @@ export const calculateFieldOdds = (drivers, raceState = null) => {
 
     // Use PRE-RACE model if race hasn't started or leader hasn't completed lap 1
     if (!leaderCompletedLap1) {
-        console.log('Using PRE-RACE MODEL (iRating-only)');
+
         return calculatePreRaceOdds(drivers, raceState?.track || "");
     }
 
     // Use SOPHISTICATED model after lap 1
-    console.log('Using SOPHISTICATED MODEL (position + stats + iRating)');
+
     return calculateSophisticatedOdds(drivers, raceState);
 };
 
@@ -428,8 +401,8 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false, 
     let winOdds = probToOdds(winProbability);
     winOdds = Math.max(-10000, Math.min(10000, winOdds));
 
-    // SUPERSPEEDWAY CAP: Win max +2000
-    const isSuperspeedway = track.toLowerCase().includes("talladega") || track.toLowerCase().includes("daytona");
+    const safeTrack = (track || "").toLowerCase();
+    const isSuperspeedway = safeTrack.includes("talladega") || safeTrack.includes("daytona");
     if (isPreRace && isSuperspeedway) {
         if (winOdds > 2000) winOdds = 2000;
     }
@@ -539,7 +512,7 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false, 
             const exponentialFactor = Math.pow(raceProgress, 2); // Square for exponential growth
             raceProgressMultiplier = 1.0 + (exponentialFactor * 11.0); // 1.0x to 12.0x range
 
-            console.log(`[TOP 10 ODDS] P${currentPos} at ${(raceProgress * 100).toFixed(1)}% progress: multiplier ${raceProgressMultiplier.toFixed(2)}x`);
+            // raceProgressMultiplier log removed
         } else if (currentPos <= 14) {
             // P11-14 gets partial benefit (they might sneak in)
             const exponentialFactor = Math.pow(raceProgress, 2.5); // Steeper curve for bubble positions

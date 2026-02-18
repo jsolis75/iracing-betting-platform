@@ -70,12 +70,20 @@ const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
         d.car_number.includes(searchQuery)
     );
 
-    const teams = [...new Set(drivers.map(d => d.team))];
+    // Sort drivers by salary descending
+    const sortedDrivers = [...filteredDrivers].sort((a, b) => b.salary - a.salary);
+
+    // Format name: "Ryan Blaney" -> "R. Blaney"
+    const formatName = (fullName) => {
+        const parts = fullName.split(' ');
+        if (parts.length < 2) return fullName;
+        return `${parts[0][0]}. ${parts.slice(1).join(' ')}`;
+    };
 
     // Admin Salary Adjustment
     const updateSalary = async (driverId, newSalary) => {
         if (user.username !== 'dumindu') return;
-        const roundedSalary = Math.round(parseInt(newSalary) / 100) * 100;
+        const roundedSalary = Math.round(parseInt(newSalary) / 500) * 500;
         try {
             const res = await fetch('/api/winstel/admin/salaries', {
                 method: 'POST',
@@ -132,74 +140,86 @@ const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
                         />
                     </div>
 
-                    <div className={styles.driverList}>
-                        {teams.map(team => {
-                            const teamDrivers = filteredDrivers.filter(d => d.team === team);
-                            if (teamDrivers.length === 0) return null;
-                            return (
-                                <div key={team} className={styles.teamSection}>
-                                    <h3 className={styles.teamName}>{team}</h3>
-                                    {teamDrivers.map(driver => (
-                                        <div
-                                            key={driver.id}
-                                            className={`${styles.driverCard} ${selectedDrivers.includes(driver.id) ? styles.selected : ''}`}
-                                            onClick={() => toggleDriver(driver.id)}
-                                        >
+                    <div className={styles.tableWrapper}>
+                        <table className={styles.draftTable}>
+                            <thead>
+                                <tr>
+                                    <th>Driver</th>
+                                    <th>Team</th>
+                                    <th>Avg</th>
+                                    <th>Salary</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {sortedDrivers.map(driver => (
+                                    <tr
+                                        key={driver.id}
+                                        className={`${styles.draftRow} ${selectedDrivers.includes(driver.id) ? styles.selectedRow : ''}`}
+                                    >
+                                        <td className={styles.driverCell}>
                                             <div className={styles.driverInfo}>
-                                                <div className={styles.carNumber}>{driver.car_number}</div>
+                                                <div className={styles.miniCar}>{driver.car_number}</div>
                                                 <div>
-                                                    <span className={styles.driverName}>{driver.name}</span>
-                                                    {driver.notes === 'ROTY' && <span className={styles.rotyTag}>ROTY</span>}
+                                                    <div className={styles.driverName}>{formatName(driver.name)}</div>
+                                                    {driver.notes === 'ROTY' && <span className={styles.rotyBadge}>ROTY</span>}
                                                 </div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                                {user.username === 'dumindu' ? (
-                                                    <input
-                                                        type="number"
-                                                        defaultValue={driver.salary}
-                                                        onBlur={(e) => updateSalary(driver.id, e.target.value)}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className={styles.adminInput}
-                                                        style={{ width: '80px', background: '#000', border: '1px solid #eab308', color: '#eab308', padding: '2px 5px' }}
-                                                    />
-                                                ) : (
-                                                    <span className={styles.salary}>${driver.salary.toLocaleString()}</span>
-                                                )}
-                                                <div className={styles.addIcon}>
-                                                    {selectedDrivers.includes(driver.id) ? '➖' : '➕'}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            );
-                        })}
+                                        </td>
+                                        <td className={styles.teamCell}>{driver.team}</td>
+                                        <td className={styles.avgCell}>{(driver.irating / 100).toFixed(1)}</td>
+                                        <td className={styles.salaryCell}>
+                                            {user.username === 'dumindu' ? (
+                                                <input
+                                                    type="number"
+                                                    defaultValue={driver.salary}
+                                                    onBlur={(e) => updateSalary(driver.id, e.target.value)}
+                                                    className={styles.adminSalaryInput}
+                                                />
+                                            ) : (
+                                                <span>${driver.salary.toLocaleString()}</span>
+                                            )}
+                                        </td>
+                                        <td className={styles.actionCell}>
+                                            <button
+                                                className={`${styles.addBtn} ${selectedDrivers.includes(driver.id) ? styles.remove : ''}`}
+                                                onClick={() => toggleDriver(driver.id)}
+                                            >
+                                                {selectedDrivers.includes(driver.id) ? '➖' : '➕'}
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
                 <div className={styles.selectionCol}>
                     <h3 className={styles.selectionTitle}>My Lineup</h3>
-                    {selectedDrivers.length === 0 && <p style={{ color: '#666' }}>No drivers selected.</p>}
-                    {selectedDrivers.map(id => {
-                        const driver = drivers.find(d => d.id === id);
-                        return (
-                            <div key={id} className={styles.selectedDriver}>
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                    <span style={{ fontWeight: 900, color: '#eab308', width: '25px' }}>{driver?.car_number}</span>
-                                    <span>{driver?.name}</span>
+                    {selectedDrivers.length === 0 && <p style={{ color: 'var(--text-muted)' }}>No drivers selected.</p>}
+                    <div className={styles.selectedList}>
+                        {selectedDrivers.map(id => {
+                            const driver = drivers.find(d => d.id === id);
+                            return (
+                                <div key={id} className={styles.selectedDriver}>
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                        <span className={styles.selectedCar}>{driver?.car_number}</span>
+                                        <span className={styles.selectedName}>{driver?.name}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                                        <span className={styles.selectedSalary}>${driver?.salary.toLocaleString()}</span>
+                                        <button className={styles.removeIcon} onClick={() => toggleDriver(id)}>✕</button>
+                                    </div>
                                 </div>
-                                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                                    <span style={{ fontSize: '0.8rem' }}>${driver?.salary.toLocaleString()}</span>
-                                    <button className={styles.removeBtn} onClick={() => toggleDriver(id)}>✕</button>
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
 
-                    <div style={{ marginTop: '2rem', paddingTop: '1rem', borderTop: '1px solid #333' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <div className={styles.summaryBox}>
+                        <div className={styles.summaryRow}>
                             <span>Total Salary:</span>
-                            <span style={{ color: currentSalary > SALARY_CAP ? '#ef4444' : '#22c55e' }}>
+                            <span className={currentSalary > SALARY_CAP ? styles.danger : styles.success}>
                                 ${currentSalary.toLocaleString()}
                             </span>
                         </div>

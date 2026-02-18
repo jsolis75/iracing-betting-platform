@@ -1,8 +1,9 @@
 .container {
     padding: 1.5rem;
-    background: var(--background-secondary);
+    background: var(--background-card);
     border-radius: 12px;
     border: 1px solid var(--border-color);
+    color: var(--text-primary);
 }
 
 .header {
@@ -17,8 +18,8 @@
 .statsBar {
     display: flex;
     gap: 2rem;
-    background: var(--background-card);
-    padding: 1rem 2rem;
+    background: var(--background-input);
+    padding: 0.75rem 1.5rem;
     border-radius: 8px;
     border: 1px solid var(--border-color);
 }
@@ -29,26 +30,27 @@
 }
 
 .statLabel {
-    font-size: 0.75rem;
-    color: #999;
+    font-size: 0.7rem;
+    color: var(--text-muted);
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    font-weight: 600;
 }
 
 .statValue {
-    font-size: 1.25rem;
-    font-weight: bold;
+    font-size: 1.1rem;
+    font-weight: 800;
     color: var(--accent-color);
 }
 
 .statValue.danger {
-    color: #ef4444;
+    color: var(--status-error);
 }
 
 .mainLayout {
     display: grid;
-    grid-template-columns: 1fr 350px;
-    gap: 2rem;
+    grid-template-columns: 1fr 320px;
+    gap: 1.5rem;
 }
 
 @media (max-width: 1024px) {
@@ -58,103 +60,153 @@
 }
 
 .searchBar {
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
 }
 
 .searchInput {
     width: 100%;
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 1rem;
     background: var(--background-input);
     border: 1px solid var(--border-color);
     border-radius: 6px;
     color: var(--text-primary);
-    font-size: 1rem;
+    font-size: 0.95rem;
 }
 
-.driverList {
+.tableWrapper {
     height: 600px;
     overflow-y: auto;
-    padding-right: 1rem;
-}
-
-.teamSection {
-    margin-bottom: 2rem;
-}
-
-.teamName {
-    font-size: 1.1rem;
-    font-weight: bold;
-    margin-bottom: 1rem;
-    color: var(--accent-color);
-    border-bottom: 1px solid var(--border-color);
-    padding-bottom: 0.5rem;
-}
-
-.driverCard {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.75rem 1rem;
-    background: var(--background-card);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    margin-bottom: 0.5rem;
-    cursor: pointer;
-    transition: all 0.2s;
+    background: var(--background-card);
 }
 
-.driverCard:hover {
-    border-color: var(--accent-color);
+.draftTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.draftTable th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    background: var(--background-input);
+    color: var(--text-muted);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    font-weight: 700;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.draftRow {
+    border-bottom: 1px solid var(--border-color);
+    transition: background 0.2s;
+}
+
+.draftRow:hover {
     background: var(--background-input);
 }
 
-.driverCard.selected {
-    border-color: var(--accent-color);
-    background: rgba(234, 179, 8, 0.1);
+.selectedRow {
+    background: rgba(0, 87, 184, 0.08) !important;
+}
+
+.draftTable td {
+    padding: 0.75rem 1rem;
+    vertical-align: middle;
 }
 
 .driverInfo {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
-.carNumber {
-    width: 35px;
-    height: 35px;
+.miniCar {
+    width: 28px;
+    height: 28px;
     background: var(--background);
-    border: 2px solid var(--accent-color);
+    border: 1.5px solid var(--accent-color);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 900;
-    font-family: inherit;
-    font-size: 1.1rem;
+    font-size: 0.85rem;
     color: var(--accent-color);
+    flex-shrink: 0;
 }
 
 .driverName {
-    font-weight: bold;
+    font-weight: 700;
 }
 
-.rotyTag {
-    font-size: 0.65rem;
+.rotyBadge {
+    font-size: 0.6rem;
     background: var(--accent-color);
     color: var(--background);
-    padding: 0 4px;
-    border-radius: 2px;
-    margin-left: 0.5rem;
-    font-weight: bold;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 800;
 }
 
-.salary {
+.teamCell {
+    color: var(--text-secondary);
+}
+
+.avgCell {
+    font-family: inherit;
+    font-weight: 600;
+}
+
+.salaryCell {
+    font-weight: 700;
+    color: var(--status-success);
+}
+
+.actionCell {
+    width: 50px;
+    text-align: center;
+}
+
+.addBtn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: none;
+    background: var(--status-success);
+    color: white;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.addBtn:hover {
+    transform: scale(1.1);
+    filter: brightness(1.1);
+}
+
+.addBtn.remove {
+    background: var(--status-error);
+}
+
+.adminSalaryInput {
+    width: 70px;
+    background: var(--background);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-color);
+    padding: 2px 4px;
+    border-radius: 4px;
     font-weight: bold;
-    color: #22c55e;
 }
 
 .selectionCol {
-    background: var(--background-card);
-    padding: 1.5rem;
+    background: var(--background-input);
+    padding: 1.25rem;
     border-radius: 12px;
     border: 1px solid var(--border-color);
     height: fit-content;
@@ -163,52 +215,97 @@
 }
 
 .selectionTitle {
-    margin-bottom: 1.5rem;
-    font-size: 1.25rem;
-    border-bottom: 1px solid #333;
+    margin-bottom: 1.25rem;
+    font-size: 1.1rem;
+    border-bottom: 2px solid var(--border-color);
     padding-bottom: 0.5rem;
+}
+
+.selectedList {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .selectedDriver {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem;
-    border-bottom: 1px solid #222;
+    padding: 0.6rem 0.75rem;
+    background: var(--background-card);
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
 }
 
-.removeBtn {
+.selectedCar {
+    font-weight: 900;
+    color: var(--accent-color);
+    width: 25px;
+}
+
+.selectedName {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.selectedSalary {
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+
+.removeIcon {
     background: none;
     border: none;
-    color: #666;
+    color: var(--text-muted);
     cursor: pointer;
-    font-size: 1.2rem;
+    font-size: 1rem;
 }
 
-.removeBtn:hover {
-    color: #ef4444;
+.removeIcon:hover {
+    color: var(--status-error);
+}
+
+.summaryBox {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--border-color);
+}
+
+.summaryRow {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+}
+
+.success {
+    color: var(--status-success);
+}
+
+.danger {
+    color: var(--status-error);
 }
 
 .submitBtn {
     width: 100%;
-    margin-top: 2rem;
-    padding: 1rem;
-    background: #eab308;
-    color: black;
+    padding: 0.8rem;
+    background: var(--accent-color);
+    color: white;
     border: none;
     border-radius: 6px;
-    font-weight: bold;
-    font-size: 1.1rem;
+    font-weight: 800;
+    font-size: 1rem;
     cursor: pointer;
-    transition: transform 0.1s;
+    transition: all 0.2s;
+    text-transform: uppercase;
 }
 
 .submitBtn:disabled {
-    background: #333;
-    color: #666;
+    background: var(--border-color);
+    color: var(--text-muted);
     cursor: not-allowed;
 }
 
-.submitBtn:active:not(:disabled) {
-    transform: scale(0.98);
+.submitBtn:not(:disabled):hover {
+    filter: brightness(1.2);
+    transform: translateY(-2px);
 }

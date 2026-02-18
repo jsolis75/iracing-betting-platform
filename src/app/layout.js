@@ -2,7 +2,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Header from "@/components/Layout/Header";
 import Sidebar from "@/components/Layout/Sidebar";
 import BetSlip from "@/components/Betting/BetSlip";
-import Chat from "@/components/Chat/Chat";
 import ThemeToggle from "@/components/ThemeToggle/ThemeToggle";
 import { BettingProvider } from "@/context/BettingContext";
 import { UserProvider } from "@/context/UserContext";
@@ -41,7 +40,6 @@ export default function RootLayout({ children }) {
                   <BetSlip />
                 </aside>
               </div>
-              <Chat />
               <ThemeToggle />
             </BettingProvider>
           </UserProvider>

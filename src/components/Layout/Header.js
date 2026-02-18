@@ -35,6 +35,7 @@ const Header = () => {
             <Link href="/profile" className={styles.navLink}>History</Link>
             <Link href="/multiplayer" className={styles.navLink}>Fantasy</Link>
             <Link href="/esports" className={styles.navLink}>Esports</Link>
+            <Link href="/leagues" className={styles.navLink}>Leagues</Link>
           </nav>
         </div>
 

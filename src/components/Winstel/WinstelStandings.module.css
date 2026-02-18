@@ -51,6 +51,6 @@
 
 .empty {
     text-align: center;
-    color: #666;
+    color: var(--text-muted);
     padding: 2rem !important;
 }

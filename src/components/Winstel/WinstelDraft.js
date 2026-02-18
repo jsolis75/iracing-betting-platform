@@ -83,7 +83,7 @@ const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
     // Admin Salary Adjustment
     const updateSalary = async (driverId, newSalary) => {
         if (user.username !== 'dumindu') return;
-        const roundedSalary = Math.round(parseInt(newSalary) / 500) * 500;
+        const roundedSalary = Math.round(parseInt(newSalary) / 100) * 100;
         try {
             const res = await fetch('/api/winstel/admin/salaries', {
                 method: 'POST',

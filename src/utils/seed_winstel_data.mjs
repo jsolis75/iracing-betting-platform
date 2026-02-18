@@ -86,7 +86,7 @@ async function seed() {
         if (existingSalaries.length === 0) {
             const salaries = drivers.map(d => {
                 const rawSalary = Math.floor((d.irating / 7000) * 10000) + 4000;
-                const roundedSalary = Math.round(rawSalary / 500) * 500;
+                const roundedSalary = Math.round(rawSalary / 100) * 100;
                 return {
                     event_id: event.id,
                     driver_id: d.id,

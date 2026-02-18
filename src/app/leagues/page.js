@@ -3,86 +3,58 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useUser } from '@/context/UserContext';
-import DraftTeam from '@/components/Multiplayer/DraftTeam';
-import LobbyLeaderboard from '@/components/Multiplayer/LobbyLeaderboard';
-import MyContests from '@/components/Multiplayer/MyContests';
+import WinstelDraft from '@/components/Winstel/WinstelDraft';
+import WinstelStandings from '@/components/Winstel/WinstelStandings';
 import styles from '../multiplayer/Multiplayer.module.css';
 
 const LeaguesContent = () => {
     const { user } = useUser();
 
-    // For now, let's assume we use a specific raceId or lobby for Winstel Cup
-    // In a real scenario, this would dynamically find the active Winstel Cup race
-    const searchParams = useSearchParams();
-    const raceId = searchParams.get('raceId') || 'winstel-cup-active'; // Placeholder or specific ID
+    // UI State
+    const [activeTab, setActiveTab] = useState('draft'); // 'draft' or 'standings'
 
-    const [lobby, setLobby] = useState(null);
-    const [entries, setEntries] = useState([]);
+    // Data State
+    const [event, setEvent] = useState(null);
+    const [drivers, setDrivers] = useState([]);
     const [myEntry, setMyEntry] = useState(null);
+    const [standings, setStandings] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [raceData, setRaceData] = useState(null);
 
-    // Fetch Race Data
-    useEffect(() => {
-        const fetchRace = async () => {
-            try {
-                const res = await fetch(`/api/race-data?raceId=${raceId}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setRaceData(data);
-                }
-            } catch (err) {
-                console.error("Failed to fetch race data", err);
-            }
-        };
-        fetchRace();
-    }, [raceId]);
-
-    // Fetch Lobby Data
-    const fetchLobby = async () => {
+    const fetchData = async () => {
         try {
-            const res = await fetch(`/api/multiplayer/lobby?raceId=${raceId}`);
-            if (res.ok) {
-                const data = await res.json();
-                setLobby(data.lobby);
-                setEntries(data.entries || []);
-                if (user && data.entries) {
-                    setMyEntry(data.entries.find(e => e.user_id === user.id));
+            // 1. Fetch Drivers and Event
+            const driverRes = await fetch('/api/winstel/drivers');
+            if (driverRes.ok) {
+                const data = await driverRes.json();
+                setEvent(data.event);
+                setDrivers(data.drivers);
+
+                // 2. Fetch User Entry if event exists
+                if (user && data.event) {
+                    const entryRes = await fetch(`/api/winstel/lineup?eventId=${data.event.id}&userId=${user.id}`);
+                    if (entryRes.ok) {
+                        const entryData = await entryRes.json();
+                        setMyEntry(entryData.entry);
+                    }
                 }
+            }
+
+            // 3. Fetch Standings
+            const standingsRes = await fetch('/api/winstel/standings');
+            if (standingsRes.ok) {
+                const standingsData = await standingsRes.json();
+                setStandings(standingsData.standings);
             }
         } catch (err) {
-            console.error("Failed to fetch lobby", err);
+            console.error("Failed to fetch Winstel data", err);
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchLobby();
-        const interval = setInterval(fetchLobby, 30000);
-        return () => clearInterval(interval);
-    }, [raceId, user]);
-
-    const handleJoin = async () => {
-        if (!user) return alert("Please login first");
-        if (!confirm("Join Winstel Cup Series Fantasy for $500?")) return;
-
-        try {
-            const res = await fetch('/api/multiplayer/join', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ raceId, userId: user.id })
-            });
-            const data = await res.json();
-            if (data.success) {
-                fetchLobby();
-            } else {
-                alert(data.error);
-            }
-        } catch (err) {
-            alert("Join failed");
-        }
-    };
+        fetchData();
+    }, [user]);
 
     if (loading) return <div className={styles.container}>Loading Winstel Cup Series...</div>;
 
@@ -90,53 +62,45 @@ const LeaguesContent = () => {
         <div className={styles.container}>
             <div className={styles.header}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <h1 style={{ color: '#eab308' }}>Winstel Cup Series</h1>
-                    <p style={{ color: 'var(--text-secondary)' }}>Fantasy Contest - Draft your winning team!</p>
-                </div>
-                <div className={styles.prizePool}>
-                    Prize Pool: <span>${lobby ? lobby.prize_pool : 0}</span>
+                    <h1 style={{ color: '#eab308', textTransform: 'uppercase', fontStyle: 'italic', fontSize: '2.5rem' }}>
+                        Winstel Cup Series
+                    </h1>
+                    <div className={styles.tabs} style={{ marginTop: '1rem' }}>
+                        <button
+                            className={`${styles.tab} ${activeTab === 'draft' ? styles.activeTab : ''}`}
+                            onClick={() => setActiveTab('draft')}
+                            style={{ background: activeTab === 'draft' ? '#eab308' : 'transparent', color: activeTab === 'draft' ? 'black' : 'white' }}
+                        >
+                            Draft Lineup
+                        </button>
+                        <button
+                            className={`${styles.tab} ${activeTab === 'standings' ? styles.activeTab : ''}`}
+                            onClick={() => setActiveTab('standings')}
+                            style={{ background: activeTab === 'standings' ? '#eab308' : 'transparent', color: activeTab === 'standings' ? 'black' : 'white' }}
+                        >
+                            Season Standings
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {!myEntry ? (
-                <div className={styles.joinSection} style={{ borderTop: '2px solid #eab308' }}>
-                    <h2 style={{ marginBottom: '1rem' }}>Entry Fee: $500</h2>
-                    <p style={{ marginBottom: '2rem' }}>Compete against other players in the Winstel Cup Series Fantasy Draft.</p>
-                    <button onClick={handleJoin} className={styles.joinBtn} style={{ background: '#eab308', color: '#000' }}>
-                        Join Winstel Cup Contest
-                    </button>
-                </div>
-            ) : (
-                <div className={styles.gameArea}>
-                    {!myEntry.driver_1 || !myEntry.driver_2 || !myEntry.driver_3 ? (
-                        <>
-                            <div className={styles.leftCol}>
-                                <DraftTeam
-                                    drivers={(raceData?.DriverInfo?.Drivers || []).filter(d => d.CarIsPaceCar === 0 && d.IsSpectator === 0)}
-                                    entry={myEntry}
-                                    lobbyId={lobby.id}
-                                    onDraftUpdate={fetchLobby}
-                                />
-                            </div>
-                            <div className={styles.rightCol}>
-                                <div className={styles.leaderboardPlaceholder}>
-                                    <h3>Live Standings</h3>
-                                    <p>Draft your team to view the leaderboard!</p>
-                                </div>
-                            </div>
-                        </>
+            <div style={{ marginTop: '2rem' }}>
+                {activeTab === 'draft' ? (
+                    event ? (
+                        <WinstelDraft
+                            user={user}
+                            event={event}
+                            drivers={drivers}
+                            initialLineup={myEntry?.driver_ids || []}
+                            onSave={fetchData}
+                        />
                     ) : (
-                        <div className={styles.fullWidthCol}>
-                            <LobbyLeaderboard
-                                entries={entries}
-                                drivers={raceData?.DriverInfo?.Drivers || []}
-                                raceData={raceData}
-                                lobbyId={lobby.id}
-                            />
-                        </div>
-                    )}
-                </div>
-            )}
+                        <p>No active event found. Stay tuned for the next race!</p>
+                    )
+                ) : (
+                    <WinstelStandings standings={standings} />
+                )}
+            </div>
         </div>
     );
 };

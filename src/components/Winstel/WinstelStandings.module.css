@@ -1,0 +1,55 @@
+.container {
+    padding: 1.5rem;
+    background: #111;
+    border-radius: 12px;
+    border: 1px solid #333;
+}
+
+.title {
+    margin-bottom: 1.5rem;
+    color: #eab308;
+}
+
+.tableWrapper {
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.table th {
+    text-align: left;
+    padding: 1rem;
+    border-bottom: 2px solid #222;
+    color: #666;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+}
+
+.table td {
+    padding: 1rem;
+    border-bottom: 1px solid #222;
+}
+
+.username {
+    font-weight: bold;
+}
+
+.score {
+    text-align: right;
+    font-family: 'Courier New', Courier, monospace;
+    color: #eab308;
+    font-weight: bold;
+}
+
+.leader {
+    background: rgba(234, 179, 8, 0.05);
+}
+
+.empty {
+    text-align: center;
+    color: #666;
+    padding: 2rem !important;
+}

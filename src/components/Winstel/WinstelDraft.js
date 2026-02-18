@@ -75,6 +75,7 @@ const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
     // Admin Salary Adjustment
     const updateSalary = async (driverId, newSalary) => {
         if (user.username !== 'dumindu') return;
+        const roundedSalary = Math.round(parseInt(newSalary) / 100) * 100;
         try {
             const res = await fetch('/api/winstel/admin/salaries', {
                 method: 'POST',
@@ -83,11 +84,10 @@ const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
                     userId: user.id,
                     eventId: event.id,
                     driverId,
-                    salary: parseInt(newSalary)
+                    salary: roundedSalary
                 })
             });
             if (res.ok) {
-                // Refresh local drivers list or trigger refresh in parent
                 onSave && onSave();
             }
         } catch (err) {
@@ -114,9 +114,9 @@ const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
                     className={styles.submitBtn}
                     style={{ maxWidth: '200px', marginTop: 0 }}
                     onClick={handleSave}
-                    disabled={saving || selectedDrivers.length !== MAX_DRIVERS || currentSalary > SALARY_CAP}
+                    disabled={saving || event.status !== 'upcoming' || selectedDrivers.length !== MAX_DRIVERS || currentSalary > SALARY_CAP}
                 >
-                    {saving ? 'Saving...' : 'Lock In Lineup'}
+                    {saving ? 'Saving...' : event.status !== 'upcoming' ? 'Lineups Locked' : 'Lock In Lineup'}
                 </button>
             </div>
 

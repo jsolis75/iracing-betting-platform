@@ -1,13 +1,13 @@
 .container {
     padding: 1.5rem;
-    background: #111;
+    background: var(--background-card);
     border-radius: 12px;
-    border: 1px solid #333;
+    border: 1px solid var(--border-color);
 }
 
 .title {
     margin-bottom: 1.5rem;
-    color: #eab308;
+    color: var(--accent-color);
 }
 
 .tableWrapper {
@@ -22,15 +22,16 @@
 .table th {
     text-align: left;
     padding: 1rem;
-    border-bottom: 2px solid #222;
-    color: #666;
+    border-bottom: 2px solid var(--border-color);
+    color: var(--text-muted);
     font-size: 0.8rem;
     text-transform: uppercase;
 }
 
 .table td {
     padding: 1rem;
-    border-bottom: 1px solid #222;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
 }
 
 .username {
@@ -40,7 +41,7 @@
 .score {
     text-align: right;
     font-family: 'Courier New', Courier, monospace;
-    color: #eab308;
+    color: var(--accent-color);
     font-weight: bold;
 }
 

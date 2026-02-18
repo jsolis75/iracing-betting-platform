@@ -84,11 +84,15 @@ async function seed() {
             .limit(1);
 
         if (existingSalaries.length === 0) {
-            const salaries = drivers.map(d => ({
-                event_id: event.id,
-                driver_id: d.id,
-                salary: Math.floor((d.irating / 7000) * 10000) + 4000
-            }));
+            const salaries = drivers.map(d => {
+                const rawSalary = Math.floor((d.irating / 7000) * 10000) + 4000;
+                const roundedSalary = Math.round(rawSalary / 100) * 100;
+                return {
+                    event_id: event.id,
+                    driver_id: d.id,
+                    salary: roundedSalary
+                };
+            });
             const { error: salaryError } = await supabase.from('winstel_salaries').insert(salaries);
             if (salaryError) console.error(`Error seeding salaries for week ${i + 1}:`, salaryError);
         }

@@ -87,30 +87,101 @@ export async function POST(request) {
             // console.warn('Supabase skipped:', dbError.message);
         }
 
-        // 4. FALLBACK: Write to local JSON file for development/backup
-        // This ensures data is available even if Supabase is not configured or fails
+        // 4. Winstel Cup Live Scoring Logic
         try {
-            const fs = require('fs');
-            const path = require('path');
-            const dataDir = path.join(process.cwd(), 'src', 'data');
+            const supabase = getSupabaseClient();
 
-            if (!fs.existsSync(dataDir)) {
-                fs.mkdirSync(dataDir, { recursive: true });
+            // a. Find active Winstel event
+            const now = new Date();
+            const { data: event } = await supabase
+                .from('winstel_events')
+                .select('*')
+                .in('status', ['upcoming', 'live'])
+                .order('race_date', { ascending: true })
+                .limit(1)
+                .single();
+
+            if (event) {
+                // b. Extract driver results from telemetry
+                const sessions = data.SessionInfo?.Sessions || [];
+                const raceSession = sessions.find(s => s.SessionType === 'Race') || sessions[sessions.length - 1];
+
+                if (raceSession?.ResultsPositions) {
+                    const telemetryDrivers = data.DriverInfo?.Drivers || [];
+
+                    // c. Map telemetry results to Winstel drivers
+                    const { data: winstelDrivers } = await supabase.from('winstel_drivers').select('*');
+                    const driverResultsMapping = {};
+
+                    raceSession.ResultsPositions.forEach(res => {
+                        const tDriver = telemetryDrivers.find(d => d.CarIdx === res.CarIdx);
+                        if (tDriver) {
+                            // Try to match by name
+                            const wDriver = winstelDrivers.find(wd =>
+                                wd.name.toLowerCase() === tDriver.UserName.toLowerCase()
+                            );
+                            if (wDriver) {
+                                driverResultsMapping[wDriver.id] = {
+                                    position: res.Position,
+                                    startingPosition: res.Position - res.PositionsMoved, // PositionsMoved is + for gaining spots
+                                    name: tDriver.UserName
+                                };
+                            }
+                        }
+                    });
+
+                    // d. Update entries for this event
+                    const { data: entries } = await supabase
+                        .from('winstel_entries')
+                        .select('*')
+                        .eq('event_id', event.id);
+
+                    if (entries && entries.length > 0) {
+                        const { calculateEntryScore } = require('@/lib/winstel_scoring');
+
+                        for (const entry of entries) {
+                            const entryScore = calculateEntryScore(entry.driver_ids, driverResultsMapping);
+
+                            // Update entry score
+                            await supabase
+                                .from('winstel_entries')
+                                .update({ score: entryScore })
+                                .eq('id', entry.id);
+                        }
+
+                        // e. Update season standings (recalculate totals for all users in entries)
+                        // This is simpler than incremental updates to avoid drift
+                        const { data: allTotals } = await supabase
+                            .from('winstel_entries')
+                            .select('user_id, score');
+
+                        const userTotals = {};
+                        allTotals.forEach(ent => {
+                            userTotals[ent.user_id] = (userTotals[ent.user_id] || 0) + (Number(ent.score) || 0);
+                        });
+
+                        for (const [userId, total] of Object.entries(userTotals)) {
+                            await supabase
+                                .from('winstel_standings')
+                                .upsert({
+                                    user_id: parseInt(userId),
+                                    total_score: total,
+                                    updated_at: new Date().toISOString()
+                                }, { onConflict: 'user_id' });
+                        }
+                    }
+
+                    // f. Update event status to 'live' if it was 'upcoming'
+                    if (event.status === 'upcoming') {
+                        await supabase
+                            .from('winstel_events')
+                            .update({ status: 'live' })
+                            .eq('id', event.id);
+                    }
+                }
             }
-
-            const filePath = path.join(dataDir, 'live_race_data.json');
-
-            // Add a timestamp to the data
-            const localData = {
-                ...data,
-                last_updated: new Date().toISOString()
-            };
-
-            fs.writeFileSync(filePath, JSON.stringify(localData, null, 2));
-            // console.log('Saved live race data to local file:', filePath);
-        } catch (fileError) {
-            console.error('Failed to write local race data:', fileError);
-            // Don't fail the request if local write fails, but log it
+        } catch (scoringError) {
+            console.error('Winstel live scoring error:', scoringError);
         }
 
         return NextResponse.json({ success: true });

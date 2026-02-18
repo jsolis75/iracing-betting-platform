@@ -17,10 +17,10 @@
 .statsBar {
     display: flex;
     gap: 2rem;
-    background: #000;
+    background: var(--background-card);
     padding: 1rem 2rem;
     border-radius: 8px;
-    border: 1px solid #eab308;
+    border: 1px solid var(--border-color);
 }
 
 .statItem {
@@ -38,7 +38,7 @@
 .statValue {
     font-size: 1.25rem;
     font-weight: bold;
-    color: #eab308;
+    color: var(--accent-color);
 }
 
 .statValue.danger {
@@ -64,10 +64,10 @@
 .searchInput {
     width: 100%;
     padding: 0.75rem 1rem;
-    background: #111;
-    border: 1px solid #333;
+    background: var(--background-input);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
-    color: white;
+    color: var(--text-primary);
     font-size: 1rem;
 }
 
@@ -85,8 +85,8 @@
     font-size: 1.1rem;
     font-weight: bold;
     margin-bottom: 1rem;
-    color: #eab308;
-    border-bottom: 1px solid #333;
+    color: var(--accent-color);
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 0.5rem;
 }
 
@@ -95,8 +95,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem 1rem;
-    background: #1a1a1a;
-    border: 1px solid #333;
+    background: var(--background-card);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     margin-bottom: 0.5rem;
     cursor: pointer;
@@ -104,12 +104,12 @@
 }
 
 .driverCard:hover {
-    border-color: #eab308;
-    background: #222;
+    border-color: var(--accent-color);
+    background: var(--background-input);
 }
 
 .driverCard.selected {
-    border-color: #eab308;
+    border-color: var(--accent-color);
     background: rgba(234, 179, 8, 0.1);
 }
 
@@ -122,15 +122,15 @@
 .carNumber {
     width: 35px;
     height: 35px;
-    background: #000;
-    border: 2px solid #eab308;
+    background: var(--background);
+    border: 2px solid var(--accent-color);
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 900;
-    font-family: 'Black Ops One', cursive, sans-serif;
+    font-family: inherit;
     font-size: 1.1rem;
-    color: #eab308;
+    color: var(--accent-color);
 }
 
 .driverName {
@@ -139,8 +139,8 @@
 
 .rotyTag {
     font-size: 0.65rem;
-    background: #eab308;
-    color: black;
+    background: var(--accent-color);
+    color: var(--background);
     padding: 0 4px;
     border-radius: 2px;
     margin-left: 0.5rem;
@@ -153,9 +153,10 @@
 }
 
 .selectionCol {
-    background: #111;
+    background: var(--background-card);
     padding: 1.5rem;
     border-radius: 12px;
+    border: 1px solid var(--border-color);
     height: fit-content;
     position: sticky;
     top: 1rem;

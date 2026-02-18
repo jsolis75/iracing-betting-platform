@@ -25,47 +25,73 @@ async function seed() {
         if (error) console.error(`Error inserting driver ${d.name}:`, error);
     }
 
-    // 2. Create an initial event if none exists
-    const { data: events, error: eventError } = await supabase
-        .from('winstel_events')
-        .select('*')
-        .limit(1);
+    const schedule = [
+        "Daytona International Speedway Oval - 2008",
+        "Auto Club Speedway Oval",
+        "Bristol Motor Speedway Dual Pit Roads",
+        "Las Vegas Motor Speedway Oval",
+        "[Legacy] Texas Motor Speedway - 2009 Oval",
+        "Martinsville Speedway",
+        "Charlotte Motor Speedway Oval Night",
+        "Dover Motor Speedway",
+        "[Legacy] Pocono Raceway - 2009 Oval",
+        "New Hampshire Motor Speedway Oval",
+        "Chicagoland Speedway",
+        "Watkins Glen International Cup",
+        "Indianapolis Motor Speedway NASCAR Oval",
+        "Auto Club Speedway Oval",
+        "Richmond Raceway Night",
+        "Kansas Speedway Oval",
+        "[Legacy] Michigan International Speedway - 2009",
+        "Talladega Superspeedway",
+        "[Legacy] Phoenix Raceway - 2008 Oval",
+        "EchoPark Speedway (Atlanta) Oval - 2008"
+    ];
 
-    if (eventError) {
-        console.error('Error checking events:', eventError);
-        return;
-    }
+    console.log('Seeding Winstel Events...');
 
-    if (events.length === 0) {
-        console.log('Creating initial Winstel event...');
-        const { data: newEvent, error: insertEventError } = await supabase
+    let startDate = new Date('2026-02-22');
+
+    const { data: drivers } = await supabase.from('winstel_drivers').select('*');
+
+    for (let i = 0; i < schedule.length; i++) {
+        const raceDate = new Date(startDate);
+        raceDate.setDate(startDate.getDate() + (i * 7));
+        const dateStr = raceDate.toISOString().split('T')[0];
+
+        const { data: event, error: eventError } = await supabase
             .from('winstel_events')
-            .insert({
-                name: 'Season Launch: Daytona',
-                event_order: 1,
+            .upsert({
+                name: `Week ${i + 1}: ${schedule[i].split(' [')[0]}`,
+                track_name: schedule[i],
+                event_order: i + 1,
+                race_date: dateStr,
                 status: 'upcoming'
-            })
+            }, { onConflict: 'event_order' })
             .select()
             .single();
 
-        if (insertEventError) {
-            console.error('Error creating event:', insertEventError);
-            return;
+        if (eventError) {
+            console.error(`Error seeding event ${i + 1}:`, eventError);
+            continue;
         }
 
-        // 3. Seed initial salaries for the event
-        const { data: drivers } = await supabase.from('winstel_drivers').select('*');
-        const salaries = drivers.map(d => ({
-            event_id: newEvent.id,
-            driver_id: d.id,
-            salary: Math.floor((d.irating / 7000) * 10000) + 4000 // Scale salary by iRating
-        }));
-
-        const { error: salaryError } = await supabase
+        // Add initial salaries for this event if not exists
+        const { data: existingSalaries } = await supabase
             .from('winstel_salaries')
-            .insert(salaries);
+            .select('id')
+            .eq('event_id', event.id)
+            .limit(1);
 
-        if (salaryError) console.error('Error seeding salaries:', salaryError);
+        if (existingSalaries.length === 0) {
+            const salaries = drivers.map(d => ({
+                event_id: event.id,
+                driver_id: d.id,
+                salary: Math.floor((d.irating / 7000) * 10000) + 4000
+            }));
+            const { error: salaryError } = await supabase.from('winstel_salaries').insert(salaries);
+            if (salaryError) console.error(`Error seeding salaries for week ${i + 1}:`, salaryError);
+        }
     }
 
     console.log('Winstel Seeding Complete!');

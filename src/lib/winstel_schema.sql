@@ -14,9 +14,11 @@ CREATE TABLE IF NOT EXISTS winstel_drivers (
 CREATE TABLE IF NOT EXISTS winstel_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL, -- e.g. "Week 1: Daytona"
+    track_name TEXT,
     status TEXT NOT NULL DEFAULT 'upcoming', -- 'upcoming', 'live', 'finished', 'settled'
     race_id UUID, -- Link to telemetry race if applicable
     event_order INTEGER NOT NULL,
+    race_date DATE NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

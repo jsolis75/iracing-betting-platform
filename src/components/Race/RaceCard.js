@@ -109,11 +109,28 @@ const RaceCard = ({ race }) => {
     }, [drivers]);
 
     // ---- LIVE FEEL: highlight drivers the user has pending bets on ----
-    const myBetDrivers = new Set(
-        (placedBets || [])
-            .filter(b => b.status === 'pending' && String(b.race_id) === String(race.id) && b.driver_name)
-            .map(b => b.driver_name.toLowerCase().trim())
-    );
+    // Covers single bets AND parlay legs (a parlay's driver_name is just
+    // "3 Legs" — the real drivers are inside bet.details).
+    const myBetDrivers = new Set();
+    (placedBets || []).forEach(b => {
+        if (b.status !== 'pending') return;
+        const betMatchesRace = String(b.race_id) === String(race.id);
+
+        if (Array.isArray(b.details)) {
+            // Parlay: check each leg (legs carry their own raceId)
+            b.details.forEach(leg => {
+                const legMatchesRace = leg.raceId
+                    ? String(leg.raceId) === String(race.id)
+                    : (betMatchesRace || b.race_id === 'multi');
+                if (legMatchesRace && leg.driver) {
+                    myBetDrivers.add(String(leg.driver).toLowerCase().trim());
+                }
+            });
+        } else if (betMatchesRace && b.driver_name) {
+            // Single bet
+            myBetDrivers.add(b.driver_name.toLowerCase().trim());
+        }
+    });
 
     // Lap progress (hidden for unlimited/practice sessions)
     const showProgress = totalLaps > 0 && totalLaps < 999 && lapsRemaining !== undefined;

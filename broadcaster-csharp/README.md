@@ -1,43 +1,37 @@
 # iRacing Broadcaster (C#)
 
-A standalone Windows executable that broadcasts iRacing telemetry data to the betting platform.
+A standalone Windows executable that broadcasts iRacing telemetry data to
+**https://iracingbets.com**. This is a full port of `broadcast_telemetry.py`
+(the Python script): it parses the sim's session info (WeekendInfo,
+SessionInfo, DriverInfo — drivers, positions, results) and reads live
+telemetry (session flags, state, laps/time remaining) directly from
+iRacing's shared memory, then POSTs it to `/api/telemetry/ingest` every
+5 seconds. No Python, no dependencies — users just download and run it.
 
-## Building the Executable
-
-### Prerequisites
-1. Install .NET 8 SDK: https://dotnet.microsoft.com/download/dotnet/8.0
-
-### Build Instructions
-
-1. Open command prompt in this directory
-2. Run the following command to build a standalone executable:
-
-```bash
-dotnet publish -c Release -r win-x64 --self-contained true /p:PublishSingleFile=true /p:PublishTrimmed=true
-```
-
-3. The executable will be located at:
-```
-bin\Release\net8.0\win-x64\publish\iRacingBroadcaster.exe
-```
-
-4. Copy `iRacingBroadcaster.exe` to `public/broadcast/` in the main project
-
-### File Size
-The final executable will be approximately 8-12 MB (self-contained, no dependencies required).
-
-## Usage
-
-Users simply download and run `iRacingBroadcaster.exe`. No installation, no Python, no dependencies.
+## For users
 
 1. Download `iRacingBroadcaster.exe`
-2. Double-click to run
-3. Start or join an iRacing session
-4. The broadcaster will automatically connect and send data
+2. Double-click to run (if Windows SmartScreen warns, click "More info" → "Run anyway")
+3. Start or join an iRacing session (be in the car or spotting, not just the UI)
+4. The app shows `[OK] Connected to iRacing! Broadcasting data...` and iracingbets.com goes live
 
-## Notes
+## Building
 
-- Uses the official iRacing SDK wrapper (NuGet package)
-- Self-contained: includes .NET runtime
-- Works on Windows 10/11 (64-bit)
-- Automatically reconnects if iRacing restarts
+Pushing changes in this folder to GitHub builds the exe automatically via
+GitHub Actions (`.github/workflows/build-broadcaster.yml`) and publishes it at:
+
+```
+https://github.com/jsolis75/iracing-betting-platform/releases/download/broadcaster-latest/iRacingBroadcaster.exe
+```
+
+To build locally instead (requires .NET 8 SDK):
+
+```bash
+dotnet publish -c Release
+# output: bin/Release/net8.0/win-x64/publish/iRacingBroadcaster.exe
+```
+
+## Advanced
+
+- `--url <api-url>` or env var `IRACINGBETS_API_URL` — override the target API (for testing)
+- `--test-yaml <file>` — parse a session-info YAML file and print the JSON payload (development)

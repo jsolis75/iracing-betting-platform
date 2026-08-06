@@ -516,7 +516,13 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false, 
             }).length;
         }
 
-        const threatImpact = threatsFromBehind * (0.08 * (1 - raceProgress));
+        // BUGFIX: threats only endanger a TOP-10 finish for drivers near the
+        // bubble. A charger passing the LEADER demotes him to P2 — he's still
+        // top 10. The old flat penalty hit P1 hardest (the whole field is
+        // "behind" him), which inverted the odds: leader -610 while P8 was
+        // -2000. Scale the impact by proximity to the P10 cutoff instead.
+        const bubbleProximity = Math.max(0, Math.min(1, (currentPos - 4) / 6)); // 0 at P1-P4 → 1 at P10+
+        const threatImpact = threatsFromBehind * (0.08 * (1 - raceProgress)) * bubbleProximity;
 
         // RACE PROGRESS MULTIPLIER: As race goes on, current position becomes EXPONENTIALLY more important
         // Late race (>70% progress): Drivers in top 10 are almost guaranteed to finish there barring crashes

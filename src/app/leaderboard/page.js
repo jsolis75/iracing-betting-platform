@@ -3,148 +3,69 @@
 import React, { useState, useEffect } from 'react';
 import styles from './Leaderboard.module.css';
 import DriverStats from '@/components/Profile/DriverStats';
+import SeasonChart from '@/components/Season/SeasonChart';
+
+// ============================================================
+// Leaderboard — season standings (profit-based), weekly
+// champions, cumulative profit chart, plus the classic boards.
+// All data comes from /api/season (computed server-side).
+// ============================================================
+
+const money = (v) => `${v < 0 ? '-' : ''}$${Math.abs(v).toFixed(2)}`;
+const profitMoney = (v) => `${v < 0 ? '-' : '+'}$${Math.abs(v).toFixed(2)}`;
 
 const Leaderboard = () => {
-    const [users, setUsers] = useState([]);
+    const [standings, setStandings] = useState([]);
+    const [weekly, setWeekly] = useState([]);
+    const [series, setSeries] = useState([]);
+    const [slimBets, setSlimBets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
     useEffect(() => {
-        const fetchLeaderboardData = async () => {
+        const fetchSeason = async () => {
             try {
-                const response = await fetch('/api/users');
-                if (!response.ok) throw new Error('Failed to fetch leaderboard data');
+                const response = await fetch('/api/season');
+                if (!response.ok) throw new Error('Failed to fetch season data');
                 const data = await response.json();
-                setUsers(data.users || []);
+                setStandings(data.standings || []);
+                setWeekly(data.weekly || []);
+                setSeries(data.series || []);
+                setSlimBets(data.slimBets || []);
             } catch (err) {
-                console.error('Leaderboard fetch error:', err);
+                console.error('Season fetch error:', err);
                 setError(err.message);
             } finally {
                 setLoading(false);
             }
         };
-        fetchLeaderboardData();
-        // Refresh every 60 seconds
-        const interval = setInterval(fetchLeaderboardData, 60000);
+        fetchSeason();
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') fetchSeason();
+        }, 60000);
         return () => clearInterval(interval);
     }, []);
 
-    const getBetDetails = (bet) => {
-        if (!bet.details) return null;
-        if (Array.isArray(bet.details)) return bet.details;
-        try {
-            return JSON.parse(bet.details);
-        } catch (e) {
-            console.error('Error parsing bet details:', e);
-            return null;
-        }
-    };
+    const rankClass = (index) =>
+        `${styles.rank} ${index === 0 ? styles.rank1 : index === 1 ? styles.rank2 : index === 2 ? styles.rank3 : ''}`;
 
-    const getBiggestWin = (user) => {
-        if (!user.betHistory || user.betHistory.length === 0) return { amount: 0, details: '' };
-        const wins = user.betHistory.filter(bet => bet.result === 'won');
-        if (wins.length === 0) return { amount: 0, details: '' };
-
-        // Find bet with max profit
-        const bestBet = wins.reduce((max, bet) => Number(bet.potential_payout) > Number(max.potential_payout) ? bet : max, wins[0]);
-
-        let details = `${bestBet.driver_name} (${bestBet.bet_type} @ ${bestBet.odds})`;
-
-        // Format Parlay details
-        const parlayDetails = getBetDetails(bestBet);
-        if (bestBet.race_id === 'multi' && parlayDetails && Array.isArray(parlayDetails)) {
-            const legs = parlayDetails.map(leg => `${leg.driver} (${leg.type})`).join(' + ');
-            details = `Parlay: ${legs} (@ ${bestBet.odds})`;
-        }
-
-        return {
-            amount: Number(bestBet.potential_payout),
-            details: details
-        };
-    };
-
-    const getUnderdogStats = (user) => {
-        if (!user.betHistory || user.betHistory.length === 0) return { amount: 0, details: '' };
-        const underdogWins = user.betHistory.filter(bet => {
-            if (bet.result !== 'won' || !bet.odds) return false;
-            const oddsValue = typeof bet.odds === 'string'
-                ? parseInt(bet.odds.replace(/[+-]/g, ''))
-                : Math.abs(bet.odds);
-            return oddsValue >= 400;
-        });
-
-        if (underdogWins.length === 0) return { amount: 0, details: '' };
-
-        const total = underdogWins.reduce((sum, bet) => sum + Number(bet.potential_payout), 0);
-
-        // Find biggest contributor for tooltip
-        const bestBet = underdogWins.reduce((max, bet) => Number(bet.potential_payout) > Number(max.potential_payout) ? bet : max, underdogWins[0]);
-
-        let details = `Top: ${bestBet.driver_name} (${bestBet.bet_type} @ ${bestBet.odds})`;
-
-        // Format Parlay details
-        const parlayDetails = getBetDetails(bestBet);
-        if (bestBet.race_id === 'multi' && parlayDetails && Array.isArray(parlayDetails)) {
-            const legs = parlayDetails.map(leg => `${leg.driver} (${leg.type})`).join(' + ');
-            details = `Top: Parlay (${legs} @ ${bestBet.odds})`;
-        }
-
-        return {
-            amount: total,
-            details: details
-        };
-    };
-
-    // Sort users by balance
-    const topByBalance = [...users].sort((a, b) => b.balance - a.balance).slice(0, 10);
-
-    // Sort by biggest single win
-    const topByBiggestWin = [...users]
-        .map(u => ({ ...u, biggestWinData: getBiggestWin(u) }))
-        .sort((a, b) => b.biggestWinData.amount - a.biggestWinData.amount)
-        .slice(0, 10);
-
-    // Sort by underdog profit
-    const topByUnderdog = [...users]
-        .map(u => ({ ...u, underdogData: getUnderdogStats(u) }))
-        .filter(u => u.underdogData.amount > 0)
-        .sort((a, b) => b.underdogData.amount - a.underdogData.amount)
-        .slice(0, 10);
-
-    const renderList = (users, valueExtractor, formatValue, tooltipExtractor) => {
-        if (loading) {
-            return <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>Loading...</p>;
-        }
-
-        if (error) {
-            return <p style={{ textAlign: 'center', color: '#f87171', padding: '2rem' }}>Error: {error}</p>;
-        }
-
-        if (users.length === 0) {
-            return <p style={{ textAlign: 'center', color: 'var(--text-secondary)', padding: '2rem' }}>No data yet</p>;
-        }
-
+    const renderSimpleList = (rows, valueFn, formatFn, tooltipFn) => {
+        if (loading) return <p className={styles.stateMsg}>Loading...</p>;
+        if (error) return <p className={styles.errorMsg}>Error: {error}</p>;
+        if (rows.length === 0) return <p className={styles.stateMsg}>No data yet</p>;
         return (
             <ul className={styles.list}>
-                {users.map((u, index) => (
+                {rows.map((u, index) => (
                     <li key={u.username || index} className={styles.listItem}>
-                        <span className={`${styles.rank} ${index === 0 ? styles.rank1 : index === 1 ? styles.rank2 : index === 2 ? styles.rank3 : ''}`}>
-                            {index + 1}
-                        </span>
+                        <span className={rankClass(index)}>{index + 1}</span>
                         <span className={styles.username}>{u.username}</span>
-                        {tooltipExtractor ? (
+                        {tooltipFn ? (
                             <div className={styles.tooltipContainer}>
-                                <span className={styles.value}>
-                                    {formatValue(valueExtractor(u))}
-                                </span>
-                                <span className={styles.tooltipText}>
-                                    {tooltipExtractor(u)}
-                                </span>
+                                <span className={styles.value}>{formatFn(valueFn(u))}</span>
+                                <span className={styles.tooltipText}>{tooltipFn(u)}</span>
                             </div>
                         ) : (
-                            <span className={styles.value}>
-                                {formatValue(valueExtractor(u))}
-                            </span>
+                            <span className={styles.value}>{formatFn(valueFn(u))}</span>
                         )}
                     </li>
                 ))}
@@ -152,43 +73,131 @@ const Leaderboard = () => {
         );
     };
 
+    const topByBalance = [...standings]
+        .filter(u => u.balance != null)
+        .sort((a, b) => b.balance - a.balance)
+        .slice(0, 10);
+
+    const topByBiggestWin = [...standings]
+        .filter(u => u.biggestWin?.amount > 0)
+        .sort((a, b) => b.biggestWin.amount - a.biggestWin.amount)
+        .slice(0, 10);
+
+    const topByUnderdog = [...standings]
+        .filter(u => u.underdogProfit > 0)
+        .sort((a, b) => b.underdogProfit - a.underdogProfit)
+        .slice(0, 10);
+
     return (
         <div className={styles.container}>
-            <h1 className={styles.title}>Leaderboards</h1>
-            <p style={{ textAlign: 'center', color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                Top performers updated live
+            <h1 className={styles.title}>Season Standings</h1>
+            <p className={styles.subtitle}>
+                Profit-based, all-time — balance resets can&apos;t save you here.
             </p>
+
+            {/* ---- Season standings table ---- */}
+            <div className={styles.seasonCard}>
+                {loading ? (
+                    <p className={styles.stateMsg}>Loading...</p>
+                ) : standings.length === 0 ? (
+                    <p className={styles.stateMsg}>No settled bets yet — standings start with the first race.</p>
+                ) : (
+                    <table className={styles.seasonTable}>
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>Bettor</th>
+                                <th>Profit</th>
+                                <th>Bets</th>
+                                <th>Win %</th>
+                                <th className={styles.hideMobile}>Biggest win</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {standings.map((u, i) => (
+                                <tr key={u.userId} className={i === 0 ? styles.leaderRow : ''}>
+                                    <td className={rankClass(i)}>{i === 0 ? '👑' : i + 1}</td>
+                                    <td className={styles.username}>{u.username}</td>
+                                    <td className={u.profit >= 0 ? styles.profitPos : styles.profitNeg}>
+                                        {profitMoney(u.profit)}
+                                    </td>
+                                    <td>{u.betCount}</td>
+                                    <td>{u.winRate}%</td>
+                                    <td className={styles.hideMobile} title={u.biggestWin?.details || ''}>
+                                        {u.biggestWin?.amount > 0 ? money(u.biggestWin.amount) : '—'}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                )}
+            </div>
+
+            {/* ---- Profit chart ---- */}
+            <div className={styles.seasonCard}>
+                <h2 className={styles.cardTitle}>📈 Profit Over the Season</h2>
+                {loading ? <p className={styles.stateMsg}>Loading...</p> : <SeasonChart series={series} />}
+            </div>
+
+            {/* ---- Weekly champions ---- */}
+            <div className={styles.seasonCard}>
+                <h2 className={styles.cardTitle}>🗓️ Weekly Champions</h2>
+                {loading ? (
+                    <p className={styles.stateMsg}>Loading...</p>
+                ) : weekly.length === 0 ? (
+                    <p className={styles.stateMsg}>The first weekly crown is still up for grabs.</p>
+                ) : (
+                    <div className={styles.weekRow}>
+                        {weekly.map(w => (
+                            <div key={w.weekStart} className={`${styles.weekCard} ${w.isCurrent ? styles.weekCurrent : ''}`}>
+                                <div className={styles.weekLabel}>
+                                    {w.label}{w.isCurrent && <span className={styles.liveTag}>IN PROGRESS</span>}
+                                </div>
+                                {w.champion ? (
+                                    <>
+                                        <div className={styles.weekChampion}>
+                                            {w.isCurrent ? '⏳' : '🏆'} {w.champion.username}
+                                        </div>
+                                        <div className={w.champion.profit >= 0 ? styles.profitPos : styles.profitNeg}>
+                                            {profitMoney(w.champion.profit)}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className={styles.stateMsg}>No bets</div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {/* ---- Classic boards ---- */}
             <div className={styles.grid}>
                 <div className={styles.card}>
                     <h2 className={styles.cardTitle}>💰 Most Money</h2>
-                    {renderList(topByBalance, u => u.balance, v => `$${v.toFixed(2)}`)}
+                    {renderSimpleList(topByBalance, u => u.balance, money)}
                 </div>
 
                 <div className={styles.card}>
                     <h2 className={styles.cardTitle}>🏆 Biggest Single Win</h2>
-                    {renderList(
+                    {renderSimpleList(
                         topByBiggestWin,
-                        u => u.biggestWinData.amount,
-                        v => `$${v.toFixed(2)}`,
-                        u => u.biggestWinData.details
+                        u => u.biggestWin.amount,
+                        money,
+                        u => u.biggestWin.details
                     )}
                 </div>
 
                 <div className={styles.card}>
                     <h2 className={styles.cardTitle}>🐕 Underdog Kings</h2>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>Most profit from odds +400 or higher</p>
-                    {renderList(
-                        topByUnderdog,
-                        u => u.underdogData.amount,
-                        v => `$${v.toFixed(2)}`,
-                        u => u.underdogData.details
-                    )}
+                    <p className={styles.cardNote}>Most profit from odds +400 or higher</p>
+                    {renderSimpleList(topByUnderdog, u => u.underdogProfit, money)}
                 </div>
             </div>
 
-            <div style={{ marginTop: '3rem' }}>
-                <h2 className={styles.title} style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>Global Driver Performance</h2>
-                <DriverStats bets={users.flatMap(u => u.betHistory || [])} titlePrefix="Global" />
+            <div className={styles.driverSection}>
+                <h2 className={styles.sectionTitle}>Global Driver Performance</h2>
+                <DriverStats bets={slimBets} titlePrefix="Global" />
             </div>
         </div>
     );

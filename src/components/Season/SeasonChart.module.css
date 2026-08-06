@@ -1,0 +1,199 @@
+/* Categorical palette — validated with the dataviz six-checks validator
+   against BOTH site surfaces (light #ffffff, dark #1a1f2e). Fixed slot
+   order; hues follow the entity (top-|profit| order at load), never rank. */
+
+.wrap {
+    position: relative;
+    /* light-mode palette */
+    --viz-0: #2a78d6;
+    --viz-1: #eb6834;
+    --viz-2: #1baf7a;
+    --viz-3: #eda100;
+    --viz-4: #d55181;
+    --viz-5: #008300;
+}
+
+:global([data-theme="dark"]) .wrap {
+    /* dark-mode steps of the same hues (not an automatic flip) */
+    --viz-0: #3987e5;
+    --viz-1: #d95926;
+    --viz-2: #199e70;
+    --viz-3: #c98500;
+    --viz-4: #d55181;
+    --viz-5: #008300;
+}
+
+.c0 { --series-color: var(--viz-0); }
+.c1 { --series-color: var(--viz-1); }
+.c2 { --series-color: var(--viz-2); }
+.c3 { --series-color: var(--viz-3); }
+.c4 { --series-color: var(--viz-4); }
+.c5 { --series-color: var(--viz-5); }
+
+.chartHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.5rem;
+}
+
+.legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.legendItem {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--series-color);
+    flex-shrink: 0;
+}
+
+.tableToggle {
+    background: var(--background-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    border-radius: 6px;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.svg {
+    width: 100%;
+    height: auto;
+    display: block;
+}
+
+.gridLine {
+    stroke: var(--border-color);
+    stroke-width: 1;
+    opacity: 0.6;
+}
+
+.zeroLine {
+    stroke: var(--text-muted);
+    stroke-width: 1.25;
+    stroke-dasharray: 5 4;
+}
+
+.axisLabel {
+    fill: var(--text-muted);
+    font-size: 11px;
+}
+
+.line {
+    fill: none;
+    stroke: var(--series-color);
+    stroke-width: 2;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.endLabel {
+    fill: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.crosshair {
+    stroke: var(--text-muted);
+    stroke-width: 1;
+    stroke-dasharray: 3 3;
+}
+
+.dot {
+    fill: var(--series-color);
+    stroke: var(--background-card);
+    stroke-width: 2;
+}
+
+/* Tooltip */
+.tooltip {
+    position: absolute;
+    top: 3rem;
+    background: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.6rem 0.8rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    z-index: 5;
+    min-width: 170px;
+}
+
+.tooltipDate {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.35rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.tooltipRow {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8rem;
+    padding: 1px 0;
+}
+
+.tooltipName {
+    flex: 1;
+    color: var(--text-primary);
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.pos { color: var(--status-success); font-weight: 700; }
+.neg { color: var(--status-error); font-weight: 700; }
+
+/* Table view */
+.dataTable {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.dataTable th,
+.dataTable td {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.dataTable th {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.empty {
+    color: var(--text-muted);
+    text-align: center;
+    padding: 2rem;
+}
+
+@media (max-width: 900px) {
+    .tooltip { display: none; }
+}

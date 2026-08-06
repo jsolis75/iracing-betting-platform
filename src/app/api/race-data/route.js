@@ -80,11 +80,14 @@ export async function GET(request) {
             if (raceId) {
                 query = query.eq('id', raceId).single();
             } else {
-                // Fetch most recently updated race (optimized query)
+                // MULTI-RACE: with several broadcasters live at once, "most
+                // recently updated" flip-flops between races every few seconds
+                // as their updates leapfrog. Pick the OLDEST fresh race instead —
+                // a stable default; other races are selected via the sidebar.
                 const fiveMinutesAgo = new Date(now - 5 * 60 * 1000).toISOString();
                 query = query
                     .gt('last_updated', fiveMinutesAgo)
-                    .order('last_updated', { ascending: false })
+                    .order('created_at', { ascending: true })
                     .limit(1)
                     .single();
             }

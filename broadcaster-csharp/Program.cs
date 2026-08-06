@@ -25,6 +25,9 @@ namespace iRacingBroadcaster
 
         private static string apiUrl = DEFAULT_API_URL;
         private static string apiKey = DEFAULT_API_KEY;
+        // Unique per-run ID so the server can tell broadcasters apart and reject
+        // duplicates (two people broadcasting the SAME race/split).
+        private static readonly string broadcasterId = Guid.NewGuid().ToString("N");
 
         private static readonly HttpClient httpClient = new() { Timeout = TimeSpan.FromSeconds(10) };
 
@@ -58,6 +61,11 @@ namespace iRacingBroadcaster
             Console.WriteLine("Waiting for iRacing to connect...");
             Console.WriteLine("(Make sure you are IN the sim - in the car or spotting -");
             Console.WriteLine(" not just in the iRacing UI)");
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("IMPORTANT: Keep this window open until the race is over!");
+            Console.WriteLine("Closing it stops the live data for everyone betting on your race.");
+            Console.ResetColor();
             Console.WriteLine();
 
             if (!OperatingSystem.IsWindows())
@@ -146,6 +154,7 @@ namespace iRacingBroadcaster
                 using var content = new StringContent(json, Encoding.UTF8, "application/json");
                 using var requestMsg = new HttpRequestMessage(HttpMethod.Post, apiUrl);
                 requestMsg.Headers.Add("x-api-key", apiKey);
+                requestMsg.Headers.Add("x-broadcaster-id", broadcasterId);
                 requestMsg.Content = content;
 
                 var response = await httpClient.SendAsync(requestMsg);
@@ -154,6 +163,17 @@ namespace iRacingBroadcaster
                 {
                     var flags = (payload["Telemetry"] as Dictionary<string, object?>)?["SessionFlags"];
                     Console.Write($"\r[>>] Sent update: {DateTime.Now:HH:mm:ss} | Flags: {flags ?? "n/a"}          ");
+                }
+                else if ((int)response.StatusCode == 409)
+                {
+                    // Someone else is already broadcasting this exact race/split
+                    Console.WriteLine();
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine("[i] This race is already being broadcast by someone else.");
+                    Console.WriteLine("    Nothing to do - just enjoy it live on iracingbets.com!");
+                    Console.WriteLine("    (If they leave, your broadcast will take over automatically.)");
+                    Console.ResetColor();
+                    await Task.Delay(25000); // check back occasionally in case they left
                 }
                 else
                 {

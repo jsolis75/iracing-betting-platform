@@ -21,7 +21,7 @@ function HomeContent() {
   const [loading, setLoading] = useState(true);
   // NOTE: driver stats are injected per-driver by /api/race-data (driver.stats),
   // so the old client-side /api/driver-stats fetch (a ~90MB download!) is gone.
-  const hasSettledRef = React.useRef(false); // Prevent multiple settlement calls (ref: no stale closure)
+  const hasSettledRef = React.useRef(null); // Holds the race id we already triggered settlement for
   const settleTimerRef = React.useRef(null);
 
   const lastModifiedRef = React.useRef(null);
@@ -248,8 +248,8 @@ function HomeContent() {
         // If race is finished, trigger server-side settlement
         // If race is finished, trigger server-side settlement
         // Check if we already triggered settlement to avoid spamming the API
-        if ((raceData.flagStatus === "Checkered" || raceData.lapsRemaining <= 0) && !hasSettledRef.current) {
-          hasSettledRef.current = true; // Mark as settled immediately (ref: visible to every poll)
+        if ((raceData.flagStatus === "Checkered" || raceData.lapsRemaining <= 0) && hasSettledRef.current !== raceData.id) {
+          hasSettledRef.current = raceData.id; // Mark THIS race settled (multi-race safe)
 
           // Wait 60 seconds before settling to allow incident counts to finalize
           settleTimerRef.current = setTimeout(() => {
@@ -269,7 +269,7 @@ function HomeContent() {
               setTimeout(doRefresh, 5000); // once more after payouts finish writing
             }).catch(err => {
               console.error("Error triggering settlement:", err);
-              hasSettledRef.current = false; // Allow a retry on network error
+              hasSettledRef.current = null; // Allow a retry on network error
             });
           }, 60000); // 60 second delay
         }

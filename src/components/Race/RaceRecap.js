@@ -17,7 +17,7 @@ import { useUser } from '@/context/UserContext';
 const medal = (i) => (i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉');
 
 export default function RaceRecap({ race, onViewResults }) {
-    const { placedBets } = useBetting();
+    const { placedBets, refreshBets } = useBetting();
     const { user } = useUser();
 
     const drivers = race.drivers || [];
@@ -42,6 +42,16 @@ export default function RaceRecap({ race, onViewResults }) {
     });
 
     const settled = myBets.length > 0 && !anyPending;
+
+    // While bets show "settling…", poll for fresh results every 10s so the
+    // recap resolves itself once the server settles (no page reload needed).
+    React.useEffect(() => {
+        if (!anyPending || !refreshBets) return;
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') refreshBets();
+        }, 10000);
+        return () => clearInterval(interval);
+    }, [anyPending, refreshBets]);
 
     return (
         <div className={styles.recap}>

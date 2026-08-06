@@ -13,6 +13,7 @@ export async function POST(request) {
         }
 
         const data = await request.json();
+        const broadcasterId = request.headers.get('x-broadcaster-id') || null;
 
         // Handle raw YAML from C# broadcaster
         let weekendInfo = data.WeekendInfo;
@@ -45,10 +46,33 @@ export async function POST(request) {
             // First, check if race exists (maybeSingle + limit: never throws on 0 or duplicate rows)
             const { data: existingRace } = await supabase
                 .from('races')
-                .select('id')
+                .select('id, last_updated, currentBroadcaster:data->>_broadcasterId')
                 .eq('iracing_session_id', uniqueID)
                 .limit(1)
                 .maybeSingle();
+
+            // DUPLICATE-BROADCASTER GUARD: iRacing's SubSessionID is unique per
+            // race AND per split, so two different splits are different races and
+            // both broadcast fine. But if two people broadcast the SAME split,
+            // only the first one wins — later broadcasters get a 409 and their
+            // exe tells them to just watch. If the first broadcaster goes quiet
+            // for 20s (closed the exe), the next one takes over automatically.
+            if (existingRace && broadcasterId && existingRace.currentBroadcaster &&
+                existingRace.currentBroadcaster !== broadcasterId) {
+                const ageMs = Date.now() - new Date(existingRace.last_updated).getTime();
+                if (ageMs < 20000) {
+                    return NextResponse.json(
+                        { error: 'This race is already being broadcast by someone else' },
+                        { status: 409 }
+                    );
+                }
+            }
+
+            // Stamp who is broadcasting this race (stored inside the data blob —
+            // no schema change needed; harmless extra key)
+            if (broadcasterId) {
+                data._broadcasterId = broadcasterId;
+            }
 
             let result;
 

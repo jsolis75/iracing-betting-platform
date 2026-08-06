@@ -35,12 +35,16 @@ function SidebarContent() {
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`Failed to fetch sidebar data: ${response.status}`);
                 const data = await response.json();
-                if (data && data.WeekendInfo) {
+                // Only show the info box for a REAL race (the idle response has a
+                // placeholder WeekendInfo, which rendered "Series undefined")
+                if (data?.WeekendInfo?.SeriesID && data?.DriverInfo?.Drivers?.length) {
                     setRaceInfo({
                         track: data.WeekendInfo.TrackDisplayName,
                         seriesId: data.WeekendInfo.SeriesID,
                         session: data.SessionInfo?.Sessions?.find(s => s.SessionType === 'Race')?.SessionName || 'Practice'
                     });
+                } else {
+                    setRaceInfo(null);
                 }
             } catch (error) {
                 console.error('Error fetching sidebar info:', error);
@@ -110,6 +114,9 @@ function SidebarContent() {
             <nav className={styles.nav}>
                 <Link href="/" className={`${styles.navItem} ${pathname === '/' ? styles.active : ''}`}>
                     Live Races
+                </Link>
+                <Link href="/tierlist" className={`${styles.navItem} ${pathname === '/tierlist' ? styles.active : ''}`}>
+                    🏆 Tier List
                 </Link>
                 <Link href="/profile" className={`${styles.navItem} ${pathname === '/profile' ? styles.active : ''}`}>
                     My Profile
@@ -188,6 +195,10 @@ function SidebarContent() {
             <Link href="/leaderboard" className={`mobileNavItem ${pathname === '/leaderboard' ? 'mobileNavActive' : ''}`}>
                 <span className="navIcon">📊</span>
                 Ranks
+            </Link>
+            <Link href="/tierlist" className={`mobileNavItem ${pathname === '/tierlist' ? 'mobileNavActive' : ''}`}>
+                <span className="navIcon">🏆</span>
+                Tiers
             </Link>
             <Link href="/profile" className={`mobileNavItem ${pathname === '/profile' ? 'mobileNavActive' : ''}`}>
                 <span className="navIcon">👤</span>

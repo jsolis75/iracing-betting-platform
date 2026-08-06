@@ -1,0 +1,261 @@
+.pageHeader {
+    margin: 1rem 0 1.5rem;
+}
+
+.pageTitle {
+    margin: 0 0 0.35rem;
+    font-size: 1.6rem;
+    color: var(--text-primary);
+}
+
+.pageSub {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+}
+
+.setupNote {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid #f59e0b;
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 0.9rem;
+}
+
+.loading {
+    color: var(--text-secondary);
+    padding: 2rem 0;
+}
+
+/* --- The two ranking cards --- */
+.listsGrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.listCard {
+    background: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.listTitle {
+    margin: 0 0 0.25rem;
+    font-size: 1.15rem;
+    color: var(--text-primary);
+}
+
+.listBlurb {
+    margin: 0 0 1rem;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-style: italic;
+}
+
+.emptyList {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 1.5rem 0.5rem;
+    text-align: center;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+}
+
+.rankList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rankRow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--background-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+}
+
+.rankFirst {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 1px #f59e0b;
+}
+
+.rankBadge {
+    width: 2rem;
+    text-align: center;
+    font-weight: 800;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    color: var(--text-secondary);
+}
+
+.rankInfo {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.rankName {
+    font-weight: 700;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.chips {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.chip {
+    background: var(--background-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 1px 8px;
+    border-radius: 10px;
+    white-space: nowrap;
+}
+
+.chipDanger {
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.chipClean {
+    color: #22c55e;
+    border-color: rgba(34, 197, 94, 0.5);
+}
+
+.voteBtn {
+    background: var(--background-card);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0.4rem 0.7rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+    flex-shrink: 0;
+}
+
+.voteBtn:hover {
+    border-color: var(--primary-blue);
+}
+
+.voteBtn:disabled {
+    opacity: 0.5;
+}
+
+.voted {
+    background: rgba(0, 87, 184, 0.15);
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+/* --- Voting booth --- */
+.booth {
+    background: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 1.25rem;
+    margin-bottom: 2rem;
+}
+
+.boothTitle {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+}
+
+.boothSub {
+    margin: 0 0 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.search {
+    width: 100%;
+    background: var(--background-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.95rem;
+    outline: none;
+}
+
+.search:focus {
+    border-color: var(--primary-blue);
+}
+
+.noResults {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 0.75rem 0 0;
+}
+
+.results {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-top: 0.75rem;
+}
+
+.resultRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    background: var(--background-input);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 0.55rem 0.75rem;
+}
+
+.resultActions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.loginNote {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    margin: 0.75rem 0 0;
+    text-align: center;
+}
+
+/* --- Mobile --- */
+@media (max-width: 900px) {
+    .listsGrid {
+        grid-template-columns: 1fr;
+    }
+
+    .resultRow {
+        flex-wrap: wrap;
+    }
+
+    .resultActions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}

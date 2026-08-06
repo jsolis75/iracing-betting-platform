@@ -4,7 +4,7 @@ import styles from './ResultsModal.module.css';
 const ResultsModal = ({ race, onClose }) => {
     if (!race) return null;
 
-    const sortedDrivers = [...race.drivers].sort((a, b) => a.currentPosition - b.currentPosition);
+    const sortedDrivers = [...(race.drivers || [])].sort((a, b) => a.currentPosition - b.currentPosition);
 
     return (
         <div className={styles.modalOverlay} onClick={onClose}>

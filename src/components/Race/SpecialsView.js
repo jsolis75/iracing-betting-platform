@@ -3,13 +3,15 @@
 import React from 'react';
 import { useBetting } from '@/context/BettingContext';
 import styles from './SpecialsView.module.css';
+import { useToast } from '@/components/Toast/ToastContext';
 
 const SpecialsView = ({ race, isFinished }) => {
+    const toast = useToast();
     const { addToBetSlip } = useBetting();
 
     const handleBet = (betType, selection, odds) => {
         if (isFinished) {
-            alert("Race has finished – betting is closed.");
+            toast.info("Race has finished – betting is closed.");
             return;
         }
         addToBetSlip({

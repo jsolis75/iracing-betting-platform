@@ -517,3 +517,195 @@
 .resultsButton:active {
     transform: translateY(0);
 }
+/* ============================================================
+   LIVE RACE FEEL — flag banner, progress, movement, odds flash
+   ============================================================ */
+
+.flagBanner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.6rem 1.5rem;
+    font-weight: 800;
+    font-size: 0.95rem;
+    letter-spacing: 0.5px;
+    color: #fff;
+}
+
+.flagBannerText { white-space: nowrap; }
+
+.flagBannerLaps {
+    font-size: 0.8rem;
+    font-weight: 600;
+    opacity: 0.9;
+    white-space: nowrap;
+}
+
+.bannerGreen {
+    background: linear-gradient(90deg, #15803d, #22c55e);
+}
+
+.bannerYellow {
+    background: linear-gradient(90deg, #b45309, #f59e0b);
+    color: #1a1a1a;
+    animation: cautionPulse 1.6s ease-in-out infinite;
+}
+
+.bannerRed {
+    background: linear-gradient(90deg, #991b1b, #ef4444);
+    animation: cautionPulse 1.2s ease-in-out infinite;
+}
+
+.bannerWhite {
+    background: linear-gradient(90deg, #d1d5db, #f9fafb);
+    color: #111;
+}
+
+.bannerCheckered {
+    background:
+        repeating-conic-gradient(#111 0% 25%, #f3f4f6 0% 50%) 0 0 / 22px 22px;
+    color: #fff;
+}
+
+.bannerCheckered .flagBannerText,
+.bannerCheckered .flagBannerLaps {
+    background: rgba(0, 0, 0, 0.72);
+    padding: 2px 10px;
+    border-radius: 6px;
+}
+
+@keyframes cautionPulse {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.25); }
+}
+
+.progressTrack {
+    height: 6px;
+    background: var(--background-input);
+    overflow: hidden;
+}
+
+.progressFill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--primary-blue), #22c55e);
+    transition: width 1s ease;
+}
+
+/* Position movement badges */
+.moveBadge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 7px;
+    border-radius: 10px;
+    font-size: 0.72rem;
+    font-weight: 800;
+    vertical-align: middle;
+    animation: movePop 0.4s ease;
+}
+
+.moveUp {
+    background: rgba(34, 197, 94, 0.18);
+    color: #22c55e;
+}
+
+.moveDown {
+    background: rgba(239, 68, 68, 0.18);
+    color: #ef4444;
+}
+
+@keyframes movePop {
+    0% { transform: scale(0.5); opacity: 0; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+/* Rows the user has money on */
+.myBet {
+    border-left: 4px solid #f59e0b;
+    background: rgba(245, 158, 11, 0.07);
+}
+
+.myBetChip {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: rgba(245, 158, 11, 0.18);
+    color: #f59e0b;
+    vertical-align: middle;
+}
+
+/* Odds movement flash */
+.flashUp {
+    animation: oddsFlashUp 2s ease;
+}
+
+.flashDown {
+    animation: oddsFlashDown 2s ease;
+}
+
+@keyframes oddsFlashUp {
+    0% { box-shadow: inset 0 0 0 99px rgba(34, 197, 94, 0.35); }
+    100% { box-shadow: inset 0 0 0 99px rgba(34, 197, 94, 0); }
+}
+
+@keyframes oddsFlashDown {
+    0% { box-shadow: inset 0 0 0 99px rgba(239, 68, 68, 0.35); }
+    100% { box-shadow: inset 0 0 0 99px rgba(239, 68, 68, 0); }
+}
+
+/* ============================================================
+   MOBILE
+   ============================================================ */
+@media (max-width: 900px) {
+    .header {
+        padding: 1rem;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .flagBanner {
+        padding: 0.5rem 1rem;
+        font-size: 0.85rem;
+    }
+
+    .sortControls {
+        flex-wrap: wrap;
+        gap: 0.4rem;
+        padding: 0.75rem 1rem;
+    }
+
+    /* Driver rows: info on top, 4 odds buttons in a row below */
+    .tableHeader {
+        display: none;
+    }
+
+    .driverRow {
+        display: grid !important;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 6px;
+        padding: 0.75rem 1rem;
+    }
+
+    .driverRow .colDriver {
+        grid-column: 1 / -1;
+    }
+
+    .betButton {
+        width: 100%;
+        min-width: 0;
+        padding: 0.5rem 0.25rem;
+        font-size: 0.85rem;
+    }
+
+    .betButton::before {
+        display: block;
+        font-size: 0.6rem;
+        font-weight: 700;
+        opacity: 0.65;
+        content: attr(data-market);
+    }
+}

@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useUser } from './UserContext';
+import { useToast } from '@/components/Toast/ToastContext';
 
 // Create context
 const BettingContext = createContext();
@@ -9,6 +10,7 @@ export const useBetting = () => useContext(BettingContext);
 
 export const BettingProvider = ({ children }) => {
     const { user, updateUserBalance, refreshUser } = useUser();
+    const toast = useToast();
 
     // Betting state
     const [bets, setBets] = useState([]); // Active bets in the slip (not placed yet)
@@ -104,19 +106,19 @@ export const BettingProvider = ({ children }) => {
 
     // Place bets – call API
     const placeBets = async () => {
-        if (!user) { alert('Please login to place bets.'); return; }
+        if (!user) { toast.error('Please login to place bets.'); return; }
 
         let totalStake = 0;
         if (parlayMode) {
             const validation = validateParlay();
-            if (!validation.isValid) { alert(validation.error); return; }
+            if (!validation.isValid) { toast.error(validation.error); return; }
             totalStake = parseFloat(parlayStake) || 0;
         } else {
             totalStake = bets.reduce((s, b) => s + (parseFloat(b.stake) || 0), 0);
         }
 
-        if (totalStake <= 0) { alert('Please enter a stake.'); return; }
-        if (totalStake > user.balance) { alert('Insufficient funds!'); return; }
+        if (totalStake <= 0) { toast.error('Please enter a stake.'); return; }
+        if (totalStake > user.balance) { toast.error('Insufficient funds!'); return; }
 
         try {
             const betsToPlace = [];
@@ -164,7 +166,8 @@ export const BettingProvider = ({ children }) => {
 
             // Success!
             setBets([]);
-            alert(`Bets placed! Total stake: $${totalStake.toFixed(2)}`);
+            toast.success(`Bets placed! Total stake: $${totalStake.toFixed(2)}`);
+            setIsBetSlipOpen(false); // close the mobile drawer after placing
 
             // Refresh user balance and bets
             refreshUser();
@@ -172,7 +175,7 @@ export const BettingProvider = ({ children }) => {
 
         } catch (error) {
             console.error('Error placing bets:', error);
-            alert(`Error: ${error.message}`);
+            toast.error(`Error: ${error.message}`);
         }
     };
 

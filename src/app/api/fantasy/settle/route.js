@@ -222,7 +222,7 @@ export async function POST(request) {
             await supabase
                 .from('multiplayer_entries')
                 .update({
-                    score: entry.scoreData.total,
+                    score: entry.finalScore, // BUGFIX: was entry.scoreData.total (undefined -> TypeError)
                     rank: i + 1,
                     winnings: winnings,
                     status: 'completed'

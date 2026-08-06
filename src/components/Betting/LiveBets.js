@@ -4,10 +4,12 @@ import React from 'react';
 import { useUser } from '@/context/UserContext';
 import { useBetting } from '@/context/BettingContext';
 import styles from './LiveBets.module.css';
+import { useToast } from '@/components/Toast/ToastContext';
 
 const LiveBets = ({ raceData }) => {
     const { user } = useUser();
     const { placedBets, settleBets } = useBetting();
+    const toast = useToast();
 
     if (!user) return null;
 
@@ -20,7 +22,8 @@ const LiveBets = ({ raceData }) => {
     const getBetStatus = (bet) => {
         if (!raceData || !raceData.drivers) return { status: 'Waiting for data...', isWinning: false };
 
-        if (bet.type === 'Parlay') {
+        // NOTE: DB rows use snake_case: bet_type / driver_name (bet.type & bet.driver don't exist)
+        if (bet.bet_type === 'Parlay') {
             // Simple check for parlay - if any leg is failing, it's failing
             // This is complex to track live perfectly without iterating all legs, 
             // so we'll just show "In Progress" for now or check first leg if simple.
@@ -39,7 +42,7 @@ const LiveBets = ({ raceData }) => {
         if (bet.bet_type === 'terrorist' || bet.bet_type === 'alqaeda') {
             const drivers = raceData.drivers || [];
             const terroristCount = drivers.filter(d => (d.currentIncidents || 0) >= 17).length;
-            const maxIncidents = Math.max(...drivers.map(d => d.currentIncidents || 0));
+            const maxIncidents = drivers.length > 0 ? Math.max(...drivers.map(d => d.currentIncidents || 0)) : 0;
             const selection = bet.driver_name?.includes('Yes') ? 'Yes' : 'No';
 
             if (bet.bet_type === 'terrorist') {
@@ -61,7 +64,7 @@ const LiveBets = ({ raceData }) => {
 
         // Normalize names for matching
         const normalize = (name) => name?.toLowerCase().trim();
-        const driver = raceData.drivers.find(d => normalize(d.name) === normalize(bet.driver));
+        const driver = raceData.drivers.find(d => normalize(d.name) === normalize(bet.driver_name));
 
         if (!driver) {
             // Even if not found, show the bet but mark as unknown status
@@ -70,7 +73,7 @@ const LiveBets = ({ raceData }) => {
 
         const pos = driver.currentPosition;
 
-        switch (bet.type) {
+        switch (bet.bet_type) {
             case 'Win':
                 return {
                     status: `Running P${pos}`,
@@ -97,14 +100,6 @@ const LiveBets = ({ raceData }) => {
         }
     };
 
-    // Manual settlement handler
-    const handleSettle = () => {
-        if (confirm("Are you sure you want to settle these bets based on the current standings?")) {
-            // We need to import settleBets from context, but it's not destructured above.
-            // Let's fix the destructuring first.
-        }
-    };
-
     return (
         <div className={styles.container}>
             <div className={styles.header}>
@@ -127,10 +122,10 @@ const LiveBets = ({ raceData }) => {
                                 })
                                     .then(res => res.json())
                                     .then(data => {
-                                        alert(data.message || "Settlement triggered");
-                                        window.location.reload();
+                                        toast.success(data.message || "Settlement triggered");
+                                        setTimeout(() => window.location.reload(), 1200);
                                     })
-                                    .catch(err => alert("Error: " + err.message));
+                                    .catch(err => toast.error("Error: " + err.message));
                             }
                         }}
                         style={{
@@ -166,7 +161,7 @@ const LiveBets = ({ raceData }) => {
                     const { status, isWinning } = getBetStatus(bet);
                     return (
                         <div
-                            key={index}
+                            key={bet.id ?? index}
                             className={`${styles.betItem} ${isWinning ? styles.winning : ''}`}
                             style={isWinning ? {
                                 borderLeft: '4px solid #4ade80',
@@ -176,8 +171,9 @@ const LiveBets = ({ raceData }) => {
                             <div className={styles.betInfo}>
                                 <span className={styles.driverName}>
                                     {bet.driver_name}
-                                    {bet.details && (
-                                        <div style={{ fontSize: '0.8em', color: '#ccc', marginTop: '4px' }}>
+                                    {/* details is an ARRAY for parlays but an OBJECT for specials — guard it */}
+                                    {Array.isArray(bet.details) && (
+                                        <div style={{ fontSize: '0.8em', color: 'var(--text-secondary)', marginTop: '4px' }}>
                                             {bet.details.map((leg, i) => (
                                                 <span key={i} style={{ display: 'block' }}>
                                                     • {leg.driver} ({leg.type})
@@ -195,7 +191,7 @@ const LiveBets = ({ raceData }) => {
                                     To Win: ${bet.potential_payout}
                                 </span>
                                 <span className={styles.currentStatus} style={{
-                                    color: isWinning ? '#4ade80' : '#aaa',
+                                    color: isWinning ? 'var(--status-success)' : 'var(--text-muted)',
                                     fontWeight: isWinning ? 'bold' : 'normal'
                                 }}>
                                     {status}

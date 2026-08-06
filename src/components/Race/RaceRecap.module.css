@@ -1,0 +1,185 @@
+.recap {
+    border-top: 1px solid var(--border-color);
+    padding: 1.25rem 1.5rem 1.5rem;
+    background: var(--background-input);
+}
+
+.recapHeader {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.recapTitle {
+    margin: 0;
+    font-size: 1.15rem;
+    color: var(--text-primary);
+}
+
+.resultsBtn {
+    background: var(--primary-blue);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 0.5rem 1rem;
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: filter 0.15s ease;
+}
+
+.resultsBtn:hover {
+    filter: brightness(1.15);
+}
+
+/* --- Podium --- */
+.podium {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.podiumSpot {
+    flex: 1;
+    background: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.85rem 0.5rem;
+    text-align: center;
+    min-width: 0;
+}
+
+.winner {
+    border-color: #f59e0b;
+    box-shadow: 0 0 0 1px #f59e0b, 0 4px 14px rgba(245, 158, 11, 0.25);
+}
+
+.podiumMedal {
+    font-size: 1.6rem;
+    line-height: 1;
+    margin-bottom: 0.35rem;
+}
+
+.podiumName {
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.podiumMeta {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+}
+
+/* --- Bet results --- */
+.betResults {
+    background: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 0.85rem 1rem;
+}
+
+.betResultsTitle {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 0.5rem;
+}
+
+.betRow {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.4rem 0;
+    border-bottom: 1px dashed var(--border-color);
+    font-size: 0.9rem;
+}
+
+.betRow:last-of-type {
+    border-bottom: none;
+}
+
+.betDesc {
+    color: var(--text-primary);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.betType {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.betWon {
+    color: var(--status-success);
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.betLost {
+    color: var(--status-error);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.betPending {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    white-space: nowrap;
+}
+
+.netRow {
+    margin-top: 0.75rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--border-color);
+    text-align: center;
+    font-size: 0.95rem;
+}
+
+.netWin {
+    color: var(--status-success);
+    font-weight: 800;
+    animation: netPop 0.5s ease;
+}
+
+.netLoss {
+    color: var(--status-error);
+    font-weight: 700;
+}
+
+@keyframes netPop {
+    0% { transform: scale(0.8); opacity: 0; }
+    60% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.noBets {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 0.5rem;
+}
+
+@media (max-width: 900px) {
+    .recap {
+        padding: 1rem;
+    }
+
+    .podium {
+        gap: 0.5rem;
+    }
+
+    .podiumName {
+        font-size: 0.8rem;
+    }
+}

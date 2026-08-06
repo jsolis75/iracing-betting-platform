@@ -7,6 +7,10 @@ import { useUser } from '@/context/UserContext';
 const FantasyHistory = () => {
     const { user } = useUser();
     const [currentPage, setCurrentPage] = useState(1);
+    // BUGFIX: these two states were used but never declared — the Fantasy
+    // History tab crashed with a ReferenceError as soon as it was opened.
+    const [contests, setContests] = useState([]);
+    const [loading, setLoading] = useState(true);
     const itemsPerPage = 10;
 
     useEffect(() => {
@@ -18,7 +22,7 @@ const FantasyHistory = () => {
                 if (res.ok) {
                     const data = await res.json();
                     // Only show completed contests
-                    const completed = data.contests.filter(c => c.status === 'completed');
+                    const completed = (data.contests || []).filter(c => c.status === 'completed');
                     setContests(completed);
                 }
             } catch (err) {
@@ -96,7 +100,7 @@ const FantasyHistory = () => {
                                 disabled={currentPage === 1}
                                 style={{
                                     padding: '0.5rem 1rem',
-                                    background: currentPage === 1 ? '#333' : 'var(--primary-blue)',
+                                    background: currentPage === 1 ? 'var(--background-input)' : 'var(--primary-blue)',
                                     color: '#fff',
                                     border: 'none',
                                     borderRadius: '4px',
@@ -111,7 +115,7 @@ const FantasyHistory = () => {
                                 disabled={currentPage === totalPages}
                                 style={{
                                     padding: '0.5rem 1rem',
-                                    background: currentPage === totalPages ? '#333' : 'var(--primary-blue)',
+                                    background: currentPage === totalPages ? 'var(--background-input)' : 'var(--primary-blue)',
                                     color: '#fff',
                                     border: 'none',
                                     borderRadius: '4px',

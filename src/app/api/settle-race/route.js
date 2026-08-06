@@ -14,6 +14,14 @@ export async function POST(request) {
     try {
         const supabase = getSupabaseClient();
 
+        // BUGFIX: raceId was never read from the request body, so every
+        // settlement call threw a ReferenceError and no bets ever settled.
+        const body = await request.json().catch(() => ({}));
+        const raceId = body.raceId;
+        if (!raceId) {
+            return NextResponse.json({ error: 'Missing raceId' }, { status: 400 });
+        }
+
         let raceDrivers = null;
         let targetSessionId = raceId;
 
@@ -46,18 +54,20 @@ export async function POST(request) {
 
         if (raceData.data.SessionInfo && raceData.data.SessionInfo.Sessions) {
             const sessions = raceData.data.SessionInfo.Sessions;
-            // Get the current active session based on SessionNum if available, otherwise last
-            const currentSessionIndex = raceData.data.SessionNum || (sessions.length - 1);
-            const session = sessions[currentSessionIndex] || sessions[sessions.length - 1];
+            // Settle strictly from the Race session (never a Practice/Qualify fallback)
+            const session = sessions.find(s => s.SessionType === 'Race');
 
-            // CRITICAL: Only settle if it's a RACE session
-            if (session.SessionType !== 'Race') {
-                return NextResponse.json({ message: 'Race not yet finished (Current session: ' + session.SessionType + ')' });
+            // CRITICAL: Only settle if there IS a race session
+            if (!session) {
+                return NextResponse.json({ message: 'Race not yet finished (no Race session in data)' });
             }
 
-            // CRITICAL: Check SessionState to ensure race is actually over
-            const sessionState = raceData.data.SessionState;
-            if (sessionState < 5) {
+            // CRITICAL: Check SessionState to ensure race is actually over.
+            // BUGFIX: SessionState lives under Telemetry in the broadcast payload;
+            // the old code read raceData.data.SessionState (always undefined), so
+            // the "race actually over" gate never worked.
+            const sessionState = raceData.data.Telemetry?.SessionState ?? session.SessionState;
+            if (typeof sessionState === 'number' && sessionState < 5) {
                 return NextResponse.json({
                     message: `Race not yet finished (State: ${sessionState} - ${getStateName(sessionState)})`
                 });

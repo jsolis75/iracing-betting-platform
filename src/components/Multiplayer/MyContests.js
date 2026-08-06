@@ -35,7 +35,7 @@ const MyContests = () => {
                             <div className={styles.cardHeader}>
                                 <h3>{contest.raceName}</h3>
                                 <span className={`${styles.status} ${styles[contest.status]}`}>
-                                    {contest.status.toUpperCase()}
+                                    {(contest.status || 'unknown').toUpperCase()}
                                 </span>
                             </div>
                             <p className={styles.track}>{contest.trackName}</p>

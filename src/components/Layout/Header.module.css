@@ -173,3 +173,12 @@
     background: var(--hover-bg);
     color: var(--text-primary);
 }
+/* Mobile: nav links move to the bottom nav bar; keep logo + balance */
+@media (max-width: 900px) {
+    .nav {
+        display: none;
+    }
+    .resetButton {
+        display: none;
+    }
+}

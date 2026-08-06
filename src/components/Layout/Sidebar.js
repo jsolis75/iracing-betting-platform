@@ -14,7 +14,6 @@ function SidebarContent() {
     const pathname = usePathname();
     const searchParams = useSearchParams();
     const selectedRaceId = searchParams.get('raceId');
-    const [telemetryStatus, setTelemetryStatus] = useState('stopped');
 
     const seriesMapping = {
         58: 'NASCAR A Open',
@@ -27,9 +26,11 @@ function SidebarContent() {
     useEffect(() => {
         const fetchRaceInfo = async () => {
             try {
+                // No cache-buster: identical URLs let the CDN serve this from cache
+                // (a unique ?t= param forced a full origin download on every poll)
                 const url = selectedRaceId
-                    ? `/api/race-data?raceId=${selectedRaceId}&t=${Date.now()}`
-                    : `/api/race-data?t=${Date.now()}`;
+                    ? `/api/race-data?raceId=${selectedRaceId}`
+                    : `/api/race-data`;
                 const response = await fetch(url);
                 if (!response.ok) throw new Error(`Failed to fetch sidebar data: ${response.status}`);
                 const data = await response.json();
@@ -59,38 +60,22 @@ function SidebarContent() {
 
         fetchRaceInfo();
         fetchRaces();
-        // Reduced from 5s to 10s to lower server load
-        const interval = setInterval(fetchRaceInfo, 10000);
-        // Reduced from 3s to 15s to lower server load
-        const racesInterval = setInterval(fetchRaces, 15000);
+        // Sidebar info changes rarely (track/series/session name): 30s is plenty,
+        // and we skip polls while the tab is hidden
+        const interval = setInterval(() => {
+            if (document.visibilityState === 'visible') fetchRaceInfo();
+        }, 30000);
+        const racesInterval = setInterval(() => {
+            if (document.visibilityState === 'visible') fetchRaces();
+        }, 30000);
         return () => {
             clearInterval(interval);
             clearInterval(racesInterval);
         };
     }, [selectedRaceId]);
 
-    const handleBroadcast = async () => {
-        if (telemetryStatus === 'running') return;
-
-        setTelemetryStatus('starting');
-        try {
-            const res = await fetch('/api/start-telemetry', { method: 'POST' });
-            const data = await res.json();
-            if (res.ok) {
-                setTelemetryStatus('running');
-                alert("Telemetry started! Your race data is now being broadcast.");
-            } else {
-                setTelemetryStatus('stopped');
-                alert("Failed to start telemetry: " + data.details);
-            }
-        } catch (err) {
-            console.error(err);
-            setTelemetryStatus('stopped');
-            alert("Error connecting to server.");
-        }
-    };
-
     return (
+        <>
         <aside className={styles.sidebar}>
             <div className={styles.logo}>
                 <span className={styles.logoIcon}>🏎️</span>
@@ -106,7 +91,7 @@ function SidebarContent() {
                             <Link
                                 key={race.id}
                                 href={`/?raceId=${race.id}`}
-                                className={`${styles.raceItem} ${selectedRaceId === race.id ? styles.activeRace : ''}`}
+                                className={`${styles.raceItem} ${String(selectedRaceId) === String(race.id) ? styles.activeRace : ''}`}
                             >
                                 <span className={styles.raceSource}>
                                     {race.source === 'broadcast' ? '📡' : '🏁'}
@@ -135,9 +120,9 @@ function SidebarContent() {
                 <div className={styles.divider}></div>
 
                 <div className={styles.broadcastHelp}>
-                    <small style={{ color: '#666', display: 'block', marginBottom: '0.5rem' }}>Broadcast Your Race:</small>
+                    <small style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Broadcast Your Race:</small>
                     <a
-                        href="/broadcast/iRacingBroadcaster.exe"
+                        href="https://github.com/jsolis75/iracing-betting-platform/releases/download/broadcaster-latest/iRacingBroadcaster.exe"
                         download="iRacingBroadcaster.exe"
                         style={{
                             display: 'block',
@@ -153,7 +138,7 @@ function SidebarContent() {
                     >
                         Download Broadcaster
                     </a>
-                    <small style={{ color: '#444', display: 'block', marginTop: '4px', fontSize: '0.7rem' }}>
+                    <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '4px', fontSize: '0.7rem' }}>
                         No installation needed!
                     </small>
                 </div>
@@ -188,6 +173,27 @@ function SidebarContent() {
                 </div>
             )}
         </aside>
+
+        {/* Mobile bottom navigation (hidden on desktop via CSS) */}
+        <nav className="mobileNav">
+            <Link href="/" className={`mobileNavItem ${pathname === '/' ? 'mobileNavActive' : ''}`}>
+                <span className="navIcon">🏁</span>
+                Live
+            </Link>
+            <Link href="/multiplayer" className={`mobileNavItem ${pathname === '/multiplayer' ? 'mobileNavActive' : ''}`}>
+                <span className="navIcon">🏆</span>
+                Fantasy
+            </Link>
+            <Link href="/leaderboard" className={`mobileNavItem ${pathname === '/leaderboard' ? 'mobileNavActive' : ''}`}>
+                <span className="navIcon">📊</span>
+                Ranks
+            </Link>
+            <Link href="/profile" className={`mobileNavItem ${pathname === '/profile' ? 'mobileNavActive' : ''}`}>
+                <span className="navIcon">👤</span>
+                Profile
+            </Link>
+        </nav>
+        </>
     );
 }
 

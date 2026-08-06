@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import styles from "./RaceCard.module.css";
 import { calculateFieldOdds } from "@/utils/oddsFactory";
 import { useBetting } from "@/context/BettingContext";
+import { useToast } from "@/components/Toast/ToastContext";
 import ResultsModal from "./ResultsModal";
 import SpecialsView from "./SpecialsView";
 import OverUnderView from "./OverUnderView";
+import RaceRecap from "./RaceRecap";
 
 const RaceCard = ({ race }) => {
     const {
@@ -18,40 +20,41 @@ const RaceCard = ({ race }) => {
         lapsRemaining,
         totalLaps,
     } = race;
-    const { addToBetSlip } = useBetting();
+    const { addToBetSlip, placedBets } = useBetting();
+    const toast = useToast();
     const [sortMethod, setSortMethod] = useState("position");
     const [viewMode, setViewMode] = useState("drivers"); // 'drivers', 'specials', or 'overunder'
     const [showResults, setShowResults] = useState(false);
 
-    const [betStats, setBetStats] = useState(null);
+    // ---- LIVE FEEL: track position changes between polls (▲ / ▼ badges) ----
+    const prevPositionsRef = useRef({});
+    const [recentMoves, setRecentMoves] = useState({}); // { driverId: +2 | -1 }
 
-    // Fetch race data and bet stats periodically
     useEffect(() => {
-        const fetchRaceData = async () => {
-            // Placeholder for race data polling if needed
-        };
-
-        const fetchBetStats = async () => {
-            if (!race.id) return;
-            try {
-                const res = await fetch(`/api/bet-stats?raceId=${race.id}`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setBetStats(data.stats);
-                }
-            } catch (err) {
-                console.error("Error fetching bet stats:", err);
+        if (!drivers || drivers.length === 0) return;
+        const prev = prevPositionsRef.current;
+        const moves = {};
+        const next = {};
+        drivers.forEach(d => {
+            next[d.id] = d.currentPosition;
+            if (prev[d.id] !== undefined && d.currentPosition && prev[d.id] !== d.currentPosition) {
+                moves[d.id] = prev[d.id] - d.currentPosition; // + = gained places
             }
-        };
-
-        fetchBetStats();
-        // Reduced from 5s to 10s to lower server load
-        const interval = setInterval(() => {
-            fetchRaceData();
-            fetchBetStats();
-        }, 10000);
-        return () => clearInterval(interval);
-    }, [race.id]);
+        });
+        prevPositionsRef.current = next;
+        if (Object.keys(moves).length > 0) {
+            setRecentMoves(m => ({ ...m, ...moves }));
+            const ids = Object.keys(moves);
+            const timer = setTimeout(() => {
+                setRecentMoves(m => {
+                    const copy = { ...m };
+                    ids.forEach(id => delete copy[id]);
+                    return copy;
+                });
+            }, 8000);
+            return () => clearTimeout(timer);
+        }
+    }, [drivers]);
 
     // Determine if the race is finished
     const isFinished =
@@ -65,8 +68,72 @@ const RaceCard = ({ race }) => {
             : null;
 
     // Calculate odds for all drivers (live updates while race is in progress)
-    // Pass betStats to influence odds based on liability
-    const driversWithOdds = calculateFieldOdds(drivers, raceState, betStats);
+    const driversWithOdds = calculateFieldOdds(drivers, raceState);
+
+    // ---- LIVE FEEL: flash odds that moved since the last update ----
+    const prevOddsRef = useRef({});
+    const [oddsFlash, setOddsFlash] = useState({}); // { driverId: { win:'up'|'down', ... } }
+
+    useEffect(() => {
+        const parseOdds = (o) => Number(String(o ?? '').replace('+', '')) || 0;
+        const prev = prevOddsRef.current;
+        const flashes = {};
+        const next = {};
+        driversWithOdds.forEach(d => {
+            const markets = { win: d.odds?.win, top3: d.odds?.top3, top10: d.odds?.top10, crash: d.odds?.crash };
+            next[d.id] = markets;
+            if (prev[d.id]) {
+                const changed = {};
+                Object.keys(markets).forEach(k => {
+                    const a = parseOdds(prev[d.id][k]);
+                    const b = parseOdds(markets[k]);
+                    if (a !== b) changed[k] = b > a ? 'up' : 'down';
+                });
+                if (Object.keys(changed).length) flashes[d.id] = changed;
+            }
+        });
+        prevOddsRef.current = next;
+        if (Object.keys(flashes).length > 0) {
+            setOddsFlash(f => ({ ...f, ...flashes }));
+            const ids = Object.keys(flashes);
+            const timer = setTimeout(() => {
+                setOddsFlash(f => {
+                    const copy = { ...f };
+                    ids.forEach(id => delete copy[id]);
+                    return copy;
+                });
+            }, 2500);
+            return () => clearTimeout(timer);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [drivers]);
+
+    // ---- LIVE FEEL: highlight drivers the user has pending bets on ----
+    const myBetDrivers = new Set(
+        (placedBets || [])
+            .filter(b => b.status === 'pending' && String(b.race_id) === String(race.id) && b.driver_name)
+            .map(b => b.driver_name.toLowerCase().trim())
+    );
+
+    // Lap progress (hidden for unlimited/practice sessions)
+    const showProgress = totalLaps > 0 && totalLaps < 999 && lapsRemaining !== undefined;
+    const lapsDone = showProgress ? Math.max(0, Math.min(totalLaps, totalLaps - lapsRemaining)) : 0;
+    const progressPct = showProgress ? Math.round((lapsDone / totalLaps) * 100) : 0;
+
+    // Flag banner style variant
+    const flagVariant =
+        flagStatus === "Yellow" ? styles.bannerYellow :
+            flagStatus === "Red Flag" ? styles.bannerRed :
+                flagStatus === "Checkered" ? styles.bannerCheckered :
+                    flagStatus === "White Flag" ? styles.bannerWhite :
+                        styles.bannerGreen;
+
+    const flagText =
+        flagStatus === "Yellow" ? "🟡 CAUTION" :
+            flagStatus === "Red Flag" ? "🔴 RED FLAG" :
+                flagStatus === "Checkered" ? "🏁 CHECKERED FLAG" :
+                    flagStatus === "White Flag" ? "⚪ WHITE FLAG — FINAL LAP" :
+                        "🟢 GREEN FLAG";
 
     // Sort drivers based on selected method
     const sortedDrivers = [...driversWithOdds].sort((a, b) => {
@@ -79,7 +146,7 @@ const RaceCard = ({ race }) => {
     // Add a bet to the slip – blocked if race is finished
     const handleBet = (driver, type, odds) => {
         if (isFinished) {
-            alert("Race has finished – betting is closed.");
+            toast.info("Race has finished – betting is closed.");
             return;
         }
         addToBetSlip({
@@ -111,6 +178,23 @@ const RaceCard = ({ race }) => {
 
     return (
         <div className={styles.card}>
+            {/* Full-width live flag banner */}
+            <div className={`${styles.flagBanner} ${flagVariant}`}>
+                <span className={styles.flagBannerText}>{flagText}</span>
+                {showProgress && !isFinished && (
+                    <span className={styles.flagBannerLaps}>
+                        Lap {lapsDone}/{totalLaps} • {lapsRemaining} to go
+                    </span>
+                )}
+            </div>
+
+            {/* Lap progress bar */}
+            {showProgress && (
+                <div className={styles.progressTrack} title={`${progressPct}% complete`}>
+                    <div className={styles.progressFill} style={{ width: `${progressPct}%` }} />
+                </div>
+            )}
+
             <div className={styles.header}>
                 <div className={styles.raceInfo}>
                     <h2 className={styles.raceName}>{name}</h2>
@@ -205,8 +289,11 @@ const RaceCard = ({ race }) => {
                     <div className={styles.driverList}>
                         {sortedDrivers.map((driver) => {
                             const odds = driver.odds;
+                            const isMyBet = myBetDrivers.has((driver.name || '').toLowerCase().trim());
+                            const move = recentMoves[driver.id];
+                            const flash = oddsFlash[driver.id] || {};
                             return (
-                                <div key={driver.id} className={`${styles.driverRow} ${driver.isDNF ? styles.crashed : ''}`}>
+                                <div key={driver.id} className={`${styles.driverRow} ${driver.isDNF ? styles.crashed : ''} ${isMyBet ? styles.myBet : ''}`}>
                                     <div className={styles.colDriver}>
                                         <span className={styles.number}>#{driver.number}</span>
                                         <div className={styles.driverDetails}>
@@ -227,10 +314,16 @@ const RaceCard = ({ race }) => {
                                                     <span
                                                         className={styles.driverName}
                                                         title={tooltipText}
-                                                        style={{ cursor: 'help', textDecoration: 'underline dotted #666' }}
+                                                        style={{ cursor: 'help', textDecoration: 'underline dotted var(--text-muted)' }}
                                                     >
                                                         {driver.name}
+                                                        {isMyBet && <span className={styles.myBetChip} title="You have a pending bet on this driver">💰 Your bet</span>}
                                                         {driver.isDNF && <span className={styles.retiredBadge}>RETIRED</span>}
+                                                        {move !== undefined && !driver.isDNF && (
+                                                            <span className={`${styles.moveBadge} ${move > 0 ? styles.moveUp : styles.moveDown}`}>
+                                                                {move > 0 ? `▲${move}` : `▼${Math.abs(move)}`}
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 );
                                             })()}
@@ -239,7 +332,7 @@ const RaceCard = ({ race }) => {
                                                 {driver.stats && (
                                                     <>
                                                         <br />
-                                                        <span style={{ fontSize: '0.85em', color: '#aaa' }}>
+                                                        <span style={{ fontSize: '0.85em', color: 'var(--text-muted)' }}>
                                                             Win: {driver.stats.winPercentage?.toFixed(1)}% • Avg Inc: {driver.stats.avgIncidents?.toFixed(2)}
                                                             {driver.lapsLed > 0 && ` • Laps Led: ${driver.lapsLed}`}
                                                         </span>
@@ -257,7 +350,7 @@ const RaceCard = ({ race }) => {
                                                                 ? "#4ade80"
                                                                 : driver.currentPosition > driver.startingPosition
                                                                     ? "#f87171"
-                                                                    : "#94a3b8",
+                                                                    : "var(--text-muted)",
                                                     }}
                                                 >
                                                     Currently Running P{driver.currentPosition}
@@ -270,9 +363,11 @@ const RaceCard = ({ race }) => {
                                         </div>
                                     </div>
 
-                                    {/* Bet buttons – disabled when race is finished OR driver has crashed */}
+                                    {/* Bet buttons – disabled when race is finished OR driver has crashed.
+                                        flashUp/flashDown animate when the odds moved since last update. */}
                                     <button
-                                        className={styles.betButton}
+                                        className={`${styles.betButton} ${flash.win === 'up' ? styles.flashUp : flash.win === 'down' ? styles.flashDown : ''}`}
+                                        data-market="WIN"
                                         onClick={() => handleBet(driver, "Win", odds.win)}
                                         disabled={isFinished || driver.isDNF}
                                     >
@@ -280,7 +375,8 @@ const RaceCard = ({ race }) => {
                                     </button>
 
                                     <button
-                                        className={styles.betButton}
+                                        className={`${styles.betButton} ${flash.top3 === 'up' ? styles.flashUp : flash.top3 === 'down' ? styles.flashDown : ''}`}
+                                        data-market="TOP 3"
                                         onClick={() => handleBet(driver, "Top 3", odds.top3)}
                                         disabled={isFinished || driver.isDNF}
                                     >
@@ -288,7 +384,8 @@ const RaceCard = ({ race }) => {
                                     </button>
 
                                     <button
-                                        className={styles.betButton}
+                                        className={`${styles.betButton} ${flash.top10 === 'up' ? styles.flashUp : flash.top10 === 'down' ? styles.flashDown : ''}`}
+                                        data-market="TOP 10"
                                         onClick={() => handleBet(driver, "Top 10", odds.top10)}
                                         disabled={isFinished || driver.isDNF}
                                     >
@@ -296,7 +393,8 @@ const RaceCard = ({ race }) => {
                                     </button>
 
                                     <button
-                                        className={`${styles.betButton} ${styles.crashButton}`}
+                                        className={`${styles.betButton} ${styles.crashButton} ${flash.crash === 'up' ? styles.flashUp : flash.crash === 'down' ? styles.flashDown : ''}`}
+                                        data-market="CRASH"
                                         onClick={() => handleBet(driver, "Crash", odds.crash)}
                                         disabled={isFinished || driver.isDNF}
                                     >
@@ -313,22 +411,9 @@ const RaceCard = ({ race }) => {
                 <OverUnderView race={race} isFinished={isFinished} />
             )}
 
-            {/* Post-Race Banner */}
+            {/* Post-Race Recap (podium + your bet results) */}
             {isFinished && (
-                <div className={styles.postRaceBanner}>
-                    <div className={styles.bannerContent}>
-                        <div className={styles.bannerText}>
-                            <h3>🏁 Race Finished</h3>
-                            <p>Waiting for next race...</p>
-                        </div>
-                        <button
-                            className={styles.resultsButton}
-                            onClick={() => setShowResults(true)}
-                        >
-                            View Results
-                        </button>
-                    </div>
-                </div>
+                <RaceRecap race={race} onViewResults={() => setShowResults(true)} />
             )}
 
             {/* Results Modal */}

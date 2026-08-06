@@ -24,13 +24,19 @@ const BettingHistory = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const itemsPerPage = 10;
 
+    const fetchedRaceIdsRef = React.useRef(new Set());
+
     useEffect(() => {
         const fetchRaceData = async () => {
             if (!placedBets || placedBets.length === 0) return;
 
-            const raceIds = [...new Set(placedBets.map(bet => bet.race_id).filter(id => id !== 'multi'))];
+            // Only fetch race names we haven't already fetched (this used to
+            // re-download every race's data each time the bets list changed)
+            const raceIds = [...new Set(placedBets.map(bet => bet.race_id).filter(id => id !== 'multi'))]
+                .filter(id => !fetchedRaceIdsRef.current.has(id));
 
             for (const raceId of raceIds) {
+                fetchedRaceIdsRef.current.add(raceId);
                 try {
                     const res = await fetch(`/api/race-data?raceId=${raceId}`);
                     if (res.ok) {
@@ -94,8 +100,9 @@ const BettingHistory = () => {
                                     <td>{bet.race_id === 'multi' ? 'Parlay' : (raceData[bet.race_id] || `Race ${bet.race_id}`)}</td>
                                     <td>
                                         {bet.driver_name}
-                                        {bet.details && (
-                                            <div style={{ fontSize: '0.8em', color: '#aaa', marginTop: '4px' }}>
+                                        {/* details is an ARRAY for parlays but an OBJECT for specials — guard it */}
+                                        {Array.isArray(bet.details) && (
+                                            <div style={{ fontSize: '0.8em', color: 'var(--text-muted)', marginTop: '4px' }}>
                                                 {bet.details.map((leg, i) => (
                                                     <div key={i}>
                                                         {leg.driver} ({leg.type})
@@ -129,7 +136,7 @@ const BettingHistory = () => {
                                 disabled={currentPage === 1}
                                 style={{
                                     padding: '0.5rem 1rem',
-                                    background: currentPage === 1 ? '#333' : 'var(--primary-blue)',
+                                    background: currentPage === 1 ? 'var(--background-input)' : 'var(--primary-blue)',
                                     color: '#fff',
                                     border: 'none',
                                     borderRadius: '4px',
@@ -144,7 +151,7 @@ const BettingHistory = () => {
                                 disabled={currentPage === totalPages}
                                 style={{
                                     padding: '0.5rem 1rem',
-                                    background: currentPage === totalPages ? '#333' : 'var(--primary-blue)',
+                                    background: currentPage === totalPages ? 'var(--background-input)' : 'var(--primary-blue)',
                                     color: '#fff',
                                     border: 'none',
                                     borderRadius: '4px',

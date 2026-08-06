@@ -8,9 +8,11 @@ import LobbyLeaderboard from '@/components/Multiplayer/LobbyLeaderboard';
 import RockPaperScissors from '@/components/Multiplayer/RockPaperScissors';
 import MyContests from '@/components/Multiplayer/MyContests';
 import styles from './Multiplayer.module.css';
+import { useToast } from '@/components/Toast/ToastContext';
 
 const MultiplayerContent = () => {
     const { user } = useUser();
+    const toast = useToast();
     const searchParams = useSearchParams();
     const raceId = searchParams.get('raceId');
 
@@ -89,7 +91,7 @@ const MultiplayerContent = () => {
     }, [raceId, user]);
 
     const handleJoin = async () => {
-        if (!user) return alert("Please login first");
+        if (!user) return toast.error("Please login first");
         if (!confirm("Join lobby for $500?")) return;
 
         try {
@@ -101,14 +103,14 @@ const MultiplayerContent = () => {
             const data = await res.json();
             if (data.success) {
                 if (data.alreadyJoined) {
-                    alert("You have already joined this lobby!");
+                    toast.info("You have already joined this lobby!");
                 }
                 fetchLobby();
             } else {
-                alert(data.error);
+                toast.error(data.error);
             }
         } catch (err) {
-            alert("Join failed");
+            toast.error("Join failed");
         }
     };
 
@@ -195,7 +197,7 @@ const MultiplayerContent = () => {
                         <>
                             <div className={styles.leftCol}>
                                 {/* DEBUG INFO */}
-                                <div style={{ fontSize: '0.8rem', color: '#666', marginBottom: '0.5rem' }}>
+                                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
                                     Drivers Loaded: {raceData?.DriverInfo?.Drivers?.length || 0}
                                 </div>
                                 <DraftTeam

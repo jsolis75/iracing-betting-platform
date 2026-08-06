@@ -43,7 +43,7 @@ const Header = () => {
           <div className={styles.userSection}>
             <div className={styles.balance}>
               <span className={styles.balanceLabel}>Balance</span>
-              <span className={styles.balanceValue}>${user.balance.toFixed(2)}</span>
+              <span className={styles.balanceValue}>${(user.balance ?? 0).toFixed(2)}</span>
               <button
                 className={styles.resetButton}
                 onClick={handleResetClick}

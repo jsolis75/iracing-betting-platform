@@ -230,3 +230,9 @@
     overflow: hidden;
     text-overflow: ellipsis;
 }
+/* Mobile: hide the desktop sidebar entirely (bottom nav takes over) */
+@media (max-width: 900px) {
+    .sidebar {
+        display: none;
+    }
+}

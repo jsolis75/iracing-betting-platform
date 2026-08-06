@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import styles from './WinstelDraft.module.css';
+import { useToast } from '@/components/Toast/ToastContext';
 
 const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
+    const toast = useToast();
     const [selectedDrivers, setSelectedDrivers] = useState(initialLineup || []);
     const [searchQuery, setSearchQuery] = useState('');
     const [saving, setSaving] = useState(false);
@@ -21,7 +23,7 @@ const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
             setSelectedDrivers(selectedDrivers.filter(id => id !== driverId));
         } else {
             if (selectedDrivers.length >= MAX_DRIVERS) {
-                alert(`You can only select up to ${MAX_DRIVERS} drivers.`);
+                toast.info(`You can only select up to ${MAX_DRIVERS} drivers.`);
                 return;
             }
             setSelectedDrivers([...selectedDrivers, driverId]);
@@ -30,11 +32,11 @@ const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
 
     const handleSave = async () => {
         if (selectedDrivers.length !== MAX_DRIVERS) {
-            alert(`Please select exactly ${MAX_DRIVERS} drivers.`);
+            toast.error(`Please select exactly ${MAX_DRIVERS} drivers.`);
             return;
         }
         if (currentSalary > SALARY_CAP) {
-            alert("Your lineup exceeds the $50,000 salary cap!");
+            toast.error("Your lineup exceeds the $50,000 salary cap!");
             return;
         }
 
@@ -51,13 +53,13 @@ const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
             });
             const data = await res.json();
             if (data.success) {
-                alert("Lineup saved successfully!");
+                toast.success("Lineup saved successfully!");
                 onSave && onSave();
             } else {
-                alert(data.error);
+                toast.error(data.error);
             }
         } catch (err) {
-            alert("Failed to save lineup");
+            toast.error("Failed to save lineup");
         } finally {
             setSaving(false);
         }
@@ -65,9 +67,9 @@ const WinstelDraft = ({ user, event, drivers, initialLineup, onSave }) => {
 
     // Filter drivers by search and group by team
     const filteredDrivers = drivers.filter(d =>
-        d.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.team.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        d.car_number.includes(searchQuery)
+        (d.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (d.team || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(d.car_number ?? '').includes(searchQuery)
     );
 
     // Sort drivers by salary descending

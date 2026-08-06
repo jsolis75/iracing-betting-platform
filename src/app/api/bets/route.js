@@ -66,6 +66,23 @@ export async function POST(request) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
 
+        // SECURITY: validate numbers. A negative stake used to pass the balance
+        // check and INCREASE the user's balance; an inflated potentialPayout
+        // minted free money at settlement. Payout is recomputed server-side.
+        const stakeNum = Number(stake);
+        const oddsNum = Number(odds);
+        if (!Number.isFinite(stakeNum) || stakeNum <= 0 || stakeNum > 1000000) {
+            return NextResponse.json({ error: 'Invalid stake' }, { status: 400 });
+        }
+        if (!Number.isFinite(oddsNum) || oddsNum === 0) {
+            return NextResponse.json({ error: 'Invalid odds' }, { status: 400 });
+        }
+        // American odds payout: positive => stake * (odds/100), negative => stake * (100/|odds|)
+        const computedPayout = oddsNum > 0
+            ? stakeNum * (oddsNum / 100)
+            : stakeNum * (100 / Math.abs(oddsNum));
+        const safePayout = Math.round(computedPayout * 100) / 100;
+
         const supabase = getSupabaseClient();
 
         // Check user balance
@@ -79,14 +96,14 @@ export async function POST(request) {
             return NextResponse.json({ error: 'User not found' }, { status: 404 });
         }
 
-        if (userData.balance < stake) {
+        if (userData.balance < stakeNum) {
             return NextResponse.json({ error: 'Insufficient balance' }, { status: 400 });
         }
 
         // Deduct stake from balance
         const { error: updateError } = await supabase
             .from('users')
-            .update({ balance: userData.balance - stake })
+            .update({ balance: userData.balance - stakeNum })
             .eq('id', userId);
 
         if (updateError) {
@@ -103,9 +120,9 @@ export async function POST(request) {
                     race_id: raceId,
                     driver_name: driverName,
                     bet_type: betType,
-                    stake,
-                    odds,
-                    potential_payout: potentialPayout,
+                    stake: stakeNum,
+                    odds: oddsNum,
+                    potential_payout: safePayout, // server-computed, never client-trusted
                     status: 'pending',
                     details: details
                 }

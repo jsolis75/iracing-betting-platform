@@ -8,8 +8,8 @@ import BetSlip from "@/components/Betting/BetSlip";
 import LiveBets from "@/components/Betting/LiveBets";
 import Login from "@/components/Auth/Login";
 import ManualSettlement from "@/components/Race/ManualSettlement";
+import StreamView from "@/components/Streams/StreamView";
 import { useUser } from "@/context/UserContext";
-import { useBetting } from "@/context/BettingContext";
 
 function HomeContent() {
   const { user } = useUser();
@@ -17,26 +17,10 @@ function HomeContent() {
   const selectedRaceId = searchParams.get('raceId');
   const [races, setRaces] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [driverStats, setDriverStats] = useState({}); // New: CSV stats storage
-  const [hasSettled, setHasSettled] = useState(false); // Prevent multiple settlement calls
-
-  const { settleBets } = useBetting();
-
-  // Load driver stats from CSV on mount
-  useEffect(() => {
-    const loadDriverStats = async () => {
-      try {
-        const response = await fetch('/api/driver-stats');
-        if (response.ok) {
-          const data = await response.json();
-          setDriverStats(data.stats || {});
-        }
-      } catch (error) {
-        console.error('Error loading driver stats:', error);
-      }
-    };
-    loadDriverStats();
-  }, []);
+  // NOTE: driver stats are injected per-driver by /api/race-data (driver.stats),
+  // so the old client-side /api/driver-stats fetch (a ~90MB download!) is gone.
+  const hasSettledRef = React.useRef(false); // Prevent multiple settlement calls (ref: no stale closure)
+  const settleTimerRef = React.useRef(null);
 
   const lastModifiedRef = React.useRef(null);
 
@@ -77,6 +61,13 @@ function HomeContent() {
         }
 
         const data = await response.json();
+
+        // No active race: show the real "Waiting for Broadcast" empty state
+        // (previously this fell through and rendered a fake LIVE card).
+        if (data.message === 'No active race found' || !data.DriverInfo?.Drivers?.length) {
+          setRaces([]);
+          return;
+        }
 
         // ---------------------------------------------------------------
         // Determine the starting grid (qualifying positions) if the data provides it.
@@ -179,8 +170,9 @@ function HomeContent() {
           totalLaps: totalLaps,
           status: flagStatus === "Green" ? "Green Flag" : "Caution",
           flagStatus: flagStatus,
-          drivers: data.DriverInfo?.Drivers
-            ?.filter((d) => d.CarIsPaceCar === 0 && d.IsSpectator === 0)
+          drivers: (data.DriverInfo?.Drivers || [])
+            // Coercive checks: these fields can arrive as numbers or strings
+            .filter((d) => Number(d.CarIsPaceCar || 0) === 0 && Number(d.IsSpectator || 0) === 0)
             .map((d, index, array) => {
               const lapsComplete = lapsCompleteMap[d.CarIdx] || 0;
               const reasonOut = reasonOutMap[d.CarIdx]?.toLowerCase().trim() || "running";
@@ -200,17 +192,6 @@ function HomeContent() {
                 }
               }
 
-              // DEBUG: Log first driver to inspect fields
-              if (index === 0) {
-                console.log("DEBUG: Driver Data", {
-                  name: d.UserName,
-                  userID: d.UserID,
-                  custID: d.CustID,
-                  type: typeof d.UserID,
-                  statsFound: !!(driverStats[d.UserID] || driverStats[String(d.UserID)])
-                });
-              }
-
               // Synthetic Stats for Unknown Drivers
               // If driver is not in CSV, estimate their Avg Incidents based on Safety Rating (LicSubLevel)
               // LicSubLevel is 0-499 (e.g., 499 = 4.99 SR). Higher SR = Lower Incidents.
@@ -220,6 +201,17 @@ function HomeContent() {
 
               // Define userID for lookup
               const userID = d.UserID || d.CustID;
+
+              // Stats now come pre-injected by /api/race-data as d.stats
+              const statsObj = d.stats || {
+                avgIncidents: syntheticAvgIncidents, // DYNAMIC FALLBACK
+                starts: 0,
+                wins: 0,
+                avgPoints: 50,
+                top25Percent: 0,
+                winPercentage: 0,
+                avgFinish: 0
+              };
 
               return {
                 id: d.CarIdx,
@@ -235,15 +227,8 @@ function HomeContent() {
                 lapsComplete: lapsComplete,
                 status: reasonOutMap[d.CarIdx] || "Running",
                 isDNF: isDNF, // New flag for UI and Settlement
-                Stats: driverStats[userID] || driverStats[String(userID)] || driverStats[d.UserName] || {
-                  avgIncidents: syntheticAvgIncidents, // DYNAMIC FALLBACK
-                  starts: 0,
-                  wins: 0,
-                  avgPoints: 50,
-                  top25Percent: 0,
-                  winPercentage: 0,
-                  avgFinish: 0
-                },
+                Stats: statsObj,       // used by the odds engine
+                stats: statsObj,       // used by RaceCard display (kept in sync)
                 LicString: d.LicString // Pass through for odds calculation
               };
             }),
@@ -255,11 +240,11 @@ function HomeContent() {
         // If race is finished, trigger server-side settlement
         // If race is finished, trigger server-side settlement
         // Check if we already triggered settlement to avoid spamming the API
-        if ((raceData.flagStatus === "Checkered" || raceData.lapsRemaining <= 0) && !hasSettled) {
-          setHasSettled(true); // Mark as settled immediately
+        if ((raceData.flagStatus === "Checkered" || raceData.lapsRemaining <= 0) && !hasSettledRef.current) {
+          hasSettledRef.current = true; // Mark as settled immediately (ref: visible to every poll)
 
           // Wait 60 seconds before settling to allow incident counts to finalize
-          setTimeout(() => {
+          settleTimerRef.current = setTimeout(() => {
             // Call the settlement API
             fetch('/api/settle-race', {
               method: 'POST',
@@ -270,7 +255,7 @@ function HomeContent() {
               })
             }).catch(err => {
               console.error("Error triggering settlement:", err);
-              setHasSettled(false); // Retry on error? Or maybe not to be safe.
+              hasSettledRef.current = false; // Allow a retry on network error
             });
           }, 60000); // 60 second delay
         }
@@ -287,17 +272,20 @@ function HomeContent() {
     const controller = new AbortController();
     fetchRaceData(controller.signal);
 
-    // Reduced from 5s to 8s to lower server load
+    // Poll every 10s, and skip polls while the tab is hidden (saves bandwidth)
     const interval = setInterval(() => {
-      fetchRaceData(controller.signal);
-    }, 8000);
+      if (document.visibilityState === 'visible') {
+        fetchRaceData(controller.signal);
+      }
+    }, 10000);
 
-    // Cleanup interval on unmount
+    // Cleanup interval + pending settlement timer on unmount
     return () => {
       clearInterval(interval);
+      if (settleTimerRef.current) clearTimeout(settleTimerRef.current);
       controller.abort();
     };
-  }, [user, selectedRaceId, settleBets]);
+  }, [user, selectedRaceId]);
 
   // ---------------------------------------------------------------------
   // UI rendering – if there is no authenticated user we show the login screen.
@@ -308,7 +296,7 @@ function HomeContent() {
         <div style={{ maxWidth: "900px", margin: "4rem auto", padding: "0 1rem" }}>
 
           <h1 style={{ textAlign: "center", marginBottom: "0.5rem", fontSize: "2rem" }}>Welcome to iRacingBet</h1>
-          <p style={{ textAlign: "center", marginBottom: "3rem", color: "#888", fontStyle: "italic" }}>
+          <p style={{ textAlign: "center", marginBottom: "3rem", color: "var(--text-muted)", fontStyle: "italic" }}>
             A place where iRacers can bet on their races and rig them
           </p>
 
@@ -380,12 +368,12 @@ function HomeContent() {
         <>
 
           {races.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '3rem', background: '#1e1e1e', borderRadius: '8px', margin: '2rem 0' }}>
+            <div style={{ textAlign: 'center', padding: '3rem', background: 'var(--background-card)', borderRadius: '8px', margin: '2rem 0' }}>
               <h2>📡 Waiting for Broadcast</h2>
-              <p style={{ color: '#aaa', marginTop: '1rem' }}>
+              <p style={{ color: 'var(--text-secondary)', marginTop: '1rem' }}>
                 No live race data detected.
               </p>
-              <div style={{ marginTop: '2rem', fontSize: '0.9em', color: '#666' }}>
+              <div style={{ marginTop: '2rem', fontSize: '0.9em', color: 'var(--text-muted)' }}>
                 <p>To start broadcasting:</p>
                 <ol style={{ textAlign: 'left', maxWidth: '300px', margin: '1rem auto' }}>
                   <li>Open iRacing on your PC</li>
@@ -396,8 +384,8 @@ function HomeContent() {
           ) : (
             <>
               <div style={{
-                background: '#2d3748',
-                color: '#a0aec0',
+                background: 'var(--background-card)',
+                color: 'var(--text-secondary)',
                 padding: '0.5rem 1rem',
                 fontSize: '0.8rem',
                 textAlign: 'right',
@@ -407,6 +395,7 @@ function HomeContent() {
                 Last Updated: {new Date().toLocaleTimeString()}
               </div>
               <ManualSettlement />
+              <StreamView />
               <LiveBets raceData={races[0]} />
               {races.map((race) => <RaceCard key={race.id} race={race} />)}
             </>

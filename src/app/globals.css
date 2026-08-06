@@ -138,3 +138,209 @@ a {
   align-items: center;
   justify-content: space-between;
 }
+/* ============================================================
+   APP SHELL (moved out of inline styles in layout.js)
+   ============================================================ */
+.appShell {
+  display: flex;
+  min-height: calc(100vh - 73px);
+}
+
+.appMain {
+  flex: 1;
+  padding: 2rem;
+  min-width: 0;
+}
+
+/* Desktop bet slip column */
+.betslipPane {
+  width: 320px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border-color);
+  background-color: var(--background-card);
+}
+
+/* Mobile-only elements hidden on desktop */
+.betslipFab,
+.betslipBackdrop,
+.mobileNav {
+  display: none;
+}
+
+/* ============================================================
+   TOASTS
+   ============================================================ */
+.toastStack {
+  position: fixed;
+  top: 85px;
+  right: 16px;
+  z-index: 3000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: none;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--background-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-left-width: 4px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  font-size: 0.9rem;
+  line-height: 1.35;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: toastIn 0.25s ease;
+}
+
+.toast-success { border-left-color: var(--status-success); }
+.toast-error   { border-left-color: var(--status-error); }
+.toast-info    { border-left-color: var(--primary-blue); }
+
+.toastIcon { flex-shrink: 0; }
+.toastMsg  { word-break: break-word; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ============================================================
+   MOBILE (≤900px)
+   ============================================================ */
+@media (max-width: 900px) {
+
+  .appMain {
+    padding: 1rem;
+    /* leave room for the fixed bottom nav + bet slip FAB */
+    padding-bottom: 90px;
+  }
+
+  /* --- Bet slip becomes a slide-up drawer --- */
+  .betslipPane {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: 100%;
+    max-height: 75vh;
+    overflow-y: auto;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.35);
+    z-index: 2100;
+    transform: translateY(105%);
+    transition: transform 0.28s ease;
+  }
+
+  .betslipPane.betslipOpen {
+    transform: translateY(0);
+  }
+
+  .betslipBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 2050;
+  }
+
+  .betslipFab {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 16px;
+    bottom: 76px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: none;
+    background: var(--primary-blue);
+    color: #fff;
+    font-size: 1.5rem;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    z-index: 2200;
+    cursor: pointer;
+  }
+
+  .betslipFabBadge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    background: var(--primary-red);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 5px;
+  }
+
+  /* --- Bottom navigation (rendered by Sidebar.js) --- */
+  .mobileNav {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 60px;
+    background: var(--background-card);
+    border-top: 1px solid var(--border-color);
+    z-index: 2000;
+    justify-content: space-around;
+    align-items: stretch;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobileNavItem {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .mobileNavItem .navIcon {
+    font-size: 1.25rem;
+    line-height: 1;
+  }
+
+  .mobileNavActive {
+    color: var(--primary-blue);
+  }
+
+  /* --- Generic table overflow safety on small screens --- */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Toasts sit above the bottom nav on mobile */
+  .toastStack {
+    top: auto;
+    bottom: 140px;
+    right: 12px;
+    left: 12px;
+    max-width: none;
+  }
+}

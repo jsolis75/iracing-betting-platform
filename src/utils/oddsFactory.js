@@ -413,6 +413,8 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false, 
 
     // Top 3 Odds - LESS GENEROUS + POSITION PENALTY
     const topFinishAbility = (stats.top25Percent || 0) / (stats.starts || 1);
+    // Current running position (shared by Top 3 and Top 10 logic below)
+    const currentPos = driver.currentPosition || driver.startingPosition || 99;
     let top3Prob;
 
     if (isPreRace) {
@@ -427,7 +429,6 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false, 
         }
 
         // POSITION PENALTY for Top 3: If already running P3-P10, reduce odds (they're in position!)
-        const currentPos = driver.currentPosition || driver.startingPosition || 99;
         if (currentPos >= 3 && currentPos <= 10) {
             // Running P3-P10 means very likely to finish Top 3 - give them HUGE probability boost (terrible odds)
             const positionPenalty = 1.35 + ((10 - currentPos) * 0.08); // P3 gets 1.91x, P10 gets 1.35x

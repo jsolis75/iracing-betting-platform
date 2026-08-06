@@ -49,7 +49,7 @@ export async function GET(request) {
         // Fetch specific user by username
         const { data, error } = await supabase
             .from('users')
-            .select('id, username, email, balance, created_at')
+            .select('id, username, email, balance, created_at, twitch_handle')
             .eq('username', username)
             .single();
 
@@ -74,7 +74,7 @@ export async function POST(request) {
             // Simple login - just check if user exists
             const { data, error } = await supabase
                 .from('users')
-                .select('id, username, email, balance, created_at')
+                .select('id, username, email, balance, created_at, twitch_handle')
                 .eq('username', username)
                 .single();
 
@@ -114,6 +114,46 @@ export async function POST(request) {
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     } catch (error) {
         console.error('Error in user API:', error);
+        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    }
+}
+
+// PUT - Update profile settings (currently: twitch handle)
+export async function PUT(request) {
+    try {
+        const { userId, twitchHandle } = await request.json();
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Missing userId' }, { status: 400 });
+        }
+
+        // Sanitize: twitch logins are 3-25 chars, alphanumeric + underscore.
+        // Accept full URLs too ("twitch.tv/somebody" -> "somebody"). Empty clears it.
+        let handle = (twitchHandle || '').trim().toLowerCase();
+        handle = handle.replace(/^https?:\/\//, '').replace(/^(www\.)?twitch\.tv\//, '').replace(/\/.*$/, '');
+        if (handle && !/^[a-z0-9_]{3,25}$/.test(handle)) {
+            return NextResponse.json({ error: 'That does not look like a valid Twitch username' }, { status: 400 });
+        }
+
+        const supabase = getSupabaseClient();
+        const { data, error } = await supabase
+            .from('users')
+            .update({ twitch_handle: handle || null })
+            .eq('id', userId)
+            .select('id, username, email, balance, created_at, twitch_handle')
+            .single();
+
+        if (error) {
+            if (error.code === '23505') {
+                return NextResponse.json({ error: 'That Twitch account is already linked to another user' }, { status: 400 });
+            }
+            console.error('Twitch handle update error:', error);
+            return NextResponse.json({ error: error.message }, { status: 500 });
+        }
+
+        return NextResponse.json({ success: true, user: data });
+    } catch (error) {
+        console.error('Error updating profile:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

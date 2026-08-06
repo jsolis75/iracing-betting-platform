@@ -3,14 +3,16 @@
 import React from 'react';
 import { useBetting } from '@/context/BettingContext';
 import styles from './OverUnderView.module.css';
+import { useToast } from '@/components/Toast/ToastContext';
 
 const OverUnderView = ({ race, isFinished }) => {
     const { addToBetSlip } = useBetting();
+    const toast = useToast();
     const { drivers, name, id } = race;
 
     const handleBet = (driver, selection, odds) => {
         if (isFinished) {
-            alert("Race has finished – betting is closed.");
+            toast.info("Race has finished – betting is closed.");
             return;
         }
         addToBetSlip({
@@ -24,7 +26,7 @@ const OverUnderView = ({ race, isFinished }) => {
     };
 
     // Sort drivers by position for the list
-    const sortedDrivers = [...drivers].sort((a, b) => a.currentPosition - b.currentPosition);
+    const sortedDrivers = [...(drivers || [])].sort((a, b) => a.currentPosition - b.currentPosition);
 
     return (
         <div className={styles.container}>

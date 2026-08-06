@@ -1,0 +1,253 @@
+.container {
+    background: var(--background-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.9rem 1.25rem;
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: 1.05rem;
+    color: var(--text-primary);
+}
+
+.liveDot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--status-live);
+    animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.count {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--background-input);
+    padding: 2px 8px;
+    border-radius: 10px;
+}
+
+.headerActions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.multiBtn {
+    background: var(--background-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.multiActive {
+    background: var(--primary-blue);
+    border-color: var(--primary-blue);
+    color: #fff;
+}
+
+/* --- POV chips --- */
+.povRow {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem 0;
+    overflow-x: auto;
+}
+
+.povChip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--background-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 0.45rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.povActive {
+    border-color: var(--primary-blue);
+    background: rgba(0, 87, 184, 0.12);
+}
+
+.povLive {
+    background: var(--status-live);
+    color: #fff;
+    font-size: 0.6rem;
+    font-weight: 800;
+    padding: 1px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+}
+
+.povTag { font-size: 0.8rem; }
+
+.povViewers {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+/* --- Player --- */
+.playerWrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+    margin-top: 0.75rem;
+}
+
+.playerWrap iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.container > .playerWrap {
+    margin-top: 0;
+}
+
+.povRow + .playerWrap {
+    margin-top: 0.75rem;
+}
+
+/* --- Multi-view grid --- */
+.grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2px;
+    margin-top: 0.75rem;
+    background: var(--border-color);
+}
+
+.grid[data-count="1"] {
+    grid-template-columns: 1fr;
+}
+
+.gridCell {
+    background: #000;
+    position: relative;
+}
+
+.gridLabel {
+    position: absolute;
+    top: 6px;
+    left: 6px;
+    z-index: 2;
+    background: rgba(0, 0, 0, 0.72);
+    color: #fff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 4px;
+}
+
+.gridCell .playerWrap {
+    margin-top: 0;
+}
+
+/* --- Link-your-twitch + empty state --- */
+.linkRow {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.linkInput {
+    background: var(--background-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    width: 180px;
+}
+
+.linkBtn {
+    background: #9146ff; /* twitch purple */
+    border: none;
+    color: #fff;
+    padding: 0.4rem 0.8rem;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.linkBtn:disabled { opacity: 0.6; }
+
+.linkCancel {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.emptyBar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    background: var(--background-card);
+    border: 1px dashed var(--border-color);
+    border-radius: 10px;
+    padding: 0.75rem 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.emptyText {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+@media (max-width: 900px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    .header {
+        padding: 0.75rem 1rem;
+    }
+
+    .povRow {
+        padding: 0.6rem 1rem 0;
+    }
+
+    .linkInput {
+        width: 140px;
+    }
+}

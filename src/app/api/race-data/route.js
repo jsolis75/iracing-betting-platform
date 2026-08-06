@@ -62,7 +62,7 @@ export async function GET(request) {
             const response = NextResponse.json(globalCache.raceData);
             if (globalCache.lastUpdated) {
                 response.headers.set('Last-Modified', globalCache.lastUpdated.toUTCString());
-                response.headers.set('Cache-Control', 'no-cache, must-revalidate');
+                response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
                 response.headers.set('X-Cache', 'HIT'); // Debug header
             }
             return response;
@@ -122,13 +122,15 @@ export async function GET(request) {
             }
         }
 
-        // If still no data, return 404/Empty
+        // If still no data, return 404/Empty (CDN-cached: idle polling is cheap)
         if (!data) {
-            return NextResponse.json({
+            const emptyResponse = NextResponse.json({
                 message: "No active race found",
                 WeekendInfo: { TrackDisplayName: "Waiting for Broadcast..." },
                 DriverInfo: { Drivers: [] }
             });
+            emptyResponse.headers.set('Cache-Control', 'public, s-maxage=15, stale-while-revalidate=30');
+            return emptyResponse;
         }
 
         // 4. CHECK IF-MODIFIED-SINCE (Before processing)
@@ -142,64 +144,105 @@ export async function GET(request) {
             }
         }
 
-        // 5. PROCESS DATA (Merge Positions & Stats)
-        let responsePayload = { ...data.data, _dbId: data.id };
+        // 5. PROCESS DATA (Slim + Merge Positions & Stats)
+        // The stored payload can be 100KB+ of raw iRacing YAML data. The frontend
+        // only uses a small subset, so we rebuild a slim response (~90% smaller)
+        // instead of echoing the whole thing back to every poller.
+        const raw = data.data || {};
+        const rawSessions = Array.isArray(raw.SessionInfo?.Sessions) ? raw.SessionInfo.Sessions : [];
+        const rawDrivers = Array.isArray(raw.DriverInfo?.Drivers) ? raw.DriverInfo.Drivers : [];
 
-        // Merge Live Positions
-        if (responsePayload.SessionInfo?.Sessions && responsePayload.DriverInfo?.Drivers) {
-            const sessions = responsePayload.SessionInfo.Sessions;
-
-            // Qualifying positions
-            const qualifyingSession = sessions.find(s => s.SessionType === 'Qualify' || s.SessionType === 'Lone Qualify');
-            const startingPositions = {};
-            if (qualifyingSession?.ResultsPositions) {
-                qualifyingSession.ResultsPositions.forEach(result => {
-                    startingPositions[result.CarIdx] = result.Position;
-                });
-            }
-
-            // Race positions
-            const raceSession = sessions.find(s => s.SessionType === 'Race') || sessions[sessions.length - 1];
-            if (raceSession?.ResultsPositions) {
-                const positionsByCarIdx = {};
-                raceSession.ResultsPositions.forEach(result => {
-                    positionsByCarIdx[result.CarIdx] = result;
-                });
-
-                responsePayload.DriverInfo.Drivers = responsePayload.DriverInfo.Drivers.map(driver => ({
-                    ...driver,
-                    CarIdxPosition: startingPositions[driver.CarIdx] || driver.CarIdxPosition,
-                    Position: positionsByCarIdx[driver.CarIdx]?.Position,
-                    ClassPosition: positionsByCarIdx[driver.CarIdx]?.ClassPosition,
-                    Lap: positionsByCarIdx[driver.CarIdx]?.Lap,
-                    LastTime: positionsByCarIdx[driver.CarIdx]?.LastTime,
-                    FastestTime: positionsByCarIdx[driver.CarIdx]?.FastestTime
-                }));
-            }
-        }
-
-        // Inject Driver Stats (From Memory Cache)
-        const statsMap = getDriverStats();
-        if (statsMap) {
-            responsePayload.DriverInfo.Drivers = responsePayload.DriverInfo.Drivers.map(driver => {
-                const driverStats = statsMap[driver.UserID];
-                if (driverStats) {
-                    return {
-                        ...driver,
-                        stats: {
-                            starts: driverStats.starts,
-                            wins: driverStats.wins,
-                            avgPoints: driverStats.avgPoints,
-                            avgIncidents: driverStats.avgIncidents,
-                            avgFinish: driverStats.avgFinish,
-                            top25Percent: driverStats.top25Percent,
-                            winPercentage: driverStats.winPercentage
-                        }
-                    };
-                }
-                return driver;
+        // Qualifying positions (starting grid)
+        const qualifyingSession = rawSessions.find(s => s.SessionType === 'Qualify' || s.SessionType === 'Lone Qualify' || s.SessionType === 'Open Qualify');
+        const startingPositions = {};
+        if (Array.isArray(qualifyingSession?.ResultsPositions)) {
+            qualifyingSession.ResultsPositions.forEach(result => {
+                startingPositions[result.CarIdx] = result.Position;
             });
         }
+
+        // Live positions come ONLY from an actual Race session (a practice
+        // broadcast must not present practice standings as race positions)
+        const raceSession = rawSessions.find(s => s.SessionType === 'Race');
+        const positionsByCarIdx = {};
+        if (Array.isArray(raceSession?.ResultsPositions)) {
+            raceSession.ResultsPositions.forEach(result => {
+                positionsByCarIdx[result.CarIdx] = result;
+            });
+        }
+
+        const statsMap = getDriverStats();
+
+        const slimDrivers = rawDrivers.map(driver => {
+            const pos = positionsByCarIdx[driver.CarIdx];
+            const driverStats = statsMap ? statsMap[driver.UserID] : null;
+            return {
+                CarIdx: driver.CarIdx,
+                UserID: driver.UserID,
+                CustID: driver.CustID,
+                UserName: driver.UserName,
+                TeamName: driver.TeamName,
+                CarNumber: driver.CarNumber,
+                IRating: driver.IRating,
+                LicString: driver.LicString,
+                LicSubLevel: driver.LicSubLevel,
+                CurDriverIncidentCount: driver.CurDriverIncidentCount,
+                CarIsPaceCar: driver.CarIsPaceCar,
+                IsSpectator: driver.IsSpectator,
+                CarIdxPosition: startingPositions[driver.CarIdx] || driver.CarIdxPosition,
+                Position: pos?.Position,
+                ClassPosition: pos?.ClassPosition,
+                Lap: pos?.Lap,
+                LastTime: pos?.LastTime,
+                FastestTime: pos?.FastestTime,
+                stats: driverStats ? {
+                    starts: driverStats.starts,
+                    wins: driverStats.wins,
+                    avgPoints: driverStats.avgPoints,
+                    avgIncidents: driverStats.avgIncidents,
+                    avgFinish: driverStats.avgFinish,
+                    top25Percent: driverStats.top25Percent,
+                    winPercentage: driverStats.winPercentage
+                } : undefined
+            };
+        });
+
+        const slimSessions = rawSessions.map(s => ({
+            SessionNum: s.SessionNum,
+            SessionName: s.SessionName,
+            SessionType: s.SessionType,
+            SessionLaps: s.SessionLaps,
+            SessionState: s.SessionState,
+            ResultsLapsComplete: s.ResultsLapsComplete,
+            ResultsPositions: Array.isArray(s.ResultsPositions) ? s.ResultsPositions.map(p => ({
+                CarIdx: p.CarIdx,
+                Position: p.Position,
+                ClassPosition: p.ClassPosition,
+                PositionsMoved: p.PositionsMoved,
+                Lap: p.Lap,
+                LapsComplete: p.LapsComplete,
+                LastTime: p.LastTime,
+                FastestTime: p.FastestTime,
+                ReasonOutStr: p.ReasonOutStr,
+                Incidents: p.Incidents
+            })) : undefined
+        }));
+
+        const w = raw.WeekendInfo || {};
+        let responsePayload = {
+            _dbId: data.id,
+            WeekendInfo: {
+                SessionID: w.SessionID,
+                SubSessionID: w.SubSessionID,
+                SeriesID: w.SeriesID,
+                TrackDisplayName: w.TrackDisplayName,
+                TrackDisplayShortName: w.TrackDisplayShortName,
+                TrackName: w.TrackName
+            },
+            SessionInfo: { Sessions: slimSessions },
+            DriverInfo: { Drivers: slimDrivers },
+            Telemetry: raw.Telemetry || {}
+        };
 
         // 6. UPDATE CACHE
         if (!raceId) { // Only cache the main polling request
@@ -209,10 +252,12 @@ export async function GET(request) {
         }
 
         // 7. RETURN RESPONSE
+        // s-maxage lets Vercel's CDN serve all users from ONE origin response per
+        // 5s window (origin transfer becomes O(1) per interval instead of O(users)).
         const response = NextResponse.json(responsePayload);
         if (lastUpdated) {
             response.headers.set('Last-Modified', lastUpdated.toUTCString());
-            response.headers.set('Cache-Control', 'no-cache, must-revalidate');
+            response.headers.set('Cache-Control', 'public, s-maxage=5, stale-while-revalidate=10');
             response.headers.set('X-Cache', 'MISS'); // Debug header
         }
 

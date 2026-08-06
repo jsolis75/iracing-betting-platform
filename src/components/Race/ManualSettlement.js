@@ -4,24 +4,29 @@ import React, { useState } from 'react';
 import { useUser } from '@/context/UserContext';
 import { useBetting } from '@/context/BettingContext';
 import styles from './ManualSettlement.module.css';
+import { useToast } from '@/components/Toast/ToastContext';
 
 const ManualSettlement = () => {
     const { user, refreshUser } = useUser();
+    const toast = useToast();
     const [settling, setSettling] = useState(false);
     const [manualBets, setManualBets] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    // Only show for user "dumindu"
-    if (!user || user.username !== 'dumindu') return null;
+    const isAdmin = !!user && user.username === 'dumindu';
 
     // Fetch ALL pending manual settlement bets (not just current user's)
+    // NOTE: hooks must run on every render (Rules of Hooks) — the old early
+    // `return null` above this effect crashed React when `user` changed.
     React.useEffect(() => {
+        if (!isAdmin) return; // non-admins: no polling at all
+
         const fetchManualBets = async () => {
             try {
                 const response = await fetch('/api/bets?status=pending&manual=true');
                 if (response.ok) {
                     const data = await response.json();
-                    const pending = data.filter(bet =>
+                    const pending = (Array.isArray(data) ? data : []).filter(bet =>
                         bet.status === 'pending' &&
                         ['slurmeister', 'fatality', 'kingkong'].includes(bet.bet_type)
                     );
@@ -35,11 +40,14 @@ const ManualSettlement = () => {
         };
 
         fetchManualBets();
-        const interval = setInterval(fetchManualBets, 5000); // Refresh every 5s
+        const interval = setInterval(fetchManualBets, 15000); // Refresh every 15s
         return () => clearInterval(interval);
-    }, []);
+    }, [isAdmin]);
 
-    if (loading) return <div style={{ padding: '1rem', color: '#666' }}>Loading manual bets...</div>;
+    // Only show for the admin user
+    if (!isAdmin) return null;
+
+    if (loading) return <div style={{ padding: '1rem', color: 'var(--text-muted)' }}>Loading manual bets...</div>;
     if (manualBets.length === 0) return null;
 
     const handleSettle = async (betId, result) => {
@@ -58,12 +66,12 @@ const ManualSettlement = () => {
                 throw new Error(error.error || 'Failed to settle bet');
             }
 
-            alert(`Bet settled as ${result}!`);
+            toast.success(`Bet settled as ${result}!`);
             refreshUser();
             window.location.reload();
         } catch (error) {
             console.error('Error settling bet:', error);
-            alert(`Error: ${error.message}`);
+            toast.error(`Error: ${error.message}`);
         } finally {
             setSettling(false);
         }

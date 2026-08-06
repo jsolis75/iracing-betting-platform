@@ -28,10 +28,10 @@ export async function POST(request) {
             };
         }
 
-        // 2. Identify the race
-        const subSessionID = weekendInfo?.SubSessionID;
-        const sessionID = weekendInfo?.SessionID;
-        const uniqueID = subSessionID && subSessionID !== '0' ? subSessionID : sessionID;
+        // 2. Identify the race (normalize: IDs can arrive as numbers or strings)
+        const subSessionID = Number(weekendInfo?.SubSessionID) || 0;
+        const sessionID = Number(weekendInfo?.SessionID) || 0;
+        const uniqueID = subSessionID || sessionID;
         const trackName = weekendInfo?.TrackDisplayName || data.SessionInfo?.TrackDisplayName || 'Unknown Track';
 
         if (!uniqueID) {
@@ -42,12 +42,13 @@ export async function POST(request) {
         try {
             const supabase = getSupabaseClient();
 
-            // First, check if race exists
+            // First, check if race exists (maybeSingle + limit: never throws on 0 or duplicate rows)
             const { data: existingRace } = await supabase
                 .from('races')
                 .select('id')
                 .eq('iracing_session_id', uniqueID)
-                .single();
+                .limit(1)
+                .maybeSingle();
 
             let result;
 
@@ -103,8 +104,10 @@ export async function POST(request) {
 
             if (event) {
                 // b. Extract driver results from telemetry
+                // Only score from an actual Race session — a Practice/Qualify broadcast
+                // must never write practice standings into Winstel scoring.
                 const sessions = data.SessionInfo?.Sessions || [];
-                const raceSession = sessions.find(s => s.SessionType === 'Race') || sessions[sessions.length - 1];
+                const raceSession = sessions.find(s => s.SessionType === 'Race');
 
                 if (raceSession?.ResultsPositions) {
                     const telemetryDrivers = data.DriverInfo?.Drivers || [];
@@ -115,15 +118,16 @@ export async function POST(request) {
 
                     raceSession.ResultsPositions.forEach(res => {
                         const tDriver = telemetryDrivers.find(d => d.CarIdx === res.CarIdx);
-                        if (tDriver) {
-                            // Try to match by name
-                            const wDriver = winstelDrivers.find(wd =>
-                                wd.name.toLowerCase() === tDriver.UserName.toLowerCase()
+                        if (tDriver && tDriver.UserName) {
+                            // Try to match by name (null-safe on both sides)
+                            const wDriver = (winstelDrivers || []).find(wd =>
+                                (wd.name || '').toLowerCase() === tDriver.UserName.toLowerCase()
                             );
                             if (wDriver) {
+                                const moved = Number(res.PositionsMoved) || 0; // guard: field can be absent
                                 driverResultsMapping[wDriver.id] = {
                                     position: res.Position,
-                                    startingPosition: res.Position - res.PositionsMoved, // PositionsMoved is + for gaining spots
+                                    startingPosition: res.Position - moved, // PositionsMoved is + for gaining spots
                                     name: tDriver.UserName
                                 };
                             }

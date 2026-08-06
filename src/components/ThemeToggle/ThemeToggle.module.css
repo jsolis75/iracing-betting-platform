@@ -39,3 +39,11 @@
 .toggleButton:hover svg {
     transform: rotate(20deg);
 }
+/* Mobile: keep the theme toggle clear of the bottom nav + content */
+@media (max-width: 900px) {
+    .toggleButton {
+        bottom: 130px !important;
+        left: 10px !important;
+        transform: scale(0.85);
+    }
+}

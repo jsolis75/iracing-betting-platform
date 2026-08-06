@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useUser } from '@/context/UserContext';
 import styles from './DraftTeam.module.css';
+import { useToast } from '@/components/Toast/ToastContext';
 
 const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
+    const toast = useToast();
     const { user } = useUser();
     const [selectedDrivers, setSelectedDrivers] = useState(
         [entry.driver_1, entry.driver_2, entry.driver_3].filter(Boolean)
@@ -30,13 +32,13 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
 
     const handleSave = async () => {
         if (selectedDrivers.length !== 3 || !captain) {
-            return alert("Please select 3 drivers and assign a Captain.");
+            return toast.error("Please select 3 drivers and assign a Captain.");
         }
 
         // Check if lineup is already locked
         const lineupLocked = entry.driver_1 && entry.driver_2 && entry.driver_3;
         if (lineupLocked) {
-            return alert("Your lineup is locked! You cannot change it once saved.");
+            return toast.info("Your lineup is locked! You cannot change it once saved.");
         }
 
         // Warn user before first save
@@ -61,13 +63,13 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
             });
             const data = await res.json();
             if (data.success) {
-                alert("Lineup Saved! Your lineup is now LOCKED.");
+                toast.success("Lineup Saved! Your lineup is now LOCKED.");
                 onDraftUpdate();
             } else {
-                alert(data.error);
+                toast.error(data.error);
             }
         } catch (err) {
-            alert("Save failed");
+            toast.error("Save failed");
         } finally {
             setSaving(false);
         }
@@ -90,7 +92,7 @@ const DraftTeam = ({ drivers, entry, lobbyId, onDraftUpdate }) => {
 
             <div className={styles.driverList}>
                 {drivers.length === 0 && (
-                    <div style={{ padding: '1rem', textAlign: 'center', color: '#888' }}>
+                    <div style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                         No drivers loaded. <br />
                         <small>Waiting for race data...</small>
                     </div>

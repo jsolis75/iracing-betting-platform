@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useUser } from '@/context/UserContext';
 import styles from './LobbyLeaderboard.module.css';
+import { useToast } from '@/components/Toast/ToastContext';
 
 // Series mapping
 const seriesMapping = {
@@ -22,6 +23,7 @@ const getOrdinal = (n) => {
 };
 
 const LobbyLeaderboard = ({ entries, drivers, raceData, lobbyId }) => {
+    const toast = useToast();
     const { user } = useUser();
     const [showScoringRules, setShowScoringRules] = useState(false);
     const [settling, setSettling] = useState(false);
@@ -30,7 +32,7 @@ const LobbyLeaderboard = ({ entries, drivers, raceData, lobbyId }) => {
     const handleForceSettle = async () => {
         console.log('Force settle clicked. Lobby ID:', lobbyId);
         if (!lobbyId) {
-            alert('No lobby ID available');
+            toast.error('No lobby ID available');
             return;
         }
 
@@ -50,16 +52,16 @@ const LobbyLeaderboard = ({ entries, drivers, raceData, lobbyId }) => {
             if (res.ok) {
                 const data = await res.json();
                 console.log('Settlement success:', data);
-                alert(`Settlement complete! Winner: ${data.winner} ($${data.winnings})`);
+                toast.success(`Settlement complete! Winner: ${data.winner} ($${data.winnings})`);
                 window.location.reload();
             } else {
                 const error = await res.json();
                 console.error('Settlement error response:', error);
-                alert(`Settlement failed: ${error.error}\\nDetails: ${error.details || 'None'}`);
+                toast.error(`Settlement failed: ${error.error} — ${error.details || ''}`);
             }
         } catch (err) {
             console.error('Settlement exception:', err);
-            alert('Settlement error: ' + err.message);
+            toast.error('Settlement error: ' + err.message);
         } finally {
             setSettling(false);
         }
@@ -227,7 +229,7 @@ const LobbyLeaderboard = ({ entries, drivers, raceData, lobbyId }) => {
                                             </small>
                                         </div>
                                     );
-                                }) || <span style={{ color: '#888', fontSize: '0.85rem' }}>No lineup set</span>}
+                                }) || <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No lineup set</span>}
                             </div>
                         </div>
                     );

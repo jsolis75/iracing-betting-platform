@@ -132,9 +132,15 @@ function HomeContent() {
         };
 
         const sessionFlags = data.Telemetry?.SessionFlags || 0;
+        // SessionState is the RELIABLE end-of-race signal (5 = checkered out,
+        // 6 = cooldown). The checkered flag BIT only appears briefly and is
+        // cleared in cooldown, so 5s broadcast snapshots can miss it entirely —
+        // which left the banner stuck on green and auto-settlement never firing.
+        const sessionState = Number(data.Telemetry?.SessionState) || 0;
         let flagStatus = "Green";
 
-        if (sessionFlags & iRacingFlags.Checkered) flagStatus = "Checkered";
+        if (sessionState >= 5) flagStatus = "Checkered";
+        else if (sessionFlags & iRacingFlags.Checkered) flagStatus = "Checkered";
         else if (sessionFlags & iRacingFlags.Red) flagStatus = "Red Flag";
         else if ((sessionFlags & iRacingFlags.Caution) || (sessionFlags & iRacingFlags.CautionWaving)) flagStatus = "Yellow";
         else if (sessionFlags & iRacingFlags.White) flagStatus = "White Flag";

@@ -195,9 +195,13 @@ export async function POST(request) {
             // Accept EITHER the database UUID OR the iRacing session ID
             const matchesUUID = String(bet.race_id) === String(raceId);
             const matchesSessionID = String(bet.race_id) === String(targetSessionId);
+            // Also match the race's database UUID directly — the auto-settle path
+            // calls this endpoint with the iRacing session id, while bets store
+            // the DB UUID, so without this the two id forms never intersected.
+            const matchesDbId = String(bet.race_id) === String(raceData.id);
             const isMulti = bet.race_id === 'multi';
 
-            if (!matchesUUID && !matchesSessionID && !isMulti) {
+            if (!matchesUUID && !matchesSessionID && !matchesDbId && !isMulti) {
                 debugLogs.push(`Skipping bet ${bet.id}: Race ID mismatch (${bet.race_id} !== ${raceId} / ${targetSessionId})`);
                 continue;
             }

@@ -188,6 +188,30 @@ export async function POST(request) {
             console.error('Winstel live scoring error:', scoringError);
         }
 
+        // 5. AUTO-SETTLE: once the session reaches CoolDown (state 6), every car
+        // has finished and results are final. Trigger settlement SERVER-SIDE so
+        // bets settle even if nobody has the website open at the finish.
+        // (settle-race is idempotent, so an occasional duplicate call is harmless.)
+        try {
+            const sessionState = Number(data.Telemetry?.SessionState) || 0;
+            const raceSession = (data.SessionInfo?.Sessions || []).find(s => s.SessionType === 'Race');
+            if (sessionState >= 6 && Array.isArray(raceSession?.ResultsPositions) && raceSession.ResultsPositions.length > 0) {
+                if (!globalThis.__autoSettledSessions) globalThis.__autoSettledSessions = new Set();
+                if (!globalThis.__autoSettledSessions.has(uniqueID)) {
+                    globalThis.__autoSettledSessions.add(uniqueID);
+                    const origin = new URL(request.url).origin;
+                    console.log(`Auto-settling race ${uniqueID} (SessionState=${sessionState})`);
+                    await fetch(`${origin}/api/settle-race`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ raceId: uniqueID })
+                    }).catch(err => console.error('Auto-settle call failed:', err));
+                }
+            }
+        } catch (autoSettleError) {
+            console.error('Auto-settle check failed:', autoSettleError);
+        }
+
         return NextResponse.json({ success: true });
 
     } catch (error) {

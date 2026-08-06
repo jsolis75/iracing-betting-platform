@@ -479,34 +479,20 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false, 
         // Simple multiplier: Win Prob * 6.0 (capped at 98%)
         top10Prob = Math.min(winProbability * 6.0, 0.98);
     } else {
-        top10Prob = Math.min(winProbability * 3.5 + (topFinishAbility * 0.3), 0.90);
+        // ================= SMOOTH TOP-10 LADDER =================
+        // The old model multiplied everyone into probability CEILINGS, so the
+        // entire top 8 pinned at -2000 with a cliff after P10. Replaced with a
+        // smooth curve over (position, race progress) so every position shows a
+        // distinct, bettable price with a gradual slope.
+        const remaining = 1 - (driver.raceProgress || 0);
+        const progress = driver.raceProgress || 0;
+        const qualityProb = Math.min(winProbability * 3.5 + (topFinishAbility * 0.3), 0.90);
 
-        // DECOUPLED TOP 10 PROBABILITY
-        // If driver is currently in Top 10, their base probability should be high regardless of win odds
-        if (currentPos <= 10) {
-            // Base probability purely based on being in position
-            // P1 = 0.95, P10 = 0.50
-            const positionBaseProb = 1.0 - (currentPos * 0.05);
-            top10Prob = Math.max(top10Prob, positionBaseProb);
-        } else if (currentPos <= 15) {
-            // P11-P15: Still have a fighting chance for Top 10, but less aggressive
-            // P11 = 0.25, P15 = 0.05
-            const positionBaseProb = 0.25 - ((currentPos - 11) * 0.05);
-            top10Prob = Math.max(top10Prob, positionBaseProb);
-        }
-
-        // LAPS LED FACTOR
-        const lapsLed = driver.lapsLed || 0;
-        let lapsLedBonus = 1.0;
-        if (lapsLed > 0) {
-            lapsLedBonus = Math.min(1.0 + (lapsLed * 0.03), 2.0);
-        }
-
-        // HIGH IRATING THREAT FACTOR
+        // Threat setup (used below): high-iR chargers behind you only matter
+        // near the P10 bubble — a charger passing the LEADER makes him P2,
+        // not P11 (this flat penalty once inverted the ladder: P1 -610, P8 -2000).
         const thisDriverIRating = driver.iRating || 1500;
         const highIRThreshold = 5000;
-        const raceProgress = driver.raceProgress || 0;
-
         let threatsFromBehind = 0;
         if (currentPos <= 15) {
             threatsFromBehind = allDrivers.filter(d => {
@@ -515,85 +501,34 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false, 
                 return theirPos > currentPos && theirIR > highIRThreshold;
             }).length;
         }
-
-        // BUGFIX: threats only endanger a TOP-10 finish for drivers near the
-        // bubble. A charger passing the LEADER demotes him to P2 — he's still
-        // top 10. The old flat penalty hit P1 hardest (the whole field is
-        // "behind" him), which inverted the odds: leader -610 while P8 was
-        // -2000. Scale the impact by proximity to the P10 cutoff instead.
         const bubbleProximity = Math.max(0, Math.min(1, (currentPos - 4) / 6)); // 0 at P1-P4 → 1 at P10+
-        const threatImpact = threatsFromBehind * (0.08 * (1 - raceProgress)) * bubbleProximity;
-
-        // RACE PROGRESS MULTIPLIER: As race goes on, current position becomes EXPONENTIALLY more important
-        // Late race (>70% progress): Drivers in top 10 are almost guaranteed to finish there barring crashes
-        let raceProgressMultiplier = 1.0;
+        const threatImpact = threatsFromBehind * (0.08 * remaining) * bubbleProximity;
 
         if (currentPos <= 10) {
-            // EXPONENTIAL SCALING for top 10 drivers
-            // Early race (0%): 1.0x multiplier
-            // Mid race (50%): 2.5x multiplier
-            // Late race (75%): 6.0x multiplier
-            // Final laps (90%+): 12.0x multiplier
-            const exponentialFactor = Math.pow(raceProgress, 2); // Square for exponential growth
-            raceProgressMultiplier = 1.0 + (exponentialFactor * 11.0); // 1.0x to 12.0x range
-
-            // raceProgressMultiplier log removed
-        } else if (currentPos <= 14) {
-            // P11-14 gets partial benefit (they might sneak in)
-            const exponentialFactor = Math.pow(raceProgress, 2.5); // Steeper curve for bubble positions
-            raceProgressMultiplier = 1.0 + (exponentialFactor * 3.0); // 1.0x to 4.0x range
+            // Inside the ten: interpolate between an early-race and late-race
+            // probability for each position. Early: P1 ~88%, P10 ~71%.
+            // Late:  P1 ~99%, P10 ~88%. Never everyone-pinned-at-the-cap.
+            const earlyProb = 0.88 - (currentPos - 1) * 0.019;
+            const lateProb = 0.99 - (currentPos - 1) * 0.012;
+            top10Prob = earlyProb * remaining + lateProb * progress;
+            top10Prob = Math.max(top10Prob - threatImpact, 0.15);
         } else {
-            // P15+ gets minimal benefit (unlikely to crack top 10 late)
-            raceProgressMultiplier = 1.0 + (raceProgress * 0.5); // 1.0x to 1.5x range
-        }
+            // Outside the ten: geometric decay per position — gentler early
+            // (plenty of laps to gain spots), steeper late. P11 keeps a real
+            // chance; each further position fades smoothly instead of cliffing.
+            const over = currentPos - 10;
+            const p11Prob = 0.30 + 0.28 * remaining;      // P11: ~58% early → ~30% at the end... of green flag runs
+            const decay = 0.72 + 0.10 * remaining;        // per-position falloff
+            const curveProb = p11Prob * Math.pow(decay, over - 1);
 
-        // PROGRESSIVE FAVORITISM - SMOOTHED DROPOFF
-        // Smooth transition from P10 to P11+
-        if (currentPos <= 2) {
-            top10Prob = Math.min(top10Prob * 4.5 * raceProgressMultiplier, 0.98); // P1-P2
-        } else if (currentPos <= 4) {
-            top10Prob = Math.min(top10Prob * 3.8 * raceProgressMultiplier, 0.97); // P3-P4
-        } else if (currentPos <= 6) {
-            top10Prob = Math.min(top10Prob * 3.2 * raceProgressMultiplier, 0.96); // P5-P6
-        } else if (currentPos <= 8) {
-            top10Prob = Math.min(top10Prob * 2.8 * raceProgressMultiplier, 0.95); // P7-P8 (Increased from 2.6)
-        } else if (currentPos <= 10) {
-            top10Prob = Math.min(top10Prob * 2.4 * raceProgressMultiplier, 0.94); // P9-P10 (Increased from 2.0)
-        } else if (currentPos <= 11) {
-            // P11: Just outside top 10, moderate chance with crashes
-            top10Prob = Math.min(top10Prob * 2.2 * raceProgressMultiplier, 0.80); // Increased from 1.9
-        } else if (currentPos <= 12) {
-            // P12: Still reasonable chance with 1-2 crashes
-            top10Prob = Math.min(top10Prob * 2.0 * raceProgressMultiplier, 0.75); // Increased from 1.8
-        } else if (currentPos <= 13) {
-            // P13: Needs a few incidents but possible
-            top10Prob = Math.min(top10Prob * 1.8 * raceProgressMultiplier, 0.70); // Increased from 1.7
-        } else if (currentPos <= 14) {
-            // P14: Long shot but crashes happen
-            top10Prob = Math.min(top10Prob * 1.6 * raceProgressMultiplier, 0.65); // Kept same
-        } else if (currentPos <= 15) {
-            // P15: Very unlikely late, plenty possible early
-            top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.60 + 0.20 * (1 - raceProgress));
-        } else if (currentPos <= 16) {
-            top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.60 + 0.15 * (1 - raceProgress)); // P16
-        } else if (currentPos <= 18) {
-            top10Prob = Math.min(top10Prob * 1.2 * raceProgressMultiplier, 0.55 + 0.20 * (1 - raceProgress)); // P17-P18
-        } else if (currentPos <= 20) {
-            top10Prob = Math.min(top10Prob * 1.1 * raceProgressMultiplier, 0.45 + 0.25 * (1 - raceProgress)); // P19-P20
-        } else {
-            // P21+: PROGRESS-AWARE CAPS. Early in the race, a monster iRating deep
-            // in the field is still very likely to finish top 10 (they usually
-            // started back there on purpose); with 10 laps left, they're stuck.
-            if (thisDriverIRating > highIRThreshold) {
-                top10Prob = Math.min(top10Prob * 1.05, 0.40 + 0.48 * (1 - raceProgress)); // 0.88 early → 0.40 late
-            } else {
-                top10Prob = Math.min(top10Prob, 0.30 + 0.20 * (1 - raceProgress)); // 0.50 early → 0.30 late
-            }
+            // PACE FLOOR: a monster iRating deep in the field is still likely to
+            // carve into the ten — but that window closes as the race runs.
+            const paceCap = thisDriverIRating > highIRThreshold
+                ? (0.40 + 0.48 * remaining)
+                : (0.30 + 0.20 * remaining);
+            top10Prob = Math.max(curveProb, Math.min(qualityProb, paceCap));
+            top10Prob = Math.max(top10Prob - threatImpact, 0.04);
         }
-
-        // Apply threat impact and laps led bonus
-        top10Prob = Math.max(top10Prob - threatImpact, 0.15);
-        top10Prob = Math.min(top10Prob * lapsLedBonus, 0.99); // Increased cap from 0.97
     }
 
     // PRE-RACE FLOOR: Min 33.3% probability (caps at +200 odds)

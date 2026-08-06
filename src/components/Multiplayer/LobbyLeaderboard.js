@@ -5,6 +5,8 @@ import { useToast } from '@/components/Toast/ToastContext';
 
 // Series mapping
 const seriesMapping = {
+    58: "NASCAR A Open Series",
+    62: "NASCAR B Open Series",
     103: "B Fixed Series",
     164: "NASCAR Truck Series",
     165: "NASCAR Xfinity Series",

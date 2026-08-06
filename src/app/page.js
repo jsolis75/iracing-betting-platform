@@ -10,9 +10,11 @@ import Login from "@/components/Auth/Login";
 import ManualSettlement from "@/components/Race/ManualSettlement";
 import StreamView from "@/components/Streams/StreamView";
 import { useUser } from "@/context/UserContext";
+import { useBetting } from "@/context/BettingContext";
 
 function HomeContent() {
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
+  const { refreshBets } = useBetting();
   const searchParams = useSearchParams();
   const selectedRaceId = searchParams.get('raceId');
   const [races, setRaces] = useState([]);
@@ -253,6 +255,12 @@ function HomeContent() {
                 raceId: raceData.id,
                 drivers: raceData.drivers
               })
+            }).then(() => {
+              // Settlement ran server-side — refresh the user's bets + balance so
+              // the Live Bets panel and Race Recap update without a page reload
+              const doRefresh = () => { refreshBets && refreshBets(); refreshUser && refreshUser(); };
+              doRefresh();
+              setTimeout(doRefresh, 5000); // once more after payouts finish writing
             }).catch(err => {
               console.error("Error triggering settlement:", err);
               hasSettledRef.current = false; // Allow a retry on network error

@@ -192,16 +192,21 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
         // BRANCHING LOGIC: Live race uses current position, Pre-race uses starting position
         if (useLiveOdds && raceProgress > 0) {
             // LIVE ODDS: BALANCED (Driver Quality + Position)
-            // Give significant weight to iRating/stats even late in race
+            // Early race: SKILL dominates (a 7k iR running P27 on lap 5 is still
+            // the guy to beat — high-iR drivers often start in the back on purpose).
+            // Late race: POSITION dominates (track position is destiny with 10 to go).
             const cappedIRating = Math.min(iRating, 7000);
-            const liveIRatingFactor = Math.pow(cappedIRating / 5000, 0.7);
+            // Steeper skill curve (was ^0.7, far too flat: 7000 vs 3000 iR was <2x apart)
+            let liveIRatingFactor = Math.pow(cappedIRating / 5000, 1.3);
+            // Carry the outlier boost into the live model, fading as the race runs
+            liveIRatingFactor = liveIRatingFactor * (1 + (outlierBonus - 1) * 0.6 * (1 - raceProgress));
 
-            // REBALANCED WEIGHTS: Driver quality stays relevant until past halfway
-            // Early race (0-25%): iR=35%, Hist=20%, Pos=45%
-            // Mid race (50%): iR=17.5%, Hist=10%, Pos=72.5%
-            // Late race (75%+): iR=8.75%, Hist=5%, Pos=86.25%
-            const iRatingWeight = 0.35 * (1 - raceProgress); // Linear decay (was exponential 1.5)
-            const historicalWeight = 0.20 * Math.pow(1 - raceProgress, 1.2);
+            // REBALANCED WEIGHTS: skill-heavy early, position-heavy late
+            // Early race (0%): iR=55%, Hist=15%, Pos=30%
+            // Mid race (50%): iR=27.5%, Hist=~7%, Pos=65%
+            // Late race (90%): iR=5.5%, Hist=~1%, Pos=93%
+            const iRatingWeight = 0.55 * (1 - raceProgress);
+            const historicalWeight = 0.15 * Math.pow(1 - raceProgress, 1.2);
             const positionWeight = 1 - (iRatingWeight + historicalWeight);
 
             // Position factor with moderate exponent (not as extreme)
@@ -209,10 +214,12 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
             const dynamicPositionFactor = Math.pow(Math.max(0, (fieldSize - currentPos + 1) / fieldSize), dynamicExponent);
 
             // SMART GAP ADJUSTMENT: Only penalize backmarkers if they're also low-rated
-            // High iRating drivers in the back are still dangerous
+            // High iRating drivers in the back are still dangerous.
+            // PROGRESS-SCALED: no penalty on lap 1, full penalty near the end —
+            // being P25 early means nothing; being P25 with 10 to go means everything.
             let gapAdjustment = 1.0;
             if (currentPos > 15) {
-                const gap = currentPos - 15;
+                const gap = (currentPos - 15) * raceProgress; // scale the effective gap by progress
                 const iRatingTrust = Math.min((iRating - 4000) / 3000, 1.0); // 0 at 4k, 1 at 7k
 
                 if (iRatingTrust > 0.5) {
@@ -313,9 +320,11 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
 
         // WIN ODDS PENALTY FOR P11+: Drivers outside top 10 have lower win probability
         // P4-P10 are exempt because they're still in strong contention for top finishes
+        // PROGRESS-SCALED: running P27 on lap 5 is barely a penalty (plenty of race
+        // left to charge); running P27 with 10 laps left is nearly fatal.
         if (currentPos > 10) {
-            // Progressive penalty: P11 gets small penalty, P20+ gets massive penalty
-            const positionPenalty = Math.pow(0.92, currentPos - 10); // 8% reduction per position after P10
+            const effectiveGap = (currentPos - 10) * Math.max(raceProgress, 0.1);
+            const positionPenalty = Math.pow(0.92, effectiveGap); // 8% per effective position
             winProbability = winProbability * positionPenalty;
         }
 
@@ -340,7 +349,12 @@ const calculateSophisticatedOdds = (drivers, raceState = null) => {
 
     if (p1Driver && useLiveOdds) {
         const maxOtherProb = Math.max(...otherDrivers.map(d => d.winProbability));
-        const minP1Prob = maxOtherProb * 2.0;
+        // PROGRESS-SCALED FLOOR: early in the race P1 only needs to edge the field
+        // (a 2k iR who stayed out on lap 3 is NOT twice as likely to win as a 7k
+        // charging from the back); with 10 to go, P1 really is ~2x the next guy.
+        const progress = p1Driver.raceProgress || 0;
+        const p1Multiplier = 1.05 + (progress * 0.95); // 1.05x early → 2.0x at the end
+        const minP1Prob = maxOtherProb * p1Multiplier;
 
         if (p1Driver.winProbability < minP1Prob) {
             p1Driver.winProbability = minP1Prob;
@@ -400,6 +414,10 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false, 
     // Win Odds
     let winOdds = probToOdds(winProbability);
     winOdds = Math.max(-10000, Math.min(10000, winOdds));
+
+    // PRE-RACE SANITY CAP: before the green flag NOBODY is a -3000 lock —
+    // wrecks, disconnects, and restarts happen. Cap pre-race favorites at -1200.
+    if (isPreRace && winOdds < -1200) winOdds = -1200;
 
     const safeTrack = (track || "").toLowerCase();
     const isSuperspeedway = safeTrack.includes("talladega") || safeTrack.includes("daytona");
@@ -548,19 +566,22 @@ export const calculateOdds = (driver, allDrivers = [driver], isPreRace = false, 
             // P14: Long shot but crashes happen
             top10Prob = Math.min(top10Prob * 1.6 * raceProgressMultiplier, 0.65); // Kept same
         } else if (currentPos <= 15) {
-            // P15: Very unlikely but not impossible
-            top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.55); // Reduced cap from 0.70
+            // P15: Very unlikely late, plenty possible early
+            top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.60 + 0.20 * (1 - raceProgress));
         } else if (currentPos <= 16) {
-            top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.65); // P16
+            top10Prob = Math.min(top10Prob * 1.4 * raceProgressMultiplier, 0.60 + 0.15 * (1 - raceProgress)); // P16
         } else if (currentPos <= 18) {
-            top10Prob = Math.min(top10Prob * 1.2 * raceProgressMultiplier, 0.55); // P17-P18
+            top10Prob = Math.min(top10Prob * 1.2 * raceProgressMultiplier, 0.55 + 0.20 * (1 - raceProgress)); // P17-P18
         } else if (currentPos <= 20) {
-            top10Prob = Math.min(top10Prob * 1.1 * raceProgressMultiplier, 0.45); // P19-P20
+            top10Prob = Math.min(top10Prob * 1.1 * raceProgressMultiplier, 0.45 + 0.25 * (1 - raceProgress)); // P19-P20
         } else {
+            // P21+: PROGRESS-AWARE CAPS. Early in the race, a monster iRating deep
+            // in the field is still very likely to finish top 10 (they usually
+            // started back there on purpose); with 10 laps left, they're stuck.
             if (thisDriverIRating > highIRThreshold) {
-                top10Prob = Math.min(top10Prob * 1.05, 0.40);
+                top10Prob = Math.min(top10Prob * 1.05, 0.40 + 0.48 * (1 - raceProgress)); // 0.88 early → 0.40 late
             } else {
-                top10Prob = Math.min(top10Prob, 0.30);
+                top10Prob = Math.min(top10Prob, 0.30 + 0.20 * (1 - raceProgress)); // 0.50 early → 0.30 late
             }
         }
 

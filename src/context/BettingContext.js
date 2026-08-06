@@ -243,6 +243,7 @@ export const BettingProvider = ({ children }) => {
                 updateStake,
                 placeBets,
                 settleBets,
+                refreshBets: () => user && fetchPlacedBets(user.id),
                 isBetSlipOpen,
                 setIsBetSlipOpen,
                 parlayMode,

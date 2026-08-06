@@ -16,7 +16,8 @@ function SidebarContent() {
     const selectedRaceId = searchParams.get('raceId');
 
     const seriesMapping = {
-        58: 'NASCAR A Open',
+        58: 'NASCAR A Open Series',
+        62: 'NASCAR B Open Series',
         103: 'B Fixed Series',
         164: 'NASCAR C Fixed',
         167: 'Arca Series Fixed',

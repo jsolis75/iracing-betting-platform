@@ -709,3 +709,28 @@
         content: attr(data-market);
     }
 }
+
+/* Community tier-list badges on driver rows */
+.tierBadgeDirty,
+.tierBadgeClean {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    vertical-align: middle;
+    cursor: help;
+}
+
+.tierBadgeDirty {
+    background: rgba(239, 68, 68, 0.15);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.tierBadgeClean {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.4);
+}

@@ -139,6 +139,14 @@ export async function GET(request) {
                 .slice(0, 10);
         });
 
+        // Lightweight mode for the race card: rankings only, CDN-cached
+        // (no user-specific data in this shape)
+        if (searchParams.get('include') === 'rankings') {
+            const response = NextResponse.json({ categories });
+            response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+            return response;
+        }
+
         return NextResponse.json({ pool, categories, myVotes });
 
     } catch (error) {

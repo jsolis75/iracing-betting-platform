@@ -259,3 +259,65 @@
         justify-content: flex-end;
     }
 }
+
+/* Suggestions */
+.suggestions {
+    margin-top: 1rem;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.suggestGroup {
+    min-width: 0;
+}
+
+.suggestTitle {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+/* Pool browser */
+.poolControls {
+    margin-top: 1rem;
+    text-align: center;
+}
+
+.poolToggle {
+    background: none;
+    border: 1px dashed var(--border-color);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    padding: 0.5rem 1.25rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+}
+
+.poolToggle:hover {
+    border-color: var(--primary-blue);
+    color: var(--primary-blue);
+}
+
+.loadMore {
+    display: block;
+    margin: 0.75rem auto 0;
+    background: var(--background-input);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-radius: 8px;
+    padding: 0.5rem 1.5rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+@media (max-width: 900px) {
+    .suggestions {
+        grid-template-columns: 1fr;
+    }
+}

@@ -108,6 +108,26 @@ const RaceCard = ({ race }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [drivers]);
 
+    // ---- COMMUNITY TIER BADGES: 💣/😇 next to drivers in the top 10s ----
+    const [tierRanks, setTierRanks] = useState({ terrorists: {}, cleanest: {} });
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            try {
+                const res = await fetch('/api/tierlist?include=rankings');
+                if (!res.ok) return;
+                const data = await res.json();
+                if (cancelled) return;
+                const toMap = (list) => Object.fromEntries((list || []).map((d, i) => [String(d.key), i + 1]));
+                setTierRanks({
+                    terrorists: toMap(data.categories?.terrorists),
+                    cleanest: toMap(data.categories?.cleanest),
+                });
+            } catch { /* fail soft */ }
+        })();
+        return () => { cancelled = true; };
+    }, []);
+
     // ---- LIVE FEEL: highlight drivers the user has pending bets on ----
     // Covers single bets AND parlay legs (a parlay's driver_name is just
     // "3 Legs" — the real drivers are inside bet.details).
@@ -309,6 +329,8 @@ const RaceCard = ({ race }) => {
                             const isMyBet = myBetDrivers.has((driver.name || '').toLowerCase().trim());
                             const move = recentMoves[driver.id];
                             const flash = oddsFlash[driver.id] || {};
+                            const terroristRank = tierRanks.terrorists[String(driver.userID)];
+                            const cleanRank = tierRanks.cleanest[String(driver.userID)];
                             return (
                                 <div key={driver.id} className={`${styles.driverRow} ${driver.isDNF ? styles.crashed : ''} ${isMyBet ? styles.myBet : ''}`}>
                                     <div className={styles.colDriver}>
@@ -335,6 +357,16 @@ const RaceCard = ({ race }) => {
                                                     >
                                                         {driver.name}
                                                         {isMyBet && <span className={styles.myBetChip} title="You have a pending bet on this driver">💰 Your bet</span>}
+                                                        {terroristRank && (
+                                                            <span className={styles.tierBadgeDirty} title={`Community Top 10 Biggest Terrorists — ranked #${terroristRank}`}>
+                                                                💣 #{terroristRank}
+                                                            </span>
+                                                        )}
+                                                        {cleanRank && (
+                                                            <span className={styles.tierBadgeClean} title={`Community Top 10 Cleanest Racers — ranked #${cleanRank}`}>
+                                                                😇 #{cleanRank}
+                                                            </span>
+                                                        )}
                                                         {driver.isDNF && <span className={styles.retiredBadge}>RETIRED</span>}
                                                         {move !== undefined && !driver.isDNF && (
                                                             <span className={`${styles.moveBadge} ${move > 0 ? styles.moveUp : styles.moveDown}`}>

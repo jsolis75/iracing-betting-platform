@@ -35,6 +35,8 @@ export default function TierListPage() {
     const [search, setSearch] = useState('');
     const [loading, setLoading] = useState(true);
     const [busyKey, setBusyKey] = useState(null);
+    const [showPool, setShowPool] = useState(false);
+    const [poolLimit, setPoolLimit] = useState(25);
 
     const fetchData = useCallback(async () => {
         try {
@@ -100,6 +102,42 @@ export default function TierListPage() {
     const filtered = search.trim().length >= 2
         ? pool.filter(d => d.name.toLowerCase().includes(search.trim().toLowerCase())).slice(0, 12)
         : [];
+
+    // Suggested candidates when nothing is typed: the extremes by the numbers
+    // (only drivers with enough starts for the average to mean something)
+    const qualified = pool.filter(d => d.avgIncidents != null && (d.starts || 0) >= 20);
+    const suggestedDirty = [...qualified].sort((a, b) => b.avgIncidents - a.avgIncidents).slice(0, 5);
+    const suggestedClean = [...qualified].sort((a, b) => a.avgIncidents - b.avgIncidents).slice(0, 5);
+
+    // Full pool browser (sorted by iRating, paginated)
+    const browsable = showPool ? pool.slice(0, poolLimit) : [];
+
+    const voteRow = (d) => (
+        <div key={d.key} className={styles.resultRow}>
+            <span className={styles.rankInfo}>
+                <span className={styles.rankName}>{d.name}</span>
+                {statChips(d)}
+            </span>
+            <span className={styles.resultActions}>
+                <button
+                    className={`${styles.voteBtn} ${hasVoted('terrorists', d.key) ? styles.voted : ''}`}
+                    disabled={busyKey === `terrorists:${d.key}`}
+                    onClick={() => vote('terrorists', d)}
+                    title="Vote: Biggest Terrorist"
+                >
+                    💣 Terrorist
+                </button>
+                <button
+                    className={`${styles.voteBtn} ${hasVoted('cleanest', d.key) ? styles.voted : ''}`}
+                    disabled={busyKey === `cleanest:${d.key}`}
+                    onClick={() => vote('cleanest', d)}
+                    title="Vote: Cleanest Racer"
+                >
+                    😇 Clean
+                </button>
+            </span>
+        </div>
+    );
 
     return (
         <main className="container">
@@ -174,34 +212,50 @@ export default function TierListPage() {
                 {search.trim().length >= 2 && filtered.length === 0 && (
                     <p className={styles.noResults}>No drivers match — they need to appear in a broadcast race first.</p>
                 )}
-                <div className={styles.results}>
-                    {filtered.map(d => (
-                        <div key={d.key} className={styles.resultRow}>
-                            <span className={styles.rankInfo}>
-                                <span className={styles.rankName}>{d.name}</span>
-                                {statChips(d)}
-                            </span>
-                            <span className={styles.resultActions}>
-                                <button
-                                    className={`${styles.voteBtn} ${hasVoted('terrorists', d.key) ? styles.voted : ''}`}
-                                    disabled={busyKey === `terrorists:${d.key}`}
-                                    onClick={() => vote('terrorists', d)}
-                                    title="Vote: Biggest Terrorist"
-                                >
-                                    💣 Terrorist
-                                </button>
-                                <button
-                                    className={`${styles.voteBtn} ${hasVoted('cleanest', d.key) ? styles.voted : ''}`}
-                                    disabled={busyKey === `cleanest:${d.key}`}
-                                    onClick={() => vote('cleanest', d)}
-                                    title="Vote: Cleanest Racer"
-                                >
-                                    😇 Clean
-                                </button>
-                            </span>
-                        </div>
-                    ))}
+
+                {/* Search results */}
+                {filtered.length > 0 && (
+                    <div className={styles.results}>{filtered.map(voteRow)}</div>
+                )}
+
+                {/* Suggestions (shown when not searching) */}
+                {search.trim().length < 2 && !showPool && (suggestedDirty.length > 0 || suggestedClean.length > 0) && (
+                    <div className={styles.suggestions}>
+                        {suggestedDirty.length > 0 && (
+                            <div className={styles.suggestGroup}>
+                                <h3 className={styles.suggestTitle}>🔥 Menaces by the numbers</h3>
+                                <div className={styles.results}>{suggestedDirty.map(voteRow)}</div>
+                            </div>
+                        )}
+                        {suggestedClean.length > 0 && (
+                            <div className={styles.suggestGroup}>
+                                <h3 className={styles.suggestTitle}>🧼 Surgeons by the numbers</h3>
+                                <div className={styles.results}>{suggestedClean.map(voteRow)}</div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* Full pool browser */}
+                <div className={styles.poolControls}>
+                    <button
+                        className={styles.poolToggle}
+                        onClick={() => { setShowPool(!showPool); setPoolLimit(25); }}
+                    >
+                        {showPool ? '▲ Hide driver pool' : `▼ Browse all ${pool.length} drivers`}
+                    </button>
                 </div>
+                {showPool && search.trim().length < 2 && (
+                    <>
+                        <div className={styles.results}>{browsable.map(voteRow)}</div>
+                        {poolLimit < pool.length && (
+                            <button className={styles.loadMore} onClick={() => setPoolLimit(poolLimit + 25)}>
+                                Show more ({pool.length - poolLimit} remaining)
+                            </button>
+                        )}
+                    </>
+                )}
+
                 {!user && <p className={styles.loginNote}>Log in to cast votes.</p>}
             </section>
         </main>
